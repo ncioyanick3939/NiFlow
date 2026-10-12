@@ -18,7 +18,7 @@ export default function App() {
         {tab === 'today' ? (
           <TodayView events={events} now={now} loading={loading} />
         ) : (
-          <WeekView />
+          <WeekView events={events} now={now} loading={loading} />
         )}
       </main>
       <BottomNav active={tab} onChange={setTab} />

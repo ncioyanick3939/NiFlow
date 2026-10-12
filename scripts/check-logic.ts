@@ -9,6 +9,7 @@ import {
   isHeavyDay,
   nextEvent,
 } from '../src/domain/schedule'
+import { categoryMinutes, layoutDay, summarizeWeek, weekDays } from '../src/domain/weekLayout'
 import { createTestEvents } from '../src/sources/testSource'
 import { SOURCES, loadAllSources } from '../src/sources'
 import type { EventSource } from '../src/sources/types'
@@ -127,6 +128,47 @@ check('Andere Quellen funktionieren trotzdem', res.events.some((e) => e.source =
 // 16. Leere Daten
 const emptyDay = eventsForDay([], day(0))
 check('Leere Daten: kein Absturz', emptyDay.timed.length === 0 && findFreeSlots(emptyDay, day(0), earlyNow).length === 1)
+
+// 17. Wochenansicht
+const days = weekDays(monday)
+check('Woche hat 7 Tage, beginnt am Montag', days.length === 7 && days[0].getDay() === 1 && days[6].getDay() === 0)
+check('Jeder Wochentag beginnt um Mitternacht', days.every((d) => d.getHours() === 0 && d.getMinutes() === 0))
+
+const week = summarizeWeek(events, monday)
+check('Woche: Mittwoch hat 2 überschneidende Termine', week[2].overlapIds.size === 2)
+check('Woche: andere Tage ohne Überschneidung', week.filter((_, i) => i !== 2).every((d) => d.overlapIds.size === 0))
+// Di 11 h, Mi 10 h 45, Do 13 h sind über 10 h. Mo 7 h 45, Fr 5 h 45, Sa 5 h, So 2 h nicht.
+check('Woche: Dienstag, Mittwoch und Donnerstag sind stark belegt', week.map((d) => d.heavy).join() === 'false,true,true,true,false,false,false', week.map((d) => d.busy).join(' / '))
+
+// Heute und Woche zeigen dieselben Termine
+let mismatch = 0
+week.forEach((d, i) => {
+  const today = eventsForDay(events, day(i))
+  const same = (a: { id: string }[], b: { id: string }[]) => a.map((e) => e.id).join() === b.map((e) => e.id).join()
+  if (!same(d.timed, today.timed) || !same(d.allDay, today.allDay)) mismatch++
+})
+check('Woche und Heute zeigen dieselben Termine', mismatch === 0, `${mismatch} Abweichungen`)
+
+const wedBlocks = layoutDay(week[2].timed, day(2))
+const lecBlocks = wedBlocks.filter((b) => b.event.category === 'study')
+check('Überschneidende Termine liegen in verschiedenen Spuren', lecBlocks.length === 2 && lecBlocks[0].lane !== lecBlocks[1].lane && lecBlocks.every((b) => b.lanes === 2))
+check('Nicht überschneidende Termine füllen die ganze Höhe', wedBlocks.filter((b) => b.event.category !== 'study').every((b) => b.lanes === 1 && b.lane === 0))
+check(
+  'Alle Blöcke liegen innerhalb des Rasters',
+  week.every((d) => d.blocks.every((b) => b.left >= 0 && b.width > 0 && b.left + b.width <= 1 + 1e-9)),
+)
+const dueBlock = layoutDay(week[1].timed, day(1)).find((b) => b.event.id === due.id)
+check('Termin nach 22 Uhr erscheint als Marker am rechten Rand', !!dueBlock && dueBlock.left + dueBlock.width > 0.99 && dueBlock.width < 0.05)
+
+const totals = categoryMinutes(week)
+check('Summe Training 12 h 30', totals.training === 750, `${totals.training} min`)
+check('Summe Arbeit 29 h 30', totals.work === 1770, `${totals.work} min`)
+check('Summe Studium 7 h', totals.study === 420, `${totals.study} min`)
+check('Summe Privat 5 h 30 (Termin ohne Ende zählt nicht)', totals.private === 330, `${totals.private} min`)
+
+// Woche mit Zeitumstellung (19.–25. Oktober 2026)
+const dstWeek = weekDays(new Date(2026, 9, 19))
+check('Zeitumstellung: 7 Tage, alle um Mitternacht', dstWeek.length === 7 && dstWeek.every((d) => d.getHours() === 0) && dstWeek[6].getDate() === 25)
 
 console.log(failed === 0 ? '\nAlle Prüfungen bestanden.' : `\n${failed} Prüfung(en) fehlgeschlagen.`)
 process.exit(failed === 0 ? 0 : 1)

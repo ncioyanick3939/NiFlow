@@ -1,11 +1,6 @@
 import {
-  formatCountdown,
-  formatDateLong,
   formatDuration,
   formatTime,
-  formatWeekday,
-  formatWeekdayShort,
-  isoWeek,
   isSameDay,
   minutesBetween,
   startOfDay,
@@ -18,7 +13,6 @@ import {
   findFreeSlots,
   findOverlaps,
   isHeavyDay,
-  nextEvent,
 } from '../domain/schedule'
 import type { FreeSlot } from '../domain/schedule'
 import { CATEGORY_LABEL, SOURCE_LABEL } from '../domain/types'
@@ -27,6 +21,8 @@ import { CATEGORY_STYLE } from './categoryStyle'
 
 interface Props {
   events: CalendarEvent[]
+  /** Der Tag, der angezeigt wird. */
+  date: Date
   now: Date
   loading: boolean
 }
@@ -38,35 +34,30 @@ type Row =
 
 const PRIORITY = { now: 0, free: 1, event: 2 } as const
 
-export default function TodayView({ events, now, loading }: Props) {
-  const today = startOfDay(now)
-  const day = eventsForDay(events, today)
+/**
+ * Chronologische Zeitleiste eines Tages. Wird in "Heute" und in der Wochenansicht
+ * (für den gewählten Tag) verwendet, damit beide dieselben Daten und dieselbe Logik zeigen.
+ */
+export default function DayTimeline({ events, date, now, loading }: Props) {
+  const day = eventsForDay(events, date)
+  const isToday = isSameDay(date, now)
+  const isPast = startOfDay(date) < startOfDay(now)
   const overlaps = findOverlaps(day.timed)
-  const busy = busyMinutes(day.timed, today)
+  const busy = busyMinutes(day.timed, date)
   const heavy = isHeavyDay(busy)
-  const next = nextEvent(events, now)
 
-  const nowRow: Row = { type: 'now', at: now }
   const rows: Row[] = [
     ...day.timed.map((event): Row => ({ type: 'event', at: event.start, event })),
-    ...findFreeSlots(day, today, now).map((slot): Row => ({ type: 'free', at: slot.start, slot })),
-    nowRow,
+    ...(isPast
+      ? []
+      : findFreeSlots(day, date, now).map((slot): Row => ({ type: 'free', at: slot.start, slot }))),
+    ...(isToday ? [{ type: 'now', at: now } as Row] : []),
   ].sort((a, b) => a.at.getTime() - b.at.getTime() || PRIORITY[a.type] - PRIORITY[b.type])
 
   const isEmpty = day.timed.length === 0 && day.allDay.length === 0
 
   return (
     <div>
-      <header className="border-b border-ink px-5 pb-5 pt-6">
-        <p className="text-xs font-medium uppercase tracking-widest text-ink/60">
-          Kalenderwoche {isoWeek(now)}
-        </p>
-        <h1 className="mt-1 text-4xl font-bold leading-none tracking-tight">{formatWeekday(now)}</h1>
-        <p className="mt-2 text-base text-ink/70">{formatDateLong(now)}</p>
-      </header>
-
-      <NextEventBanner next={next} now={now} />
-
       {(overlaps.size > 0 || heavy) && (
         <div role="status" className="space-y-1 border-b border-ink/20 bg-signal/10 px-5 py-3 text-sm">
           {overlaps.size > 0 && (
@@ -107,7 +98,7 @@ export default function TodayView({ events, now, loading }: Props) {
       {loading && events.length === 0 ? (
         <p className="px-5 py-10 text-sm text-ink/60">Termine werden geladen …</p>
       ) : isEmpty ? (
-        <EmptyDay />
+        <EmptyDay isToday={isToday} />
       ) : (
         <ol aria-label="Zeitleiste des Tages">
           {rows.map((row) => {
@@ -133,39 +124,14 @@ export default function TodayView({ events, now, loading }: Props) {
   )
 }
 
-function NextEventBanner({ next, now }: { next: CalendarEvent | null; now: Date }) {
-  if (!next) {
-    return (
-      <section className="border-b border-ink/20 px-5 py-4">
-        <p className="text-xs font-medium uppercase tracking-widest text-ink/60">Als Nächstes</p>
-        <p className="mt-1 text-base text-ink/70">Kein weiterer Termin bekannt.</p>
-      </section>
-    )
-  }
-  const sameDay = isSameDay(next.start, now)
-  return (
-    <section className="flex items-end justify-between gap-4 border-b border-ink/20 px-5 py-4">
-      <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-widest text-ink/60">Als Nächstes</p>
-        <p className="mt-1 truncate text-lg font-semibold">{next.title}</p>
-        <p className="time text-sm text-ink/70">
-          {sameDay ? '' : `${formatWeekdayShort(next.start)} `}
-          {formatTime(next.start)} Uhr
-        </p>
-      </div>
-      <p className="time shrink-0 text-right text-xl font-semibold text-signal">
-        {formatCountdown(now, next.start)}
-      </p>
-    </section>
-  )
-}
-
-function EmptyDay() {
+function EmptyDay({ isToday }: { isToday: boolean }) {
   return (
     <div className="px-5 py-12">
-      <p className="text-xl font-semibold">Heute ist nichts geplant.</p>
+      <p className="text-xl font-semibold">
+        {isToday ? 'Heute ist nichts geplant.' : 'Für diesen Tag ist nichts geplant.'}
+      </p>
       <p className="mt-2 text-sm text-ink/60">
-        Für diesen Tag sind keine Termine bekannt. Das gilt nur für die verbundenen Quellen.
+        Es sind keine Termine bekannt. Das gilt nur für die verbundenen Quellen.
       </p>
     </div>
   )
@@ -215,7 +181,7 @@ function EventRow({
   conflicts: CalendarEvent[]
 }) {
   const past = (event.end ?? event.start) <= now
-  const running = event.start <= now && effectiveEnd(event) > now && event.end !== null
+  const running = event.end !== null && event.start <= now && effectiveEnd(event) > now
   const urgency = deadlineUrgency(event, now)
   const style = CATEGORY_STYLE[event.category]
 
