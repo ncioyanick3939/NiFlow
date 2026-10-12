@@ -80,13 +80,13 @@ export default function MonthView({ month, events, now, onOpen, onPickDay }: Pro
                       e.allDay && e.kind !== 'note' ? 'bg-cat/15 font-medium' : ''
                     }`}
                   >
-                    {e.kind === 'note' ? (
-                      <Icon name="note" size={11} className="shrink-0 text-muted" />
+                    {e.kind === 'note' || e.kind === 'task' ? (
+                      <Icon name={e.kind === 'note' ? 'note' : e.done ? 'checkCircle' : 'circle'} size={11} className="shrink-0 text-muted" />
                     ) : (
                       !e.allDay && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-cat" aria-hidden="true" />
                     )}
                     {!e.allDay && <span className="tnum shrink-0 text-muted">{formatTime(e.start)}</span>}
-                    <span className="truncate">{e.title}</span>
+                    <span className={`truncate ${e.done ? 'text-muted line-through' : ''} ${e.kind === 'exam' ? 'font-semibold' : ''}`}>{e.title}</span>
                   </button>
                 ))}
                 {all.length > 3 && <p className="px-1 text-[11px] font-medium text-muted">+{all.length - 3} weitere</p>}

@@ -145,7 +145,7 @@ export function categoryMinutes(summaries: DaySummary[]): Record<Category, numbe
     const from = startOfDay(day.date).getTime()
     const to = addDays(startOfDay(day.date), 1).getTime()
     for (const e of day.timed) {
-      if (!e.end) continue
+      if (!e.end || e.kind === 'task') continue
       const a = Math.max(e.start.getTime(), from)
       const b = Math.min(e.end.getTime(), to)
       if (b > a) totals[e.category] += Math.round((b - a) / 60000)

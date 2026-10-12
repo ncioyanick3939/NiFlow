@@ -3,8 +3,13 @@ import type { FormEvent } from 'react'
 import { addDays, formatCountdown, formatDateLong, formatDuration, formatTime, formatWeekday, isoWeek, startOfDay } from '../domain/dateUtils'
 import { deadlineUrgency, eventsForDay, findFreeSlots, findOverlaps, isHeavyDay, busyMinutes, nextEvent } from '../domain/schedule'
 import type { CalendarEvent } from '../domain/types'
+import { PREP_LABEL, daysUntil } from '../domain/exams'
+import type { Exam } from '../domain/exams'
+import { PRIORITY_RANK, inView, isOverdue, sortTasks } from '../domain/tasks'
+import type { Task } from '../domain/tasks'
 import Icon, { sportIcon } from './icons'
-import { CATEGORY_LABEL, EmptyState, EventRow, catClass, formatEventTime } from './kit'
+import { CATEGORY_LABEL, EmptyState, EventRow, Segmented, catClass, formatEventTime } from './kit'
+import TaskRow from './tasks/TaskRow'
 
 interface Props {
   events: CalendarEvent[]
@@ -18,6 +23,14 @@ interface Props {
   onQuickNote: (title: string) => Promise<void>
   onOpenDay: (d: Date) => void
   onGoTraining: () => void
+  tasks: Task[]
+  exams: Exam[]
+  onToggleTask: (t: Task) => void
+  onOpenTask: (t: Task) => void
+  onOpenExam: (x: Exam) => void
+  onGoTasks: () => void
+  onGoExams: () => void
+  onQuickTask: (title: string) => Promise<void>
 }
 
 function greeting(now: Date): string {
@@ -32,9 +45,20 @@ type Row = { kind: 'event'; e: CalendarEvent; t: number } | { kind: 'free'; star
 export default function Dashboard(p: Props) {
   const { events, now } = p
   const today = startOfDay(now)
-  const day = eventsForDay(events, today)
+  const dayAll = eventsForDay(events, today)
+  const day = { timed: dayAll.timed.filter((e) => e.kind !== 'task'), allDay: dayAll.allDay.filter((e) => e.kind !== 'task') }
   const notes = day.allDay.filter((e) => e.kind === 'note')
   const allDayEvents = day.allDay.filter((e) => e.kind !== 'note')
+  const overdue = sortTasks(p.tasks.filter((t) => isOverdue(t, now)), 'due')
+  const todayTasks = sortTasks(p.tasks.filter((t) => inView(t, 'today', now) && !isOverdue(t, now)), 'priority')
+  const doneToday = p.tasks.filter((t) => t.status === 'done' && t.completedAt && startOfDay(t.completedAt).getTime() === today.getTime()).length
+  const focus = sortTasks(
+    p.tasks.filter((t) => t.status !== 'done' && PRIORITY_RANK[t.priority] <= 1 && !inView(t, 'today', now) && !isOverdue(t, now) && inView(t, 'next', now)),
+    'priority',
+  ).slice(0, 4)
+  const unplanned = p.tasks.filter((t) => t.status !== 'done' && !t.dueDate).length
+  const nextExams = p.exams.filter((x) => daysUntil(x, now) >= 0).sort((a, b) => a.start.getTime() - b.start.getTime()).slice(0, 3)
+  const examById = new Map(p.exams.map((x) => [x.id, x]))
   const next = nextEvent(events, now)
   const overlaps = findOverlaps(day.timed)
   const busy = busyMinutes(day.timed, today)
@@ -177,10 +201,83 @@ export default function Dashboard(p: Props) {
               </div>
             )}
           </section>
+
+          {/* Aufgaben */}
+          <section>
+            <div className="mb-1 flex items-baseline justify-between">
+              <h2 className="text-base font-semibold">
+                Aufgaben{' '}
+                {doneToday > 0 && <span className="tnum ml-1 text-xs font-normal text-muted">{doneToday} heute erledigt</span>}
+              </h2>
+              <button type="button" className="text-sm font-medium text-accent hover:underline" onClick={p.onGoTasks}>
+                Alle Aufgaben
+              </button>
+            </div>
+            {overdue.length + todayTasks.length === 0 ? (
+              <p className="py-3 text-sm text-muted">Für heute ist nichts offen.{unplanned > 0 ? ` ${unplanned} Aufgabe${unplanned > 1 ? 'n haben' : ' hat'} noch kein Datum.` : ''}</p>
+            ) : (
+              <div className="divide-y divide-line/70">
+                {[...overdue, ...todayTasks].map((t) => (
+                  <TaskRow key={t.id} task={t} now={now} exam={t.examId ? examById.get(t.examId) : undefined} readOnly={p.readOnly} onToggle={p.onToggleTask} onOpen={p.onOpenTask} compact />
+                ))}
+              </div>
+            )}
+            {focus.length > 0 && (
+              <div className="mt-4">
+                <p className="eyebrow mb-1">Bald wichtig</p>
+                <div className="divide-y divide-line/70">
+                  {focus.map((t) => (
+                    <TaskRow key={t.id} task={t} now={now} exam={t.examId ? examById.get(t.examId) : undefined} readOnly={p.readOnly} onToggle={p.onToggleTask} onOpen={p.onOpenTask} compact />
+                  ))}
+                </div>
+              </div>
+            )}
+            {unplanned > 0 && overdue.length + todayTasks.length > 0 && (
+              <button type="button" onClick={p.onGoTasks} className="mt-2 text-xs text-muted hover:text-ink">
+                {unplanned} Aufgabe{unplanned > 1 ? 'n' : ''} ohne Datum noch nicht eingeplant
+              </button>
+            )}
+          </section>
         </div>
 
         <aside className="space-y-8">
-          {!p.readOnly && <QuickCapture onQuickNote={p.onQuickNote} onCreate={() => p.onCreate(today)} onCreateNote={() => p.onCreateNote(today)} />}
+          {!p.readOnly && <QuickCapture onQuickNote={p.onQuickNote} onQuickTask={p.onQuickTask} onCreate={() => p.onCreate(today)} onCreateNote={() => p.onCreateNote(today)} />}
+
+          <section>
+            <div className="mb-2 flex items-baseline justify-between">
+              <h2 className="text-base font-semibold">Prüfungen</h2>
+              <button type="button" className="text-sm font-medium text-accent hover:underline" onClick={p.onGoExams}>
+                {nextExams.length > 0 ? 'Alle' : 'Anlegen'}
+              </button>
+            </div>
+            {nextExams.length === 0 ? (
+              <p className="text-sm text-muted">Keine anstehenden Prüfungen.</p>
+            ) : (
+              <ul className="space-y-1">
+                {nextExams.map((x) => {
+                  const d = daysUntil(x, now)
+                  const open = p.tasks.filter((t) => t.examId === x.id && t.status !== 'done').length
+                  return (
+                    <li key={x.id}>
+                      <button type="button" onClick={() => p.onOpenExam(x)} className="flex w-full items-center gap-3 rounded-md px-1 py-2 text-left transition-colors hover:bg-surface2">
+                        <span className={`tnum flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-md text-sm font-semibold leading-none ${d <= 3 ? 'bg-danger/10 text-danger' : d <= 7 ? 'bg-[rgb(var(--private)/0.12)]' : 'bg-surface2'}`}>
+                          {d}
+                          <span className="mt-0.5 text-[9px] font-medium">{d === 1 ? 'Tag' : 'Tage'}</span>
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium">{x.title}</span>
+                          <span className="block text-xs text-muted">
+                            {PREP_LABEL[x.prepStatus]}
+                            {open > 0 ? ` · ${open} offen` : ''}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </section>
 
           {notes.length > 0 && (
             <section>
@@ -263,8 +360,19 @@ export default function Dashboard(p: Props) {
   )
 }
 
-function QuickCapture({ onQuickNote, onCreate, onCreateNote }: { onQuickNote: (t: string) => Promise<void>; onCreate: () => void; onCreateNote: () => void }) {
+function QuickCapture({
+  onQuickNote,
+  onQuickTask,
+  onCreate,
+  onCreateNote,
+}: {
+  onQuickNote: (t: string) => Promise<void>
+  onQuickTask: (t: string) => Promise<void>
+  onCreate: () => void
+  onCreateNote: () => void
+}) {
   const [text, setText] = useState('')
+  const [kind, setKind] = useState<'task' | 'note'>('task')
   const [state, setState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle')
   const [msg, setMsg] = useState('')
 
@@ -274,10 +382,10 @@ function QuickCapture({ onQuickNote, onCreate, onCreateNote }: { onQuickNote: (t
     if (!t) return
     setState('busy')
     try {
-      await onQuickNote(t)
+      await (kind === 'task' ? onQuickTask(t) : onQuickNote(t))
       setText('')
       setState('done')
-      setMsg('Als Notiz für heute gespeichert.')
+      setMsg(kind === 'task' ? 'Aufgabe für heute angelegt.' : 'Notiz für heute gespeichert.')
     } catch (err) {
       setState('error')
       setMsg(err instanceof Error ? err.message : 'Speichern fehlgeschlagen.')
@@ -286,15 +394,27 @@ function QuickCapture({ onQuickNote, onCreate, onCreateNote }: { onQuickNote: (t
 
   return (
     <section className="rounded-lg bg-surface2 p-4">
-      <h2 className="mb-2 text-sm font-semibold">Schnell festhalten</h2>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold">Schnell festhalten</h2>
+        <Segmented
+          label="Art"
+          size="sm"
+          value={kind}
+          onChange={setKind}
+          options={[
+            { value: 'task', label: 'Aufgabe' },
+            { value: 'note', label: 'Notiz' },
+          ]}
+        />
+      </div>
       <form onSubmit={submit} className="flex gap-2">
         <label htmlFor="quick" className="sr-only">
-          Notiz für heute
+          {kind === 'task' ? 'Aufgabe für heute' : 'Notiz für heute'}
         </label>
         <input
           id="quick"
           className="field bg-surface"
-          placeholder="Notiz für heute …"
+          placeholder={kind === 'task' ? 'Aufgabe für heute …' : 'Notiz für heute …'}
           value={text}
           maxLength={200}
           onChange={(e) => {
@@ -302,7 +422,7 @@ function QuickCapture({ onQuickNote, onCreate, onCreateNote }: { onQuickNote: (t
             if (state !== 'busy') setState('idle')
           }}
         />
-        <button type="submit" className="btn-primary h-11 w-11 shrink-0 px-0" disabled={state === 'busy' || !text.trim()} aria-label="Notiz speichern">
+        <button type="submit" className="btn-primary h-11 w-11 shrink-0 px-0" disabled={state === 'busy' || !text.trim()} aria-label="Speichern">
           <Icon name="arrowRight" size={18} />
         </button>
       </form>
@@ -312,10 +432,10 @@ function QuickCapture({ onQuickNote, onCreate, onCreateNote }: { onQuickNote: (t
         </p>
       ) : null}
       <div className="mt-3 flex gap-2">
-        <button type="button" className="btn-outline min-h-9 flex-1 px-2 text-xs" onClick={onCreate}>
+        <button type="button" className="btn-outline min-h-9 flex-1 bg-surface px-2 text-xs" onClick={onCreate}>
           <Icon name="calendar" size={14} /> Termin
         </button>
-        <button type="button" className="btn-outline min-h-9 flex-1 px-2 text-xs" onClick={onCreateNote}>
+        <button type="button" className="btn-outline min-h-9 flex-1 bg-surface px-2 text-xs" onClick={onCreateNote}>
           <Icon name="note" size={14} /> Notiz mit Text
         </button>
       </div>

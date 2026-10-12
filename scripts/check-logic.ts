@@ -18,6 +18,10 @@ import { mapIntervalsEvent } from '../src/sources/intervals'
 import { NotConfigured } from '../src/sources/intervalsSource'
 import { emptyInput, eventToInput, inputToRow, parseDateInput, rowToEvent, validateEntry } from '../src/domain/entries'
 import type { EntryRow } from '../src/domain/entries'
+import { emptyTask, formatDue, inView, isOverdue, sortTasks, taskToEvent, taskToRow, validateTask } from '../src/domain/tasks'
+import type { Task } from '../src/domain/tasks'
+import { daysUntil, emptyExam, examToRow, rowToExam, suggestStudyTasks, validateExam } from '../src/domain/exams'
+import type { ExamRow } from '../src/domain/exams'
 import { mapGoogleEvent } from '../src/sources/googleCalendar'
 
 let failed = 0
@@ -222,6 +226,47 @@ const noteRow = inputToRow({ ...emptyInput('note', new Date(2026, 9, 14)), title
 const note = rowToEvent({ ...noteRow, id: 'n1' } as EntryRow)
 check('Notiz: ganztägig, ohne Priorität, Art "note"', note.allDay && note.kind === 'note' && noteRow.priority === null && note.end!.getDate() === 15)
 check('Notiz: macht den Tag nicht "unsicher" für freie Zeit', findFreeSlots(eventsForDay([note], new Date(2026, 9, 14)), new Date(2026, 9, 14), new Date(2026, 9, 14, 7)).every((s) => !s.uncertain))
+
+// Aufgaben
+const tNow = new Date(2026, 9, 13, 15, 0) // Di 13.10.2026 15:00
+const mk = (o: Partial<Task>): Task => ({ ...emptyTask(), id: Math.random().toString(36), title: 'T', completedAt: null, createdAt: tNow, ...o }) as Task
+const tToday = mk({ dueDate: '2026-10-13' })
+const tPastTime = mk({ dueDate: '2026-10-13', dueTime: '09:00' })
+const tYesterday = mk({ dueDate: '2026-10-12' })
+const tSunday = mk({ dueDate: '2026-10-18' })
+const tNextWeek = mk({ dueDate: '2026-10-20', priority: 'urgent' })
+const tNoDate = mk({ dueDate: null })
+const tDone = mk({ dueDate: '2026-10-12', status: 'done', completedAt: new Date(2026, 9, 12) })
+check('Aufgaben: Heute enthält nur heutige offene', inView(tToday, 'today', tNow) && !inView(tYesterday, 'today', tNow) && !inView(tDone, 'today', tNow))
+check('Aufgaben: Überfällig = gestern oder heute schon vorbei', isOverdue(tYesterday, tNow) && isOverdue(tPastTime, tNow) && !isOverdue(tToday, tNow) && !isOverdue(tDone, tNow))
+check('Aufgaben: Diese Woche = Mo bis So', inView(tSunday, 'week', tNow) && inView(tYesterday, 'week', tNow) && !inView(tNextWeek, 'week', tNow))
+check('Aufgaben: Als Nächstes = ab morgen, ohne Undatierte', inView(tNextWeek, 'next', tNow) && !inView(tToday, 'next', tNow) && !inView(tNoDate, 'next', tNow))
+check('Aufgaben: Erledigte nur in "Erledigt"', inView(tDone, 'done', tNow) && !inView(tDone, 'all', tNow) && inView(tNoDate, 'all', tNow))
+const sortedDue = sortTasks([tNoDate, tNextWeek, tYesterday], 'due')
+check('Aufgaben: Sortierung nach Fälligkeit, Undatierte zuletzt', sortedDue[0] === tYesterday && sortedDue[2] === tNoDate)
+check('Aufgaben: Sortierung nach Priorität', sortTasks([tYesterday, tNextWeek], 'priority')[0] === tNextWeek)
+check('Aufgaben: Uhrzeit ohne Datum ist ungültig', validateTask({ ...emptyTask(), title: 'A', dueTime: '10:00' })?.dueTime !== undefined)
+check('Aufgaben: Zeitaufwand 3 min ist ungültig', validateTask({ ...emptyTask(), title: 'A', estimateMinutes: 3 })?.estimateMinutes !== undefined)
+check('Aufgaben: Abhaken setzt Erledigt-Zeit, Wiedereröffnen löscht sie', 'completed_at' in taskToRow({ ...emptyTask(), title: 'A', status: 'done' }, 'open') && taskToRow({ ...emptyTask(), title: 'A', status: 'open' }, 'done').completed_at === null && !('completed_at' in taskToRow({ ...emptyTask(), title: 'A' }, 'open')))
+const tev = taskToEvent(tToday)!
+check('Aufgaben: ohne Uhrzeit ganztägig im Kalender, belegt keine Zeit', tev.allDay && tev.kind === 'task' && findFreeSlots(eventsForDay([tev], new Date(2026, 9, 13)), new Date(2026, 9, 13), new Date(2026, 9, 13, 7)).every((x) => !x.uncertain))
+const tev2 = taskToEvent(tPastTime)!
+check('Aufgaben: mit Uhrzeit erscheinen, zählen nicht als belegt', !tev2.allDay && busyMinutes(eventsForDay([tev2], new Date(2026, 9, 13)).timed, new Date(2026, 9, 13)) === 0)
+check('Aufgaben: ohne Datum nicht im Kalender', taskToEvent(tNoDate) === null)
+check('Aufgaben: Fälligkeit lesbar', formatDue(tToday, tNow) === 'Heute' && formatDue(tYesterday, tNow) === 'Gestern' && formatDue(tPastTime, tNow) === 'Heute 09:00')
+
+// Prüfungen
+const exIn = { ...emptyExam(new Date(2026, 9, 20)), title: 'Statistik', subject: 'Statistik 1' }
+check('Prüfung: gültige Eingabe', validateExam(exIn) === null)
+check('Prüfung: Ende vor Start ungültig', validateExam({ ...exIn, startTime: '10:00', endTime: '09:00' })?.endTime !== undefined)
+const ex = rowToExam({ ...examToRow(exIn), id: 'x1' } as ExamRow)
+check('Prüfung: Umwandlung behält Zeiten', ex.start.getHours() === 8 && ex.end!.getHours() === 10 && ex.start.getDate() === 20)
+check('Prüfung: Tage bis zur Prüfung', daysUntil(ex, tNow) === 7)
+const sug = suggestStudyTasks(ex, tNow)
+check('Lernplan: 5 Vorschläge zwischen morgen und Vortag', sug.length === 5 && sug[0].dueDate >= '2026-10-14' && sug[4].dueDate === '2026-10-19' && sug.every((x, i) => i === 0 || x.dueDate >= sug[i - 1].dueDate))
+check('Lernplan: kein Vorschlag am Prüfungstag', suggestStudyTasks(ex, new Date(2026, 9, 20, 7)).length === 0)
+const sugShort = suggestStudyTasks(ex, new Date(2026, 9, 19, 9))
+check('Lernplan: bei 1 Tag alles heute', sugShort.length === 5 && sugShort.every((x) => x.dueDate === '2026-10-19'))
 
 console.log(failed === 0 ? '\nAlle Prüfungen bestanden.' : `\n${failed} Prüfung(en) fehlgeschlagen.`)
 process.exit(failed === 0 ? 0 : 1)

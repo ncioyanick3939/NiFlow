@@ -57,6 +57,33 @@ const PATHS: Record<string, ReactElement> = {
     </>
   ),
   check: <path d="M5 12l5 5 9-10" />,
+  circle: <circle cx="12" cy="12" r="8.5" />,
+  checkCircle: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M8.5 12.2l2.4 2.4 4.6-5" />
+    </>
+  ),
+  tasks: (
+    <>
+      <path d="M4 6.5l1.5 1.5L8 5.5M4 12.5l1.5 1.5L8 11.5M4 18.5l1.5 1.5L8 17.5" />
+      <path d="M11 7h9M11 13h9M11 19h9" />
+    </>
+  ),
+  exam: (
+    <>
+      <path d="M3 9l9-4 9 4-9 4z" />
+      <path d="M7 11v4.5c0 1.4 2.2 2.5 5 2.5s5-1.1 5-2.5V11M21 9v5" />
+    </>
+  ),
+  more: (
+    <>
+      <circle cx="5" cy="12" r="1.3" />
+      <circle cx="12" cy="12" r="1.3" />
+      <circle cx="19" cy="12" r="1.3" />
+    </>
+  ),
+  flag: <path d="M5 21V4M5 4h11l-2 4 2 4H5" />,
   alert: (
     <>
       <path d="M12 4l9 16H3z" />

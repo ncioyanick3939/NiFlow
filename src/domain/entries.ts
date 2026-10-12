@@ -21,6 +21,10 @@ export interface EntryInput {
   /** "HH:MM" oder leer (Ende unbekannt). */
   endTime: string
   priority: Priority | null
+  /** Lerntermin für diese Prüfung (optional). */
+  examId?: string | null
+  /** Aus dieser Aufgabe eingeplant (optional). */
+  taskId?: string | null
 }
 
 /** So steht ein Eintrag in der Datenbank (Tabelle entries). */
@@ -34,6 +38,8 @@ export interface EntryRow {
   start_at: string
   end_at: string | null
   priority: Priority | null
+  exam_id?: string | null
+  task_id?: string | null
 }
 
 export type EntryErrors = Partial<Record<'title' | 'body' | 'date' | 'startTime' | 'endTime', string>>
@@ -113,6 +119,8 @@ export function inputToRow(input: EntryInput): Omit<EntryRow, 'id'> {
     start_at: start.toISOString(),
     end_at: end ? end.toISOString() : null,
     priority: input.type === 'event' ? input.priority : null,
+    exam_id: input.examId ?? null,
+    task_id: input.taskId ?? null,
   }
 }
 
@@ -129,6 +137,9 @@ export function rowToEvent(row: EntryRow): CalendarEvent {
     kind: row.type === 'note' ? 'note' : 'event',
     description: row.body || undefined,
     priority: row.priority ?? undefined,
+    ref: { type: 'entry', id: row.id },
+    examId: row.exam_id ?? null,
+    taskId: row.task_id ?? null,
   }
 }
 
@@ -144,6 +155,8 @@ export function eventToInput(e: CalendarEvent): EntryInput {
     startTime: e.allDay ? '09:00' : toTimeInput(e.start),
     endTime: !e.allDay && e.end ? toTimeInput(e.end) : '',
     priority: e.priority ?? null,
+    examId: e.examId ?? null,
+    taskId: e.taskId ?? null,
   }
 }
 

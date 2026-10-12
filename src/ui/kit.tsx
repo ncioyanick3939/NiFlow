@@ -26,6 +26,7 @@ export function formatEventTime(e: CalendarEvent, withDay = false): string {
 
 export function kindLabel(e: CalendarEvent): string | null {
   if (e.kind === 'note') return 'Notiz'
+  if (e.kind === 'task') return 'Aufgabe'
   if (e.kind === 'exam') return 'Prüfung'
   if (e.kind === 'deadline') return 'Frist'
   return null
@@ -50,7 +51,8 @@ const PRIORITY_STYLE: Record<Priority, string> = {
 }
 
 export function PriorityTag({ p }: { p?: Priority }) {
-  if (!p || p === 'low') return null
+  // Nur hohe Prioritäten markieren, sonst wird es unruhig
+  if (!p || p === 'low' || p === 'medium') return null
   return (
     <span className={`inline-flex items-center gap-1 text-[11px] font-semibold ${PRIORITY_STYLE[p]}`} style={p === 'high' ? { color: 'rgb(var(--private))' } : undefined}>
       <span aria-hidden="true">{p === 'urgent' ? '!!' : '!'}</span>
@@ -72,10 +74,21 @@ export function EventRow({ e, onOpen, showDay = false, dim = false }: { e: Calen
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
           {e.kind === 'note' && <Icon name="note" size={14} className="shrink-0 text-muted" />}
-          <span className="truncate text-sm font-medium">{e.title}</span>
+          {e.kind === 'task' && <Icon name={e.done ? 'checkCircle' : 'circle'} size={14} className="shrink-0 text-muted" />}
+          <span className={`truncate text-sm font-medium ${e.done ? 'text-muted line-through' : ''}`}>{e.title}</span>
         </span>
         <span className="tnum mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-          <span>{e.kind === 'note' ? (showDay ? formatEventTime(e, true).replace(' · Ganztägig', '') : 'Notiz') : formatEventTime(e, showDay)}</span>
+          <span>
+            {e.kind === 'note' || (e.kind === 'task' && e.allDay)
+              ? showDay
+                ? formatEventTime(e, true).replace(' · Ganztägig', '')
+                : e.kind === 'note'
+                  ? 'Notiz'
+                  : 'Fällig heute'
+              : e.kind === 'task'
+                ? `Fällig ${formatEventTime(e, showDay)}`
+                : formatEventTime(e, showDay)}
+          </span>
           {kind && e.kind !== 'note' && <span className="font-semibold text-ink">{kind}</span>}
           <PriorityTag p={e.priority} />
           <SourceTag e={e} />

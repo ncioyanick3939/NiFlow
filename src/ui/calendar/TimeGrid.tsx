@@ -84,11 +84,12 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
                   type="button"
                   onClick={() => onOpen(e)}
                   className={`${catClass(e.category)} flex w-full items-center gap-1 truncate rounded-sm px-1.5 py-0.5 text-left text-[11px] font-medium transition-opacity hover:opacity-80 ${
-                    e.kind === 'note' ? 'border border-dashed border-cat/60 text-ink' : 'bg-cat/15 text-ink'
+                    e.kind === 'note' ? 'border border-dashed border-cat/60 text-ink' : e.kind === 'task' ? 'border border-cat/40 text-ink' : 'bg-cat/15 text-ink'
                   }`}
                 >
                   {e.kind === 'note' && <Icon name="note" size={11} className="shrink-0 text-muted" />}
-                  <span className="truncate">{e.title}</span>
+                  {e.kind === 'task' && <Icon name={e.done ? 'checkCircle' : 'circle'} size={11} className="shrink-0 text-muted" />}
+                  <span className={`truncate ${e.done ? 'text-muted line-through' : ''}`}>{e.title}</span>
                 </button>
               ))}
             </div>
@@ -144,7 +145,7 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
                     >
                       <span className={`block truncate text-[11px] font-semibold leading-tight ${short ? 'pt-0.5' : 'pt-1'}`}>
                         {short && <span className="tnum mr-1 font-normal text-muted">{formatTime(e.start)}</span>}
-                        {e.title}
+                        <span className={e.done ? 'text-muted line-through' : ''}>{e.kind === 'exam' ? `Prüfung: ${e.title}` : e.title}</span>
                       </span>
                       {!short && (
                         <span className="tnum block truncate text-[10px] text-muted">

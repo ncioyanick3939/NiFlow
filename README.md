@@ -2,16 +2,19 @@
 
 Persönliches Planungssystem für Studium, Training und Alltag (mobile-first Web-App).
 
-## Stand (Runde 1)
+## Stand (Runde 2)
 
 - Neues Design mit hellem und dunklem Modus (Einstellungen → Darstellung)
 - Übersicht: Als Nächstes, Heute mit freier Zeit, Schnellerfassung, Nächste Tage, Training
 - Kalender: Monat, Woche, Tag, Agenda; Termine und Notizen erstellen, bearbeiten, verschieben, löschen
 - Eigene Einträge werden in Supabase gespeichert (Tabelle `entries`, nur für dich sichtbar)
 - Google Kalender (nur lesen) und Intervals.icu (geplante Trainings, nur lesen) als Datenquellen
+- Aufgaben: Heute, Als Nächstes, Diese Woche, Überfällig, Alle, Erledigt; Priorität, Status, Fälligkeit,
+  Kategorie, Zeitaufwand, Prüfung; sortieren und filtern; mit Datum auch im Kalender; als Termin einplanen
+- Prüfungen: Countdown, Vorbereitungsstand, Lernstoff, Lernaufgaben (mit bestätigtem Lernplan-Vorschlag), Lerntermine
 - Ohne Anmeldung: Demo mit klar gekennzeichneten, erfundenen Daten
 
-Noch nicht enthalten: Aufgaben, Prüfungen, wiederkehrende Aktivitäten (Runde 2/3),
+Noch nicht enthalten: wiederkehrende Aktivitäten und Erinnerungen (Runde 3),
 Schreiben in Google Kalender (braucht eine zusätzliche Google-Berechtigung).
 
 ## Lokal starten

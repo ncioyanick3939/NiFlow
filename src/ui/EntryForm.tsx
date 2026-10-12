@@ -13,11 +13,13 @@ interface Props {
   editing: boolean
   onSave: (input: EntryInput) => Promise<void>
   onCancel: () => void
+  /** Name der verknüpften Prüfung (Lerntermin), falls vorhanden. */
+  examName?: string
 }
 
 const PRIORITIES: (Priority | null)[] = [null, 'low', 'medium', 'high', 'urgent']
 
-export default function EntryForm({ initial, editing, onSave, onCancel }: Props) {
+export default function EntryForm({ initial, editing, onSave, onCancel, examName }: Props) {
   const [v, setV] = useState<EntryInput>(initial)
   const [errors, setErrors] = useState<EntryErrors>({})
   const [busy, setBusy] = useState(false)
@@ -59,6 +61,14 @@ export default function EntryForm({ initial, editing, onSave, onCancel }: Props)
             { value: 'note', label: 'Notiz' },
           ]}
         />
+      )}
+
+      {v.examId && examName && (
+        <p className="flex items-center gap-2 rounded-md bg-surface2 px-3 py-2 text-sm">
+          <Icon name="exam" size={15} className="shrink-0 text-muted" />
+          <span className="mr-auto">Lerntermin für <strong className="font-medium">{examName}</strong></span>
+          <button type="button" className="text-xs text-muted hover:text-ink" onClick={() => set('examId', null)}>Lösen</button>
+        </p>
       )}
 
       <div>

@@ -27,6 +27,9 @@ export const RULES = {
   dayEndHour: 22,
 } as const
 
+/** Aufgaben und Notizen sind Markierungen, keine belegte Zeit. */
+export const blocksTime = (e: CalendarEvent): boolean => e.kind !== 'task' && e.kind !== 'note'
+
 /** Ende eines Termins; bei unbekanntem Ende wird eine Annahme getroffen. */
 export function effectiveEnd(e: CalendarEvent): Date {
   if (e.end) return e.end
@@ -63,7 +66,8 @@ export function eventsForDay(events: CalendarEvent[], day: Date): DayEvents {
 }
 
 /** Liefert für jeden überschneidenden Termin die Liste der Termine, mit denen er kollidiert. */
-export function findOverlaps(timed: CalendarEvent[]): Map<string, CalendarEvent[]> {
+export function findOverlaps(all: CalendarEvent[]): Map<string, CalendarEvent[]> {
+  const timed = all.filter(blocksTime)
   const result = new Map<string, CalendarEvent[]>()
   for (let i = 0; i < timed.length; i++) {
     for (let j = i + 1; j < timed.length; j++) {
@@ -95,7 +99,7 @@ function mergeIntervals(intervals: Interval[]): Interval[] {
 export function busyMinutes(timed: CalendarEvent[], day: Date): number {
   const from = startOfDay(day).getTime()
   const to = addDays(startOfDay(day), 1).getTime()
-  const clipped: Interval[] = timed.map((e) => [
+  const clipped: Interval[] = timed.filter(blocksTime).map((e) => [
     Math.max(e.start.getTime(), from),
     Math.min(effectiveEnd(e).getTime(), to),
   ])
@@ -137,9 +141,10 @@ export function findFreeSlots(
   const from = isSameDay(date, now) ? Math.max(windowStart, now.getTime()) : windowStart
   if (from >= windowEnd) return []
 
-  const busy: Interval[] = day.timed.map((e) => [e.start.getTime(), effectiveEnd(e).getTime()])
+  const blocking = day.timed.filter(blocksTime)
+  const busy: Interval[] = blocking.map((e) => [e.start.getTime(), effectiveEnd(e).getTime()])
   const recovery = RULES.recoveryAfterIntenseMinutes * 60000
-  const busyForStudy: Interval[] = day.timed.map((e) => {
+  const busyForStudy: Interval[] = blocking.map((e) => {
     const end = effectiveEnd(e).getTime()
     const intense = e.category === 'training' && e.intensity === 'high'
     return [e.start.getTime(), intense ? end + recovery : end]
@@ -164,7 +169,7 @@ export function findFreeSlots(
         end: new Date(b),
         minutes: Math.round((b - a) / 60000),
         study: inside ? { start: new Date(inside[0]), end: new Date(inside[1]) } : null,
-        uncertain: day.allDay.some((e) => e.kind !== 'note'),
+        uncertain: day.allDay.some(blocksTime),
       }
     })
 }
@@ -173,7 +178,7 @@ export function findFreeSlots(
 export function nextEvent(events: CalendarEvent[], now: Date): CalendarEvent | null {
   let best: CalendarEvent | null = null
   for (const e of events) {
-    if (e.allDay || e.start <= now) continue
+    if (e.allDay || e.start <= now || e.kind === 'task') continue
     if (!best || e.start < best.start) best = e
   }
   return best
@@ -183,7 +188,7 @@ export type Urgency = 'h3' | 'h48' | null
 
 /** Abgaben und Prüfungen werden 48 und 3 Stunden vor dem Termin hervorgehoben. */
 export function deadlineUrgency(e: CalendarEvent, now: Date): Urgency {
-  if (e.kind === 'event') return null
+  if (e.kind !== 'deadline' && e.kind !== 'exam') return null
   const hours = minutesBetween(now, e.start) / 60
   if (hours < 0) return null
   if (hours <= 3) return 'h3'

@@ -3,11 +3,13 @@ import type { SourceState } from '../sources/types'
 import Icon from './icons'
 import type { IconName } from './icons'
 
-export type Section = 'dashboard' | 'calendar' | 'training' | 'settings'
+export type Section = 'dashboard' | 'calendar' | 'tasks' | 'exams' | 'training' | 'settings'
 
 export const SECTIONS: { id: Section; label: string; icon: IconName; hash: string }[] = [
   { id: 'dashboard', label: 'Übersicht', icon: 'dashboard', hash: 'uebersicht' },
   { id: 'calendar', label: 'Kalender', icon: 'calendar', hash: 'kalender' },
+  { id: 'tasks', label: 'Aufgaben', icon: 'tasks', hash: 'aufgaben' },
+  { id: 'exams', label: 'Prüfungen', icon: 'exam', hash: 'pruefungen' },
   { id: 'training', label: 'Training', icon: 'activity', hash: 'training' },
   { id: 'settings', label: 'Einstellungen', icon: 'settings', hash: 'einstellungen' },
 ]
@@ -30,9 +32,11 @@ interface Props {
   states: SourceState[]
   loading: boolean
   onReload: () => void
+  /** Anzahl überfälliger Aufgaben */
+  badge?: number
 }
 
-export function Sidebar({ active, onNavigate, onCreate, states, loading, onReload }: Props) {
+export function Sidebar({ active, onNavigate, onCreate, states, loading, onReload, badge }: Props) {
   const errors = states.filter((s) => s.status === 'error')
   const last = states
     .map((s) => s.lastSync)
@@ -47,7 +51,7 @@ export function Sidebar({ active, onNavigate, onCreate, states, loading, onReloa
       </div>
       {onCreate && (
         <button type="button" className="btn-primary mb-5 w-full justify-start" onClick={onCreate}>
-          <Icon name="plus" size={16} /> Neuer Eintrag
+          <Icon name="plus" size={16} /> Neu
         </button>
       )}
       <nav aria-label="Hauptnavigation" className="space-y-0.5">
@@ -64,7 +68,8 @@ export function Sidebar({ active, onNavigate, onCreate, states, loading, onReloa
               }`}
             >
               <Icon name={s.icon} size={18} />
-              {s.label}
+              <span className="mr-auto">{s.label}</span>
+              {s.id === 'tasks' && !!badge && <span className="tnum rounded-full bg-danger px-1.5 text-[11px] font-semibold text-white">{badge}</span>}
             </button>
           )
         })}
@@ -85,13 +90,18 @@ export function Sidebar({ active, onNavigate, onCreate, states, loading, onReloa
   )
 }
 
-export function BottomBar({ active, onNavigate }: { active: Section; onNavigate: (s: Section) => void }) {
+const MOBILE_MAIN: Section[] = ['dashboard', 'calendar', 'tasks', 'exams']
+
+/** Handy: vier Hauptbereiche + «Mehr» (Training, Einstellungen). */
+export function BottomBar({ active, onNavigate, onMore, badge }: { active: Section; onNavigate: (s: Section) => void; onMore: () => void; badge?: number }) {
+  const items = SECTIONS.filter((s) => MOBILE_MAIN.includes(s.id))
+  const moreActive = !MOBILE_MAIN.includes(active)
   return (
     <nav
       aria-label="Hauptnavigation"
       className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
-      {SECTIONS.map((s) => {
+      {items.map((s) => {
         const on = s.id === active
         return (
           <button
@@ -99,13 +109,25 @@ export function BottomBar({ active, onNavigate }: { active: Section; onNavigate:
             type="button"
             onClick={() => onNavigate(s.id)}
             aria-current={on ? 'page' : undefined}
-            className={`flex min-h-[3.75rem] flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${on ? 'text-accent' : 'text-muted'}`}
+            className={`relative flex min-h-[3.75rem] flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${on ? 'text-accent' : 'text-muted'}`}
           >
             <Icon name={s.icon} size={22} />
             {s.label}
+            {s.id === 'tasks' && !!badge && (
+              <span className="tnum absolute left-1/2 top-2 ml-2 rounded-full bg-danger px-1.5 text-[10px] font-semibold leading-4 text-white">{badge}</span>
+            )}
           </button>
         )
       })}
+      <button
+        type="button"
+        onClick={onMore}
+        aria-current={moreActive ? 'page' : undefined}
+        className={`flex min-h-[3.75rem] flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${moreActive ? 'text-accent' : 'text-muted'}`}
+      >
+        <Icon name="more" size={22} />
+        Mehr
+      </button>
     </nav>
   )
 }

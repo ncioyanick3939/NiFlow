@@ -8,6 +8,10 @@ import { intervalsSource } from '../sources/intervalsSource'
 import { ownSource } from '../sources/ownSource'
 import { testSource } from '../sources/testSource'
 import type { EventSource, SourceState } from '../sources/types'
+import { listExams, listTasks } from '../data/planner'
+import { createDemoPlanner } from '../data/demoPlanner'
+import type { Exam } from '../domain/exams'
+import type { Task } from '../domain/tasks'
 
 /** Aktuelle Uhrzeit, aktualisiert sich regelmässig (für Jetzt-Linie und Countdown). */
 export function useNow(intervalMs = 30_000): Date {
@@ -98,6 +102,52 @@ export function useEvents(mode: DataMode, ready: boolean) {
   }, [reload, ready])
 
   return { events, states, loading, reload }
+}
+
+/** Aufgaben und Prüfungen (eigene Daten). Im Demo-Modus erfundene Beispiele. */
+export function usePlanner(mode: DataMode, ready: boolean) {
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [exams, setExams] = useState<Exam[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const reload = useCallback(async () => {
+    if (mode === 'off') {
+      setTasks([])
+      setExams([])
+      setLoading(false)
+      return
+    }
+    if (mode === 'demo') {
+      const demo = createDemoPlanner(new Date())
+      setTasks(demo.tasks)
+      setExams(demo.exams)
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    try {
+      const [t, x] = await Promise.all([listTasks(), listExams()])
+      setTasks(t)
+      setExams(x)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Aufgaben und Prüfungen konnten nicht geladen werden.')
+    } finally {
+      setLoading(false)
+    }
+  }, [mode])
+
+  useEffect(() => {
+    if (ready) void reload()
+  }, [reload, ready])
+
+  /** Sofort in der Oberfläche ändern (z. B. Abhaken), bevor die Datenbank antwortet. */
+  const patchTask = useCallback((id: string, patch: Partial<Task>) => {
+    setTasks((list) => list.map((t) => (t.id === id ? { ...t, ...patch } : t)))
+  }, [])
+
+  return { tasks, exams, loading, error, reload, patchTask }
 }
 
 const VIEW_KEY = 'niflow-calendar-view'

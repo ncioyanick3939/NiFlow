@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 // Zugriff auf die Tabelle "entries". Die Zugriffsregeln (RLS) in der Datenbank sorgen dafür,
 // dass jeder nur seine eigenen Zeilen sieht und ändert.
 
-const COLUMNS = 'id,type,title,body,category,all_day,start_at,end_at,priority'
+const COLUMNS = 'id,type,title,body,category,all_day,start_at,end_at,priority,exam_id,task_id'
 
 function describe(error: { message: string; code?: string }): Error {
   if (error.code === '42501') return new Error('Keine Berechtigung. Bitte neu anmelden.')

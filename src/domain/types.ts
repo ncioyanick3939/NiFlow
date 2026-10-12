@@ -3,7 +3,7 @@
 
 export type Category = 'training' | 'work' | 'study' | 'private'
 export type SourceId = 'test' | 'own' | 'google' | 'intervals'
-export type EventKind = 'event' | 'deadline' | 'exam' | 'note'
+export type EventKind = 'event' | 'deadline' | 'exam' | 'note' | 'task'
 export type Intensity = 'low' | 'medium' | 'high'
 export type Priority = 'low' | 'medium' | 'high' | 'urgent'
 
@@ -28,6 +28,13 @@ export interface CalendarEvent {
   plannedMinutes?: number
   /** Nur eigene Einträge. */
   priority?: Priority
+  /** Eigene Daten: aus welcher Tabelle der Eintrag stammt (für Öffnen und Bearbeiten). */
+  ref?: { type: 'entry' | 'task' | 'exam'; id: string }
+  /** Aufgaben: erledigt. */
+  done?: boolean
+  /** Eigene Termine: zugehörige Prüfung (Lerntermin) bzw. Aufgabe. */
+  examId?: string | null
+  taskId?: string | null
 }
 
 export const CATEGORY_LABEL: Record<Category, string> = {
