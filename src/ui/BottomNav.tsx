@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 
-export type Tab = 'today' | 'week'
+export type Tab = 'today' | 'week' | 'settings'
 
 interface Props {
   active: Tab
@@ -25,6 +25,17 @@ const ITEMS: { id: Tab; label: string; icon: ReactElement }[] = [
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         <rect x="3" y="5" width="18" height="15" />
         <path d="M3 10h18M9 5v15M15 5v15" />
+      </svg>
+    ),
+  },
+  {
+    id: 'settings',
+    label: 'Einstellungen',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+        <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
+        <circle cx="16" cy="7" r="2" />
+        <circle cx="8" cy="17" r="2" />
       </svg>
     ),
   },

@@ -14,6 +14,8 @@ import { createTestEvents } from '../src/sources/testSource'
 import { SOURCES, loadAllSources } from '../src/sources'
 import type { EventSource } from '../src/sources/types'
 import { categorize } from '../src/sources/categorize'
+import { mapIntervalsEvent } from '../src/sources/intervals'
+import { NotConfigured } from '../src/sources/intervalsSource'
 import { mapGoogleEvent } from '../src/sources/googleCalendar'
 
 let failed = 0
@@ -183,6 +185,24 @@ const g3 = mapGoogleEvent({ id: 'a1', summary: 'Lauf', start: { dateTime: '2026-
 check('Google: gleiche Termin-ID in anderem Kalender gibt andere ID', !!g1 && !!g3 && g1.id !== g3.id)
 check('Google: Termin ohne Titel bekommt Platzhalter', mapGoogleEvent({ id: 'e', start: { date: '2026-10-16' }, end: { date: '2026-10-17' } }, 'primary')?.title === '(ohne Titel)')
 check('Kategorien: Schwimmen/Vorlesung/Meeting/Unbekannt', categorize('Schwimmen Technik') === 'training' && categorize('Vorlesung Statistik') === 'study' && categorize('Team Meeting') === 'work' && categorize('Kino') === 'private')
+
+// Intervals.icu-Umwandlung
+const i1 = mapIntervalsEvent({ id: 101, name: 'Intervalle 6x800', category: 'WORKOUT', type: 'Run', start_date_local: '2026-10-14T18:00:00', moving_time: 3600 })
+check('Intervals: Training mit Uhrzeit und Dauer', !!i1 && !i1.allDay && i1.category === 'training' && i1.start.getHours() === 18 && i1.end!.getTime() - i1.start.getTime() === 3600000 && i1.intensity === 'high' && i1.title.includes('Run'))
+const i2 = mapIntervalsEvent({ id: 102, name: 'Lockere Fahrt', category: 'WORKOUT', type: 'Ride', start_date_local: '2026-10-15T00:00:00', moving_time: 5400 })
+check('Intervals: Startzeit 00:00 gilt als ganztägig (keine erfundene Belegung)', !!i2 && i2.allDay && i2.start.getHours() === 0 && i2.end!.getDate() === 16)
+const i3 = mapIntervalsEvent({ id: 103, name: 'Ironman 70.3', category: 'RACE_A', start_date_local: '2026-10-18' })
+check('Intervals: Wettkampf nur mit Datum, lokal und intensiv', !!i3 && i3.allDay && i3.start.getDate() === 18 && i3.intensity === 'high')
+check('Intervals: Notizen und Ferien werden übersprungen', mapIntervalsEvent({ id: 1, category: 'NOTE', start_date_local: '2026-10-14T08:00:00' }) === null && mapIntervalsEvent({ id: 2, category: 'HOLIDAY', start_date_local: '2026-10-14' }) === null)
+check('Intervals: Eintrag ohne ID wird übersprungen', mapIntervalsEvent({ category: 'WORKOUT', start_date_local: '2026-10-14T08:00:00' }) === null)
+const i4 = mapIntervalsEvent({ id: 104, name: 'Schwimmen', category: 'WORKOUT', start_date_local: '2026-10-14T06:30:00' })
+check('Intervals: Training ohne Dauer hat unbekanntes Ende', !!i4 && i4.end === null && !i4.allDay)
+check('Intervals: ID bleibt bei erneutem Laden gleich', !!i1 && i1.id === mapIntervalsEvent({ id: 101, category: 'WORKOUT', start_date_local: '2026-10-14T18:00:00' })!.id)
+
+const notSet: EventSource = { id: 'intervals', label: 'Intervals.icu', isDemo: false, load: async () => { throw new NotConfigured() } }
+const okSrc: EventSource = { id: 'google', label: 'Google', isDemo: false, load: async () => [g1!] }
+const skipRes = await loadAllSources([notSet, okSrc], now)
+check('Nicht eingerichtete Quelle wird still übersprungen, andere bleiben', skipRes.states.length === 1 && skipRes.states[0].id === 'google' && skipRes.events.length === 1)
 
 console.log(failed === 0 ? '\nAlle Prüfungen bestanden.' : `\n${failed} Prüfung(en) fehlgeschlagen.`)
 process.exit(failed === 0 ? 0 : 1)

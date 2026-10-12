@@ -2,6 +2,7 @@ import { useState } from 'react'
 import BottomNav from './BottomNav'
 import type { Tab } from './BottomNav'
 import SourceStatus from './SourceStatus'
+import SettingsView from './SettingsView'
 import TodayView from './TodayView'
 import WeekView from './WeekView'
 import { connectGoogle, disconnectGoogle } from '../lib/supabase'
@@ -24,10 +25,10 @@ export default function App() {
         onDisconnect={() => void disconnectGoogle()}
       />
       <main className="flex-1 overflow-y-auto">
-        {tab === 'today' ? (
-          <TodayView events={events} now={now} loading={loading} />
-        ) : (
-          <WeekView events={events} now={now} loading={loading} />
+        {tab === 'today' && <TodayView events={events} now={now} loading={loading} />}
+        {tab === 'week' && <WeekView events={events} now={now} loading={loading} />}
+        {tab === 'settings' && (
+          <SettingsView connected={connected} onConnect={() => void connectGoogle()} onChanged={() => void reload()} />
         )}
       </main>
       <BottomNav active={tab} onChange={setTab} />

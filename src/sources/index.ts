@@ -29,15 +29,20 @@ export async function loadAllSources(
   const results = await Promise.all(
     sources.map(async (source) => {
       try {
-        return { source, events: await source.load(now), error: null as string | null }
+        return { source, events: await source.load(now), error: null as string | null, skip: false }
       } catch (err) {
+        // Nicht eingerichtete Quelle (z. B. kein Intervals-Schlüssel): still überspringen.
+        if (err instanceof Error && err.name === 'NotConfigured') {
+          return { source, events: [] as CalendarEvent[], error: null as string | null, skip: true }
+        }
         const message = err instanceof Error ? err.message : 'Unbekannter Fehler'
-        return { source, events: [] as CalendarEvent[], error: message }
+        return { source, events: [] as CalendarEvent[], error: message, skip: false }
       }
     }),
   )
 
-  for (const { source, events, error } of results) {
+  for (const { source, events, error, skip } of results) {
+    if (skip) continue
     for (const e of events) byId.set(e.id, e)
     const prior = previous.find((p) => p.id === source.id)
     states.push({

@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { SOURCES, loadAllSources } from '../sources'
 import { googleSource } from '../sources/googleSource'
+import { intervalsSource } from '../sources/intervalsSource'
 import type { EventSource, SourceState } from '../sources/types'
 
 /** Aktuelle Uhrzeit, aktualisiert sich regelmässig (für Jetzt-Linie und Countdown). */
@@ -38,7 +39,7 @@ export function useAuth() {
 
 /** Verbunden: echte Google-Daten. Nicht verbunden: gekennzeichnete Testdaten. */
 export function sourcesFor(connected: boolean): EventSource[] {
-  return connected ? [googleSource] : SOURCES
+  return connected ? [googleSource, intervalsSource] : SOURCES
 }
 
 export function useEvents(connected: boolean, ready: boolean) {
