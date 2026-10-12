@@ -16,6 +16,8 @@ import type { EventSource } from '../src/sources/types'
 import { categorize } from '../src/sources/categorize'
 import { mapIntervalsEvent } from '../src/sources/intervals'
 import { NotConfigured } from '../src/sources/intervalsSource'
+import { emptyInput, eventToInput, inputToRow, parseDateInput, rowToEvent, validateEntry } from '../src/domain/entries'
+import type { EntryRow } from '../src/domain/entries'
 import { mapGoogleEvent } from '../src/sources/googleCalendar'
 
 let failed = 0
@@ -203,6 +205,23 @@ const notSet: EventSource = { id: 'intervals', label: 'Intervals.icu', isDemo: f
 const okSrc: EventSource = { id: 'google', label: 'Google', isDemo: false, load: async () => [g1!] }
 const skipRes = await loadAllSources([notSet, okSrc], now)
 check('Nicht eingerichtete Quelle wird still übersprungen, andere bleiben', skipRes.states.length === 1 && skipRes.states[0].id === 'google' && skipRes.events.length === 1)
+
+// Eigene Einträge: Prüfung und Umwandlung
+const base = emptyInput('event', new Date(2026, 9, 14))
+check('Eintrag: leerer Titel wird abgelehnt', validateEntry({ ...base, title: '  ' })?.title !== undefined)
+check('Eintrag: Titel mit 201 Zeichen wird abgelehnt', validateEntry({ ...base, title: 'x'.repeat(201) })?.title !== undefined)
+check('Eintrag: Ende vor Start wird abgelehnt', validateEntry({ ...base, title: 'A', startTime: '10:00', endTime: '09:00' })?.endTime !== undefined)
+check('Eintrag: Ende gleich Start wird abgelehnt', validateEntry({ ...base, title: 'A', startTime: '10:00', endTime: '10:00' })?.endTime !== undefined)
+check('Eintrag: 31. Februar ist ungültig', parseDateInput('2026-02-31') === null && validateEntry({ ...base, title: 'A', date: '2026-02-31' })?.date !== undefined)
+check('Eintrag: gültiger Termin ohne Endzeit', validateEntry({ ...base, title: 'A', startTime: '10:00', endTime: '' }) === null)
+const row = inputToRow({ ...base, title: ' Zahnarzt ', category: 'private', date: '2026-10-14', startTime: '14:30', endTime: '15:15', priority: 'high' })
+const ev = rowToEvent({ ...row, id: 'abc' } as EntryRow)
+check('Eintrag: Hin- und Rückumwandlung ergibt gleiche Zeiten', ev.title === 'Zahnarzt' && ev.start.getHours() === 14 && ev.start.getMinutes() === 30 && ev.end!.getTime() - ev.start.getTime() === 45 * 60000 && ev.priority === 'high' && ev.id === 'own:abc')
+check('Eintrag: Bearbeiten-Formular enthält die gespeicherten Werte', eventToInput(ev).startTime === '14:30' && eventToInput(ev).endTime === '15:15' && eventToInput(ev).date === '2026-10-14')
+const noteRow = inputToRow({ ...emptyInput('note', new Date(2026, 9, 14)), title: 'Lernplan', body: 'Kapitel 3', priority: 'high' })
+const note = rowToEvent({ ...noteRow, id: 'n1' } as EntryRow)
+check('Notiz: ganztägig, ohne Priorität, Art "note"', note.allDay && note.kind === 'note' && noteRow.priority === null && note.end!.getDate() === 15)
+check('Notiz: macht den Tag nicht "unsicher" für freie Zeit', findFreeSlots(eventsForDay([note], new Date(2026, 9, 14)), new Date(2026, 9, 14), new Date(2026, 9, 14, 7)).every((s) => !s.uncertain))
 
 console.log(failed === 0 ? '\nAlle Prüfungen bestanden.' : `\n${failed} Prüfung(en) fehlgeschlagen.`)
 process.exit(failed === 0 ? 0 : 1)

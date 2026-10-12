@@ -164,7 +164,7 @@ export function findFreeSlots(
         end: new Date(b),
         minutes: Math.round((b - a) / 60000),
         study: inside ? { start: new Date(inside[0]), end: new Date(inside[1]) } : null,
-        uncertain: day.allDay.length > 0,
+        uncertain: day.allDay.some((e) => e.kind !== 'note'),
       }
     })
 }

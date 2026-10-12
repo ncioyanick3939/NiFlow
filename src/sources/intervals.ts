@@ -80,5 +80,7 @@ export function mapIntervalsEvent(item: IntervalsEventItem): CalendarEvent | nul
     category: 'training',
     kind: 'event',
     intensity,
+    sport: item.type ?? undefined,
+    plannedMinutes: typeof item.moving_time === 'number' && item.moving_time > 0 ? Math.round(item.moving_time / 60) : undefined,
   }
 }

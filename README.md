@@ -1,40 +1,47 @@
 # NiFlow
 
-Persönliche Organisations-App (mobile-first Web-App).
-Stand: Ansichten "Heute" und "Woche". Ohne Anmeldung zeigt die App gekennzeichnete Testdaten,
-nach "Mit Google verbinden" die echten Termine aus Google Kalender (nur lesend).
-Intervals.icu und Moodle folgen.
+Persönliches Planungssystem für Studium, Training und Alltag (mobile-first Web-App).
 
-## Online
+## Stand (Runde 1)
 
-Die App wird bei jedem Speichern auf GitHub (Branch `main`) automatisch auf GitHub Pages veröffentlicht.
-Die Anleitung dafür steht in `.github/workflows/deploy.yml`.
+- Neues Design mit hellem und dunklem Modus (Einstellungen → Darstellung)
+- Übersicht: Als Nächstes, Heute mit freier Zeit, Schnellerfassung, Nächste Tage, Training
+- Kalender: Monat, Woche, Tag, Agenda; Termine und Notizen erstellen, bearbeiten, verschieben, löschen
+- Eigene Einträge werden in Supabase gespeichert (Tabelle `entries`, nur für dich sichtbar)
+- Google Kalender (nur lesen) und Intervals.icu (geplante Trainings, nur lesen) als Datenquellen
+- Ohne Anmeldung: Demo mit klar gekennzeichneten, erfundenen Daten
 
-## Lokal starten (Node.js LTS von https://nodejs.org nötig, oder ein GitHub Codespace)
+Noch nicht enthalten: Aufgaben, Prüfungen, wiederkehrende Aktivitäten (Runde 2/3),
+Schreiben in Google Kalender (braucht eine zusätzliche Google-Berechtigung).
+
+## Lokal starten
 
 ```
-npm install      # Abhängigkeiten laden (nur beim ersten Mal)
-npm run dev      # App starten, danach die angezeigte Adresse im Browser öffnen
+npm install
+npm run dev
 ```
 
 ## Prüfen
 
 ```
-npm run check    # testet die Logik (Überschneidungen, freie Zeit, Fristen, Duplikate, Wochenansicht)
+npm run check    # Logiktests (Zeiten, Überschneidungen, freie Zeit, Einträge, Intervals)
 npm run build    # Typprüfung und Produktions-Build
 ```
 
+## Datenbank und Server-Funktionen (Supabase)
+
+```
+npx supabase db push                                   # Tabellen und Zugriffsregeln
+npx supabase functions deploy google-token --no-verify-jwt --use-api
+npx supabase functions deploy intervals-events --no-verify-jwt --use-api
+```
+
+Secrets (Supabase → Edge Functions → Secrets): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+
 ## Aufbau
 
-- `src/domain/`   Geschäftslogik ohne Oberfläche (Termin-Typen, Datum, Planungsregeln, Wochenlayout)
-- `src/sources/`  Datenquellen. Aktuell nur Testdaten. Google, Intervals.icu und Moodle kommen hier dazu.
-- `src/ui/`       Oberfläche (Heute, Woche, Zeitleiste, Navigation)
-- `scripts/`      Prüfskripte
-
-## Wichtig
-
-Testdaten sind in der App immer als "Testdaten" gekennzeichnet.
-Im Code stehen nur die öffentliche Supabase-Adresse und der Publishable Key (beide öffentlich gedacht).
-Geheime Schlüssel (Google Client Secret, Supabase secret/service_role) gehören nie in den Code.
-
-Dauerhafte Verbindung: Die Supabase Edge Function `google-token` speichert das Google-Refresh-Token und liefert frische Zugriffsschlüssel.
+- `src/domain/`   Logik ohne Oberfläche (Typen, Datum, Planungsregeln, Kalender-Layout, Einträge prüfen)
+- `src/data/`     Zugriff auf die eigenen Einträge in Supabase
+- `src/sources/`  Datenquellen (eigene Einträge, Google, Intervals.icu, Demo)
+- `src/ui/`       Oberfläche (Übersicht, Kalender, Training, Einstellungen)
+- `supabase/`     Migrationen und Server-Funktionen

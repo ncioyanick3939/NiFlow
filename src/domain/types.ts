@@ -2,9 +2,10 @@
 // damit "Heute" und "Woche" immer exakt dieselben Daten verwenden.
 
 export type Category = 'training' | 'work' | 'study' | 'private'
-export type SourceId = 'test' | 'google' | 'intervals' | 'moodle'
-export type EventKind = 'event' | 'deadline' | 'exam'
+export type SourceId = 'test' | 'own' | 'google' | 'intervals'
+export type EventKind = 'event' | 'deadline' | 'exam' | 'note'
 export type Intensity = 'low' | 'medium' | 'high'
+export type Priority = 'low' | 'medium' | 'high' | 'urgent'
 
 export interface CalendarEvent {
   /** Eindeutig pro Quelle + externe ID. Verhindert Duplikate bei erneuter Synchronisation. */
@@ -21,6 +22,12 @@ export interface CalendarEvent {
   kind: EventKind
   intensity?: Intensity
   description?: string
+  /** Nur Intervals.icu: Sportart, z. B. "Run", "Ride", "Swim". */
+  sport?: string
+  /** Nur Intervals.icu: geplante Dauer in Minuten (auch bei Trainings ohne Uhrzeit bekannt). */
+  plannedMinutes?: number
+  /** Nur eigene Einträge. */
+  priority?: Priority
 }
 
 export const CATEGORY_LABEL: Record<Category, string> = {
@@ -32,9 +39,16 @@ export const CATEGORY_LABEL: Record<Category, string> = {
 
 export const SOURCE_LABEL: Record<SourceId, string> = {
   test: 'Testdaten',
+  own: 'Eigener Eintrag',
   google: 'Google Kalender',
   intervals: 'Intervals.icu',
-  moodle: 'Moodle',
+}
+
+export const PRIORITY_LABEL: Record<Priority, string> = {
+  low: 'Niedrig',
+  medium: 'Mittel',
+  high: 'Hoch',
+  urgent: 'Dringend',
 }
 
 export function makeEventId(source: SourceId, externalId: string): string {

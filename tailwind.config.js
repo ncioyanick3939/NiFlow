@@ -1,25 +1,36 @@
 /** @type {import('tailwindcss').Config} */
+const v = (name) => `rgb(var(--${name}) / <alpha-value>)`
+
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        paper: '#F4F1EA',
-        ink: '#1B1B18',
-        signal: '#E4412B',
-        training: '#2F4B6E',
-        work: '#7A7A75',
-        study: '#6B7340',
-        private: '#B5694A',
+        canvas: v('bg'),
+        surface: v('surface'),
+        surface2: v('surface2'),
+        line: v('line'),
+        ink: v('ink'),
+        muted: v('muted'),
+        accent: v('accent'),
+        accentink: v('accent-ink'),
+        danger: v('danger'),
+        cat: v('c'),
       },
       fontFamily: {
-        sans: ['"Space Grotesk"', 'system-ui', 'sans-serif'],
-        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
       },
       borderRadius: {
-        DEFAULT: '2px',
-        sm: '2px',
-        md: '4px',
+        DEFAULT: '8px',
+        sm: '6px',
+        md: '10px',
+        lg: '14px',
+        xl: '18px',
+      },
+      boxShadow: {
+        sheet: '0 12px 40px -8px rgb(0 0 0 / 0.28)',
+        pop: '0 2px 10px -2px rgb(0 0 0 / 0.18)',
       },
     },
   },

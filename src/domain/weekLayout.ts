@@ -48,9 +48,15 @@ interface Item {
  * übereinanderliegende Spuren, damit man sie sieht. Termine ausserhalb von 06 bis 22 Uhr
  * werden als schmaler Marker am Rand gezeigt.
  */
-export function layoutDay(timed: CalendarEvent[], day: Date): Block[] {
-  const ws = atTime(day, GRID.startHour).getTime()
-  const we = atTime(day, GRID.endHour).getTime()
+export function layoutDay(
+  timed: CalendarEvent[],
+  day: Date,
+  startHour: number = GRID.startHour,
+  endHour: number = GRID.endHour,
+): Block[] {
+  const ws = atTime(day, startHour).getTime()
+  // endHour 24 = Mitternacht am Folgetag (über den Kalender gerechnet, sicher bei Zeitumstellung)
+  const we = endHour >= 24 ? addDays(startOfDay(day), 1).getTime() : atTime(day, endHour).getTime()
   const span = we - ws
 
   const items: Item[] = timed
