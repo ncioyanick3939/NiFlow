@@ -37,5 +37,4 @@ Testdaten sind in der App immer als "Testdaten" gekennzeichnet.
 Im Code stehen nur die öffentliche Supabase-Adresse und der Publishable Key (beide öffentlich gedacht).
 Geheime Schlüssel (Google Client Secret, Supabase secret/service_role) gehören nie in den Code.
 
-Aktuelle Grenze: Der Google-Zugriff gilt nur solange die Anmeldung frisch ist (ca. 1 Stunde).
-Danach "Neu verbinden". Dauerhafte Synchronisierung folgt mit einer Supabase Edge Function.
+Dauerhafte Verbindung: Die Supabase Edge Function `google-token` speichert das Google-Refresh-Token und liefert frische Zugriffsschlüssel.
