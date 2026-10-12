@@ -1,7 +1,8 @@
 # NiFlow
 
 Persönliche Organisations-App (mobile-first Web-App).
-Stand: Ansichten "Heute" und "Woche" mit Testdaten. Die Verbindungen zu Google Kalender,
+Stand: Ansichten "Heute" und "Woche". Ohne Anmeldung zeigt die App gekennzeichnete Testdaten,
+nach "Mit Google verbinden" die echten Termine aus Google Kalender (nur lesend).
 Intervals.icu und Moodle folgen.
 
 ## Online
@@ -32,5 +33,9 @@ npm run build    # Typprüfung und Produktions-Build
 
 ## Wichtig
 
-Alle sichtbaren Termine sind aktuell **Testdaten** und in der App entsprechend gekennzeichnet.
-Es sind keine Zugangsdaten im Code gespeichert.
+Testdaten sind in der App immer als "Testdaten" gekennzeichnet.
+Im Code stehen nur die öffentliche Supabase-Adresse und der Publishable Key (beide öffentlich gedacht).
+Geheime Schlüssel (Google Client Secret, Supabase secret/service_role) gehören nie in den Code.
+
+Aktuelle Grenze: Der Google-Zugriff gilt nur solange die Anmeldung frisch ist (ca. 1 Stunde).
+Danach "Neu verbinden". Dauerhafte Synchronisierung folgt mit einer Supabase Edge Function.

@@ -5,10 +5,13 @@ interface Props {
   states: SourceState[]
   loading: boolean
   onReload: () => void
+  connected: boolean
+  onConnect: () => void
+  onDisconnect: () => void
 }
 
 /** Zeigt ehrlich an, woher die Daten stammen und ob die letzte Ladung geklappt hat. */
-export default function SourceStatus({ states, loading, onReload }: Props) {
+export default function SourceStatus({ states, loading, onReload, connected, onConnect, onDisconnect }: Props) {
   const hasDemo = states.some((s) => s.isDemo)
   const errors = states.filter((s) => s.status === 'error')
 
@@ -26,7 +29,7 @@ export default function SourceStatus({ states, loading, onReload }: Props) {
               ? 'Erfundene Beispieltermine, keine echte Synchronisation'
               : states.length === 0
                 ? 'Keine Quelle verbunden'
-                : 'Synchronisiert'}
+                : 'Echte Daten aus Google Kalender (nur lesend)'}
           </span>
         </div>
         <button
@@ -37,6 +40,32 @@ export default function SourceStatus({ states, loading, onReload }: Props) {
         >
           {loading ? 'Lädt …' : 'Neu laden'}
         </button>
+      </div>
+      <div className="-mt-1 pb-1">
+        {connected ? (
+          <div className="flex items-center gap-4">
+            {errors.length > 0 && (
+              <button
+                type="button"
+                onClick={onConnect}
+                className="min-h-12 border border-ink bg-ink px-4 font-medium uppercase tracking-wider text-paper"
+              >
+                Neu verbinden
+              </button>
+            )}
+            <button type="button" onClick={onDisconnect} className="min-h-12 font-medium underline underline-offset-4">
+              Google trennen
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onConnect}
+            className="min-h-12 border border-ink bg-ink px-4 font-medium uppercase tracking-wider text-paper"
+          >
+            Mit Google verbinden
+          </button>
+        )}
       </div>
       {states
         .filter((s) => s.lastSync)

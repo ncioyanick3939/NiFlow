@@ -13,6 +13,8 @@ import { categoryMinutes, layoutDay, summarizeWeek, weekDays } from '../src/doma
 import { createTestEvents } from '../src/sources/testSource'
 import { SOURCES, loadAllSources } from '../src/sources'
 import type { EventSource } from '../src/sources/types'
+import { categorize } from '../src/sources/categorize'
+import { mapGoogleEvent } from '../src/sources/googleCalendar'
 
 let failed = 0
 function check(name: string, ok: boolean, detail = '') {
@@ -169,6 +171,18 @@ check('Summe Privat 5 h 30 (Termin ohne Ende zählt nicht)', totals.private === 
 // Woche mit Zeitumstellung (19.–25. Oktober 2026)
 const dstWeek = weekDays(new Date(2026, 9, 19))
 check('Zeitumstellung: 7 Tage, alle um Mitternacht', dstWeek.length === 7 && dstWeek.every((d) => d.getHours() === 0) && dstWeek[6].getDate() === 25)
+
+// Google-Umwandlung
+const g1 = mapGoogleEvent({ id: 'a1', summary: 'Lauf: Intervalle', start: { dateTime: '2026-10-14T18:00:00+02:00' }, end: { dateTime: '2026-10-14T19:00:00+02:00' } }, 'primary')
+check('Google: Termin mit Uhrzeit', !!g1 && g1.allDay === false && g1.category === 'training' && g1.intensity === 'high' && g1.end!.getTime() - g1.start.getTime() === 3600000)
+const g2 = mapGoogleEvent({ id: 'b2', summary: 'Geburtstag', start: { date: '2026-10-16' }, end: { date: '2026-10-17' } }, 'primary')
+check('Google: ganztägig = lokale Mitternacht bis Mitternacht', !!g2 && g2.allDay && g2.start.getHours() === 0 && g2.start.getDate() === 16 && g2.end!.getDate() === 17 && g2.category === 'private')
+check('Google: abgesagter Termin wird übersprungen', mapGoogleEvent({ id: 'c', status: 'cancelled', start: { date: '2026-10-16' }, end: { date: '2026-10-17' } }, 'primary') === null)
+check('Google: abgelehnte Einladung wird übersprungen', mapGoogleEvent({ id: 'd', summary: 'X', attendees: [{ self: true, responseStatus: 'declined' }], start: { date: '2026-10-16' }, end: { date: '2026-10-17' } }, 'primary') === null)
+const g3 = mapGoogleEvent({ id: 'a1', summary: 'Lauf', start: { dateTime: '2026-10-14T18:00:00+02:00' }, end: { dateTime: '2026-10-14T19:00:00+02:00' } }, 'other')
+check('Google: gleiche Termin-ID in anderem Kalender gibt andere ID', !!g1 && !!g3 && g1.id !== g3.id)
+check('Google: Termin ohne Titel bekommt Platzhalter', mapGoogleEvent({ id: 'e', start: { date: '2026-10-16' }, end: { date: '2026-10-17' } }, 'primary')?.title === '(ohne Titel)')
+check('Kategorien: Schwimmen/Vorlesung/Meeting/Unbekannt', categorize('Schwimmen Technik') === 'training' && categorize('Vorlesung Statistik') === 'study' && categorize('Team Meeting') === 'work' && categorize('Kino') === 'private')
 
 console.log(failed === 0 ? '\nAlle Prüfungen bestanden.' : `\n${failed} Prüfung(en) fehlgeschlagen.`)
 process.exit(failed === 0 ? 0 : 1)
