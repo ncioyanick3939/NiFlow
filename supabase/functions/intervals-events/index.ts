@@ -83,7 +83,11 @@ Deno.serve(async (req) => {
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify({ user_id: user.id, intervals_api_key: key, updated_at: new Date().toISOString() }),
     })
-    return save.ok ? json({ ok: true }) : json({ error: 'storage_failed', status: save.status }, 500)
+    if (!save.ok) {
+      console.error('storage_failed beim Speichern', save.status, await save.text().catch(() => ''))
+      return json({ error: 'storage_failed', status: save.status }, 500)
+    }
+    return json({ ok: true })
   }
 
   // 3. Termine laden

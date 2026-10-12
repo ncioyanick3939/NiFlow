@@ -59,7 +59,10 @@ Deno.serve(async (req) => {
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify({ user_id: userId, refresh_token: body.refresh_token, updated_at: new Date().toISOString() }),
     })
-    if (!save.ok) return json({ error: 'storage_failed', status: save.status }, 500)
+    if (!save.ok) {
+      console.error('storage_failed beim Speichern', save.status, await save.text().catch(() => ''))
+      return json({ error: 'storage_failed', status: save.status }, 500)
+    }
   }
 
   // 3. Gespeichertes Token laden.

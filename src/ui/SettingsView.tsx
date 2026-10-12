@@ -28,7 +28,7 @@ export default function SettingsView({ connected, onConnect, onChanged }: Props)
       } else if (body.error === 'invalid_key') {
         setMessage({ kind: 'error', text: 'Intervals.icu lehnt diesen Schlüssel ab. Prüfe, ob er vollständig kopiert ist.' })
       } else {
-        setMessage({ kind: 'error', text: `Speichern nicht möglich (${String(body.error ?? status)}).` })
+        setMessage({ kind: 'error', text: `Speichern nicht möglich (${String(body.error ?? status)}${body.status ? ', ' + String(body.status) : ''}).` })
       }
     } catch (err) {
       setMessage({ kind: 'error', text: err instanceof Error ? err.message : 'Unbekannter Fehler' })
