@@ -4,6 +4,8 @@ import { createEntry, deleteEntry, skipOccurrence, updateEntry } from '../data/e
 import { callPush } from '../data/googlePush'
 import type { PushStatus } from '../data/googlePush'
 import { createExam, createTask, createTasks, deleteExam, deleteTask, updateExam, updateTask } from '../data/planner'
+import { quickPrompts } from '../domain/aiPlan'
+import type { Proposal } from '../domain/aiPlan'
 import { addDays, formatTime, startOfDay } from '../domain/dateUtils'
 import { emptyInput, eventToInput, toDateInput, toTimeInput } from '../domain/entries'
 import type { EntryInput } from '../domain/entries'
@@ -13,6 +15,8 @@ import { emptyTask, isOverdue, taskToEvent, taskToInput } from '../domain/tasks'
 import type { Task, TaskInput } from '../domain/tasks'
 import type { CalendarEvent } from '../domain/types'
 import { connectGoogle, disconnectGoogle } from '../lib/supabase'
+import AssistantPanel from './assistant/AssistantPanel'
+import { useAssistant } from './assistant/useAssistant'
 import CalendarPage from './calendar/CalendarPage'
 import Dashboard from './Dashboard'
 import EntryForm from './EntryForm'
@@ -46,6 +50,7 @@ type SheetState =
   | { kind: 'create' }
   | { kind: 'more' }
   | { kind: 'search' }
+  | { kind: 'assistant' }
   | null
 
 function sectionFromHash(): Section {
@@ -86,6 +91,7 @@ export default function App() {
     [sourceEvents, planner.tasks, planner.exams, labels.labels],
   )
   const examById = useMemo(() => new Map(planner.exams.map((x) => [x.id, x])), [planner.exams])
+  const assistant = useAssistant({ events, tasks: planner.tasks, exams: planner.exams, now })
   const overdueCount = planner.tasks.filter((t) => isOverdue(t, now)).length
 
   // Status des Google-Abgleichs laden (nur angemeldet). Fehler hier sind nicht kritisch.
@@ -324,6 +330,29 @@ export default function App() {
     navigate('calendar')
   }
 
+  /** Vorschläge des KI-Planers anlegen. Jeder Vorschlag einzeln, damit ein Fehler die übrigen nicht verhindert. */
+  const applyProposals = async (list: Proposal[]): Promise<{ ok: boolean[]; error?: string }> => {
+    const ok: boolean[] = []
+    const newEntryIds: string[] = []
+    let firstError = ''
+    for (const p of list) {
+      try {
+        if (p.kind === 'event') newEntryIds.push(await createEntry(p.input))
+        else if (p.kind === 'task') await createTask(p.input)
+        else await updateTask(p.taskId, p.input, p.task.status)
+        ok.push(true)
+      } catch (err) {
+        ok.push(false)
+        firstError ||= err instanceof Error ? err.message : 'Speichern fehlgeschlagen.'
+      }
+    }
+    for (const id of newEntryIds) await pushToGoogle({ action: 'upsert', entry_id: id })
+    await Promise.all([reload(['own']), planner.reload()])
+    const failed = ok.filter((x) => !x).length
+    if (failed === 0) showToast(ok.length === 1 ? '1 Vorschlag übernommen' : `${ok.length} Vorschläge übernommen`)
+    return { ok, error: failed ? `${failed} von ${ok.length} konnten nicht gespeichert werden: ${firstError}` : undefined }
+  }
+
   if (!ready) return <div className="min-h-dvh" />
   if (!connected && !demo) return <Welcome onConnect={() => void connectGoogle()} onDemo={() => setDemo(true)} />
 
@@ -341,6 +370,8 @@ export default function App() {
         return sheet.task ? 'Aufgabe' : 'Neue Aufgabe'
       case 'exam':
         return 'Prüfung'
+      case 'assistant':
+        return 'Planungs-Assistent'
       case 'examForm':
         return sheet.editId ? 'Prüfung bearbeiten' : 'Neue Prüfung'
       case 'create':
@@ -359,6 +390,7 @@ export default function App() {
   return (
     <LabelsContext.Provider value={labels}>
     <div className="flex min-h-dvh">
+      <div className="fixed inset-x-0 top-0 z-40 h-[env(safe-area-inset-top)] bg-canvas md:hidden" aria-hidden="true" />
       <Sidebar
         active={section}
         onNavigate={navigate}
@@ -371,6 +403,7 @@ export default function App() {
         }}
         badge={overdueCount}
         onSearch={() => setSheet({ kind: 'search' })}
+        onAssistant={readOnly ? undefined : () => setSheet({ kind: 'assistant' })}
       />
       <main className="min-w-0 flex-1 overflow-x-clip">
         {demo && !connected && (
@@ -436,6 +469,7 @@ export default function App() {
             onQuickTask={(title) => quickTask(emptyTask({ title, dueDate: toDateInput(now) }))}
             prefs={dash.prefs}
             onSearch={() => setSheet({ kind: 'search' })}
+            onAssistant={readOnly ? undefined : () => setSheet({ kind: 'assistant' })}
             onCreateTask={() => createTaskSheet({ dueDate: toDateInput(now) })}
             onCreateExam={createExamSheet}
           />
@@ -628,6 +662,9 @@ export default function App() {
             ))}
           </div>
         )}
+        {sheet?.kind === 'assistant' && (
+          <AssistantPanel chat={assistant} suggestions={quickPrompts(planner.exams, planner.tasks, now)} onApply={applyProposals} />
+        )}
         {sheet?.kind === 'search' && (
           <SearchPanel
             events={events}
@@ -644,6 +681,13 @@ export default function App() {
         {sheet?.kind === 'more' && (
           <div className="space-y-4">
             <div className="space-y-1">
+              {!readOnly && (
+                <button type="button" onClick={() => setSheet({ kind: 'assistant' })} className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-left transition-colors hover:bg-surface2">
+                  <Icon name="sparkle" size={20} className="text-accent" />
+                  <span className="flex-1 font-medium">Planungs-Assistent</span>
+                  <Icon name="chevronRight" size={16} className="text-muted" />
+                </button>
+              )}
               <button type="button" onClick={() => setSheet({ kind: 'search' })} className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-left transition-colors hover:bg-surface2">
                 <Icon name="search" size={20} className="text-muted" />
                 <span className="flex-1 font-medium">Suchen</span>

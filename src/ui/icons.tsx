@@ -108,6 +108,7 @@ const PATHS: Record<string, ReactElement> = {
   refresh: <path d="M20 11A8 8 0 0 0 5.5 7M4 4v4h4M4 13a8 8 0 0 0 14.5 4M20 20v-4h-4" />,
   logout: <path d="M10 4H5v16h5M15 8l4 4-4 4M9 12h10" />,
   arrowRight: <path d="M5 12h14M13 6l6 6-6 6" />,
+  arrowUp: <path d="M12 19V5M6 11l6-6 6 6" />,
   briefcase: (
     <>
       <rect x="3" y="7" width="18" height="13" rx="3" />

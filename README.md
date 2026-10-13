@@ -55,6 +55,7 @@ npx supabase functions deploy google-token --no-verify-jwt --use-api
 npx supabase functions deploy intervals-events --no-verify-jwt --use-api
 npx supabase functions deploy google-push --no-verify-jwt --use-api
 npx supabase functions deploy push --no-verify-jwt --use-api
+npx supabase functions deploy plan-assistant --no-verify-jwt --use-api
 ```
 
 Google Cloud → Google Auth Platform → Datenzugriff: zusätzlich den Bereich
@@ -72,6 +73,18 @@ Secrets (Supabase → Edge Functions → Secrets): `GOOGLE_CLIENT_ID`, `GOOGLE_C
 
 Die App legt die Erinnerungen der nächsten 14 Tage in `push_queue` (Titel, Text, Zeitpunkt).
 Die Funktion verschickt fällige Einträge einmal, verschlüsselt nach RFC 8291.
+
+### KI-Planer (Planungs-Assistent)
+
+Die App schickt Titel, Zeiten, Kategorien und Prüfungsthemen der nächsten 14 Tage (keine Notizen) an die
+Funktion `plan-assistant`. Diese fragt die Anthropic-API und liefert Vorschläge zurück. Die App legt erst nach
+deiner Bestätigung etwas an.
+
+1. API-Schlüssel auf https://console.anthropic.com erstellen (Abrechnung pro Nutzung, Ausgabenlimit setzen).
+2. Den Schlüssel NUR als Secret setzen, nie in Code oder Chat:
+   `npx supabase secrets set ANTHROPIC_API_KEY=...` (oder Supabase → Edge Functions → Secrets).
+3. Optional: `AI_MODEL` (Standard `claude-sonnet-5-5`) und `AI_DAILY_LIMIT` (Standard 40 Anfragen pro 24 Stunden).
+4. Migration `ai_usage` einspielen (`npx supabase db push`) und die Funktion hochladen (siehe oben).
 
 ## Aufbau
 

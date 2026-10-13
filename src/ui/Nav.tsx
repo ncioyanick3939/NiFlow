@@ -40,13 +40,14 @@ interface Props {
   /** Anzahl überfälliger Aufgaben */
   badge?: number
   onSearch?: () => void
+  onAssistant?: () => void
 }
 
 /**
  * Seitenleiste (Tablet und Desktop): weiss, ruhig. Aktive Seite als weich getönte Rosé-Pille.
  * Schmal: nur Symbole, breit (ab xl): mit Text.
  */
-export function Sidebar({ active, onNavigate, onCreate, states, loading, onReload, badge, onSearch }: Props) {
+export function Sidebar({ active, onNavigate, onCreate, states, loading, onReload, badge, onSearch, onAssistant }: Props) {
   const errors = states.filter((s) => s.status === 'error')
   const last = states
     .map((s) => s.lastSync)
@@ -106,6 +107,18 @@ export function Sidebar({ active, onNavigate, onCreate, states, loading, onReloa
       <nav aria-label="Hauptnavigation" className="space-y-1">
         {main.map(item)}
       </nav>
+      {onAssistant && (
+        <button
+          type="button"
+          onClick={onAssistant}
+          title="Planungs-Assistent"
+          aria-label="Planungs-Assistent"
+          className="mt-3 flex min-h-12 w-full items-center justify-center gap-3 rounded-2xl bg-accent/[0.1] px-3 text-[15px] font-semibold text-accent transition-colors duration-150 hover:bg-accent/[0.18] xl:justify-start"
+        >
+          <Icon name="sparkle" size={20} />
+          <span className="hidden xl:inline">Assistent</span>
+        </button>
+      )}
       <div className="mt-auto space-y-3 pt-3">
         {item(settings)}
         <div className="flex flex-col items-center gap-2 text-xs text-muted xl:flex-row xl:pl-3">
@@ -132,7 +145,7 @@ export function BottomBar({ active, onNavigate, onMore, badge, withFab }: { acti
   const items = SECTIONS.filter((s) => MOBILE_MAIN.includes(s.id))
   const moreActive = !MOBILE_MAIN.includes(active)
   const btn = (on: boolean) =>
-    `relative flex h-12 items-center justify-center gap-1.5 rounded-full text-[13px] font-bold transition-all duration-200 ${on ? 'min-w-0 flex-[2.2] bg-accent/[0.15] px-3 text-accent' : 'w-11 shrink-0 flex-1 text-muted'}`
+    `relative flex h-12 min-w-10 basis-0 items-center justify-center gap-1.5 rounded-full text-[12px] font-bold transition-all duration-200 ${on ? 'min-w-0 flex-[2.6] bg-accent/[0.15] px-2.5 text-accent' : 'flex-1 text-muted'}`
   return (
     <nav
       aria-label="Hauptnavigation"
@@ -143,7 +156,7 @@ export function BottomBar({ active, onNavigate, onMore, badge, withFab }: { acti
         return (
           <button key={s.id} type="button" onClick={() => onNavigate(s.id)} aria-current={on ? 'page' : undefined} aria-label={s.label} className={btn(on)}>
             <Icon name={s.icon} size={22} />
-            {on && <span className="truncate max-[359px]:hidden">{s.label}</span>}
+            {on && <span className="truncate max-[359px]:hidden">{s.id === 'dashboard' ? 'Heute' : s.label}</span>}
             {s.id === 'tasks' && !!badge && (
               <span className="tnum absolute right-1 top-0.5 rounded-full bg-danger px-1.5 text-[10px] font-bold leading-4 text-white" aria-label={`${badge} überfällig`}>{badge}</span>
             )}

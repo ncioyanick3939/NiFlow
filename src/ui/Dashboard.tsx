@@ -49,6 +49,8 @@ interface Props {
   onCreateExam: () => void
   prefs: Record<DashSection, boolean>
   onSearch: () => void
+  /** Öffnet den KI-Planer; fehlt im Demo-Modus. */
+  onAssistant?: () => void
 }
 
 function greeting(now: Date): string {
@@ -191,7 +193,7 @@ export default function Dashboard(p: Props) {
   return (
     <div className="mx-auto w-full max-w-[1240px] pb-36 md:px-8 md:pb-12 md:pt-8 lg:px-10">
       {/* Kopf: grosses Datum, Tagesstreifen */}
-      <header className="px-5 pt-5 md:px-0 md:pt-0">
+      <header className="sticky top-[env(safe-area-inset-top)] z-20 bg-canvas px-5 pb-2 pt-4 md:static md:bg-transparent md:px-0 md:pb-0 md:pt-0">
         <div className="flex items-end gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-muted">
@@ -209,6 +211,12 @@ export default function Dashboard(p: Props) {
             </h1>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 pb-1">
+            {p.onAssistant && (
+              <button type="button" onClick={p.onAssistant} className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/[0.14] text-accent transition active:scale-95 md:w-auto md:gap-1.5 md:px-4" aria-label="Planungs-Assistent öffnen">
+                <Icon name="sparkle" size={18} />
+                <span className="hidden text-sm font-bold md:inline">Assistent</span>
+              </button>
+            )}
             {!isToday && (
               <button type="button" onClick={() => setPicked(null)} className="h-10 rounded-full bg-accent px-4 text-sm font-bold text-accentink shadow-pop">
                 Heute
@@ -262,6 +270,9 @@ export default function Dashboard(p: Props) {
           })}
         </div>
 
+      </header>
+
+      <div className="px-5 md:px-0">
         {isToday && next && (
           <button
             type="button"
@@ -278,7 +289,7 @@ export default function Dashboard(p: Props) {
             </span>
           </button>
         )}
-      </header>
+      </div>
 
       <div className={`mt-5 grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-6 md:mt-6 ${showAside ? 'lg:grid-cols-[minmax(0,1fr),23rem]' : ''}`}>
         {/* Weisses Blatt mit der Zeitleiste */}

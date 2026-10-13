@@ -29,6 +29,8 @@ import { normalize, recentNotes, search } from '../src/domain/search'
 import { suggestColor, validateLabel } from '../src/domain/labels'
 import { moveBy, rangeFrom, resizeBy, shiftDays } from '../src/domain/move'
 import { mapGoogleEvent } from '../src/sources/googleCalendar'
+import { buildAiContext, findConflict, parseProposals, quickPrompts } from '../src/domain/aiPlan'
+import type { Exam } from '../src/domain/exams'
 
 let failed = 0
 function check(name: string, ok: boolean, detail = '') {
@@ -349,6 +351,68 @@ check('Kategorie: Name doppelt (Gross/Klein egal)', validateLabel(' statistik ',
 check('Kategorie: eigener Name beim Bearbeiten erlaubt', validateLabel('Statistik', L, 'a') === null)
 check('Kategorie: leer und zu lang abgelehnt', validateLabel('  ', L) !== null && validateLabel('x'.repeat(41), L) !== null)
 check('Kategorie: Farbvorschlag ist noch frei', suggestColor(L) !== 'teal')
+
+// KI-Planer: Kontext und Prüfung der Vorschläge
+{
+  const mk = (id: string, title: string, over: Partial<Task> = {}): Task => ({
+    id, title, description: 'GEHEIME NOTIZ', dueDate: null, dueTime: null, priority: 'medium', status: 'open', category: 'study',
+    examId: null, estimateMinutes: 60, reminderMinutes: null, labelId: null, completedAt: null, createdAt: new Date(2026, 9, 1), ...over,
+  })
+  const tasksAi: Task[] = [
+    mk('uuid-a', 'Statistik Übungen', { dueDate: '2026-10-14', examId: 'ex-1' }),
+    mk('uuid-b', 'Einkaufen', { category: 'private' }),
+    mk('uuid-c', 'Erledigtes', { status: 'done' }),
+    mk('uuid-d', 'Überfällig', { dueDate: '2026-10-10' }),
+  ]
+  const examsAi: Exam[] = [
+    { id: 'ex-1', title: 'Statistik Prüfung', subject: 'Statistik', start: new Date(2026, 10, 2, 8, 0), end: new Date(2026, 10, 2, 10, 0), location: '', format: '', description: 'GEHEIME BESCHREIBUNG', topics: 'Regression, Tests', notes: 'GEHEIME NOTIZEN', priority: 'high', prepStatus: 'in_progress' },
+  ]
+  const evAi: CalendarEvent[] = [
+    { id: 'own:1', source: 'own', externalId: '1', title: 'Vorlesung', start: new Date(2026, 9, 14, 9, 0), end: new Date(2026, 9, 14, 11, 0), allDay: false, category: 'study', kind: 'event', description: 'GEHEIM' },
+  ]
+  const ctx = buildAiContext({ events: evAi, tasks: tasksAi, exams: examsAi, now, timeZone: 'Europe/Zurich' })
+  check('KI-Kontext: enthält Prüfung, offene Aufgaben und Termine', ctx.text.includes('[e1] Statistik Prüfung') && ctx.text.includes('[t1]') && ctx.text.includes('Vorlesung'))
+  check('KI-Kontext: Erledigtes fehlt, Notizen und Beschreibungen werden nicht gesendet', !ctx.text.includes('Erledigtes') && !ctx.text.includes('GEHEIM'))
+  check('KI-Kontext: Kurz-IDs zeigen auf echte IDs', ctx.examIds.get('e1') === 'ex-1' && [...ctx.taskIds.values()].sort().join() === 'uuid-a,uuid-b,uuid-d')
+  check('KI-Kontext: Themen der Prüfung und freie Zeit sind enthalten', ctx.text.includes('Regression, Tests') && ctx.text.includes('frei: '))
+  const tShort = (title: string) => [...ctx.taskIds.entries()].find(([, id]) => tasksAi.find((t) => t.id === id)?.title === title)![0]
+
+  check('Konflikt: Überschneidung mit Vorlesung erkannt', findConflict(evAi, '2026-10-14', '10:00', '11:30')?.title === 'Vorlesung')
+  check('Konflikt: direkt danach ist frei', findConflict(evAi, '2026-10-14', '11:00', '12:00') === null)
+
+  const raw = [
+    'kaputt',
+    null,
+    { kind: 'add_event', title: 'Lernen Statistik', date: '2026-10-14', start: '14:00', end: '15:30', category: 'study', exam: 'e1', reason: 'frei' },
+    { kind: 'add_event', title: 'Kollision', date: '2026-10-14', start: '10:00', end: '11:30', category: 'study', reason: 'x' },
+    { kind: 'add_event', title: 'Vergangenheit', date: '2026-10-11', start: '10:00', end: '11:00', reason: 'x' },
+    { kind: 'add_event', title: 'Ende vor Start', date: '2026-10-15', start: '12:00', end: '11:00', reason: 'x' },
+    { kind: 'add_event', title: 'Ohne Ende', date: '2026-10-15', start: '12:00', reason: 'x' },
+    { kind: 'add_event', title: '   ', date: '2026-10-15', start: '12:00', end: '13:00', reason: 'x' },
+    { kind: 'add_task', title: 'Zusammenfassung', due_date: '2026-10-16', priority: 'high', estimate_minutes: 90, category: 'bogus', exam: 'e9', reason: 'x' },
+    { kind: 'add_task', title: 'Ohne Datum', reason: 'x' },
+    { kind: 'move_task', task: tShort('Überfällig'), due_date: '2026-10-15', due_time: '17:00', reason: 'x' },
+    { kind: 'move_task', task: 't99', due_date: '2026-10-15', reason: 'x' },
+    { kind: 'move_task', task: tShort('Statistik Übungen'), due_date: '2026-10-14', reason: 'gleicher Tag' },
+    { kind: 'delete_all', reason: 'x' },
+  ]
+  const parsed = parseProposals(raw, ctx, tasksAi, evAi, now)
+  const kinds = parsed.proposals.map((p) => p.kind).join()
+  check('KI-Vorschläge: gültige bleiben (Termin, Kollision, Aufgabe, Aufgabe, Verschieben)', kinds === 'event,event,task,task,move', kinds)
+  check('KI-Vorschläge: Vergangenheit, Ende vor Start, ohne Ende, leerer Titel, unbekannte ID, Fremdbefehl und Müll werden verworfen', parsed.dropped === 8, String(parsed.dropped))
+  const ev0 = parsed.proposals[0]
+  check('KI-Vorschläge: Termin trägt Prüfung und Kategorie', ev0.kind === 'event' && ev0.input.examId === 'ex-1' && ev0.input.category === 'study' && !ev0.warning)
+  const ev1 = parsed.proposals[1]
+  check('KI-Vorschläge: Kollision wird markiert, nicht verschwiegen', ev1.kind === 'event' && !!ev1.warning)
+  const tk = parsed.proposals[2]
+  check('KI-Vorschläge: ungültige Kategorie/Prüfungs-ID werden entschärft', tk.kind === 'task' && tk.input.category === 'study' && tk.input.examId === null && tk.input.priority === 'high' && tk.input.estimateMinutes === 90)
+  const mvp = parsed.proposals[4]
+  check('KI-Vorschläge: Verschieben nutzt die echte Aufgaben-ID', mvp.kind === 'move' && mvp.taskId === 'uuid-d' && mvp.input.dueDate === '2026-10-15' && mvp.input.dueTime === '17:00')
+  check('KI-Vorschläge: Müll statt Liste ergibt nichts', parseProposals('x', ctx, tasksAi, evAi, now).proposals.length === 0)
+  check('KI-Vorschläge: höchstens 20 werden angesehen', parseProposals(Array.from({ length: 30 }, (_, i) => ({ kind: 'add_task', title: `T${i}`, reason: '' })), ctx, tasksAi, evAi, now).proposals.length === 20)
+  const qp = quickPrompts(examsAi, tasksAi, now)
+  check('KI-Startfragen: nennen Fach und überfällige Aufgaben', qp.some((q) => q.includes('Statistik')) && qp.some((q) => q.includes('überfällig')) && qp.length <= 5)
+}
 
 console.log(failed === 0 ? '\nAlle Prüfungen bestanden.' : `\n${failed} Prüfung(en) fehlgeschlagen.`)
 process.exit(failed === 0 ? 0 : 1)
