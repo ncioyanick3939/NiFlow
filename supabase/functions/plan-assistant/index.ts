@@ -151,7 +151,8 @@ Deno.serve(async (req) => {
         system,
         messages,
         tools: [TOOL],
-        tool_choice: { type: 'tool', name: 'antworte' },
+        // Neuere Modelle erlauben kein erzwungenes Werkzeug (type "tool"/"any"). Der System-Prompt verlangt das Werkzeug.
+        tool_choice: { type: 'auto' },
       }),
     })
   } catch {
@@ -172,7 +173,7 @@ Deno.serve(async (req) => {
     if (res.status === 401 || res.status === 403) return json({ error: 'ai_key_invalid' }, 502)
     if (res.status === 429 || res.status === 529 || res.status === 503) return json({ error: 'ai_busy' }, 503)
     if (/credit balance/i.test(message)) return json({ error: 'ai_credit' }, 502)
-    if (res.status === 404 || /model/i.test(message)) return json({ error: 'ai_model', detail: message.slice(0, 160) }, 502)
+    if (res.status === 404) return json({ error: 'ai_model', detail: message.slice(0, 160) }, 502)
     // Die Meldung der Anthropic-API enthält keine Geheimnisse und hilft bei der Fehlersuche.
     return json({ error: 'ai_error', detail: `${res.status} ${kind} ${message}`.trim().slice(0, 200) }, 502)
   }
