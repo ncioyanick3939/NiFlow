@@ -84,3 +84,44 @@ export function mapIntervalsEvent(item: IntervalsEventItem): CalendarEvent | nul
     plannedMinutes: typeof item.moving_time === 'number' && item.moving_time > 0 ? Math.round(item.moving_time / 60) : undefined,
   }
 }
+
+export interface IntervalsActivityItem {
+  id?: string | number
+  name?: string
+  type?: string | null
+  start_date_local?: string
+  moving_time?: number | null
+  elapsed_time?: number | null
+  distance?: number | null
+  icu_training_load?: number | null
+}
+
+/**
+ * Absolvierte Aktivität umwandeln. Aktivitäten, die Intervals.icu über die API nicht vollständig
+ * herausgibt (z. B. von Strava importierte), haben keine Startzeit und werden übersprungen.
+ */
+export function mapIntervalsActivity(a: IntervalsActivityItem): CalendarEvent | null {
+  if (a.id === undefined || a.id === null || a.id === '' || !a.start_date_local) return null
+  const start = parseLocal(a.start_date_local)
+  if (!start) return null
+  const seconds = (a.moving_time && a.moving_time > 0 ? a.moving_time : a.elapsed_time) ?? 0
+  const end = seconds > 0 ? new Date(start.date.getTime() + seconds * 1000) : null
+  const name = a.name?.trim() || a.type || 'Aktivität'
+  return {
+    id: makeEventId('intervals', `act:${a.id}`),
+    source: 'intervals',
+    externalId: `act:${a.id}`,
+    title: name,
+    start: start.date,
+    end,
+    allDay: false,
+    category: 'training',
+    kind: 'event',
+    sport: a.type ?? undefined,
+    plannedMinutes: seconds > 0 ? Math.round(seconds / 60) : undefined,
+    completed: true,
+    done: true,
+    load: typeof a.icu_training_load === 'number' ? a.icu_training_load : undefined,
+    distanceKm: typeof a.distance === 'number' && a.distance > 0 ? a.distance / 1000 : undefined,
+  }
+}

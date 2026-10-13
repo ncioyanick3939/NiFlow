@@ -14,7 +14,7 @@ import { createTestEvents } from '../src/sources/testSource'
 import { SOURCES, loadAllSources } from '../src/sources'
 import type { EventSource } from '../src/sources/types'
 import { categorize } from '../src/sources/categorize'
-import { mapIntervalsEvent } from '../src/sources/intervals'
+import { mapIntervalsActivity, mapIntervalsEvent } from '../src/sources/intervals'
 import { NotConfigured } from '../src/sources/intervalsSource'
 import { emptyInput, eventToInput, inputToRow, parseDateInput, rowToEvent, validateEntry } from '../src/domain/entries'
 import type { EntryRow } from '../src/domain/entries'
@@ -22,6 +22,9 @@ import { emptyTask, formatDue, inView, isOverdue, sortTasks, taskToEvent, taskTo
 import type { Task } from '../src/domain/tasks'
 import { daysUntil, emptyExam, examToRow, rowToExam, suggestStudyTasks, validateExam } from '../src/domain/exams'
 import type { ExamRow } from '../src/domain/exams'
+import { occurrenceDays, toRRule } from '../src/domain/recurrence'
+import { rowToEvents } from '../src/domain/entries'
+import { remindersBetween } from '../src/domain/reminders'
 import { mapGoogleEvent } from '../src/sources/googleCalendar'
 
 let failed = 0
@@ -267,6 +270,38 @@ check('Lernplan: 5 Vorschläge zwischen morgen und Vortag', sug.length === 5 && 
 check('Lernplan: kein Vorschlag am Prüfungstag', suggestStudyTasks(ex, new Date(2026, 9, 20, 7)).length === 0)
 const sugShort = suggestStudyTasks(ex, new Date(2026, 9, 19, 9))
 check('Lernplan: bei 1 Tag alles heute', sugShort.length === 5 && sugShort.every((x) => x.dueDate === '2026-10-19'))
+
+// Wiederholungen
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const wk = occurrenceDays(new Date(2026, 9, 12, 18), 'weekly', null, [], new Date(2026, 9, 1), new Date(2026, 10, 10))
+check('Serie wöchentlich: 12., 19., 26. Okt, 2., 9. Nov', wk.map(ymd).join() === '2026-10-12,2026-10-19,2026-10-26,2026-11-02,2026-11-09')
+const wd = occurrenceDays(new Date(2026, 9, 16), 'weekdays', null, [], new Date(2026, 9, 16), new Date(2026, 9, 23))
+check('Serie werktags: ohne Samstag/Sonntag', wd.map((d) => d.getDay()).join() === '5,1,2,3,4')
+const mo = occurrenceDays(new Date(2026, 0, 31), 'monthly', null, [], new Date(2026, 0, 1), new Date(2026, 5, 1))
+check('Serie monatlich am 31.: fällt in kurzen Monaten aus', mo.map(ymd).join() === '2026-01-31,2026-03-31,2026-05-31')
+check('Serie mit Ende und Ausnahme', occurrenceDays(new Date(2026, 9, 12), 'daily', new Date(2026, 9, 15), ['2026-10-13'], new Date(2026, 9, 1), new Date(2026, 11, 1)).map(ymd).join() === '2026-10-12,2026-10-14,2026-10-15')
+const serRow = { id: 's1', type: 'event', title: 'Schwimmen', body: '', category: 'training', all_day: false, start_at: new Date(2026, 9, 22, 6, 30).toISOString(), end_at: new Date(2026, 9, 22, 7, 30).toISOString(), priority: null, recurrence: 'weekly', recurrence_until: null, exdates: [] } as EntryRow
+const ser = rowToEvents(serRow, new Date(2026, 9, 19), new Date(2026, 10, 2))
+check('Serie über Zeitumstellung: bleibt 06:30–07:30', ser.length === 2 && ser.every((e) => e.start.getHours() === 6 && e.start.getMinutes() === 30 && e.end!.getHours() === 7) && ser[1].start.getDate() === 29)
+check('Serie: Vorkommen haben eigene IDs, gleiche Serie', ser[0].id !== ser[1].id && ser.every((e) => e.ref?.id === 's1' && e.externalId === 's1'))
+check('Serie: Bearbeiten nimmt den Serienstart', eventToInput(ser[1]).date === '2026-10-22')
+check('RRULE für Google', toRRule('weekdays', '2026-12-20') === 'RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;UNTIL=20261220T235959Z' && toRRule('none', null) === null)
+check('Serie: Ende vor Start wird abgelehnt', validateEntry({ ...emptyInput('event', new Date(2026, 9, 14)), title: 'A', recurrence: 'weekly', recurrenceUntil: '2026-10-01' })?.recurrenceUntil !== undefined)
+
+// Erinnerungen
+const remEv = { ...rowToEvent({ ...inputToRow({ ...emptyInput('event', new Date(2026, 9, 14)), title: 'Zahnarzt', startTime: '14:00', endTime: '15:00', reminderMinutes: 30 }), id: 'r1' } as EntryRow) }
+const rem = remindersBetween([remEv], [], new Date(2026, 9, 14, 13, 29), new Date(2026, 9, 14, 13, 31))
+check('Erinnerung 30 min vor Termin', rem.length === 1 && rem[0].at.getHours() === 13 && rem[0].at.getMinutes() === 30)
+check('Erinnerung erscheint nicht zu früh', remindersBetween([remEv], [], new Date(2026, 9, 14, 13, 0), new Date(2026, 9, 14, 13, 29)).length === 0)
+const remTask = mk({ dueDate: '2026-10-14', reminderMinutes: 0 })
+check('Aufgabe ohne Uhrzeit: Erinnerung 08:00', remindersBetween([], [remTask], new Date(2026, 9, 14, 7, 59), new Date(2026, 9, 14, 8, 0)).length === 1)
+check('Erledigte Aufgabe: keine Erinnerung', remindersBetween([], [{ ...remTask, status: 'done' }], new Date(2026, 9, 14, 7), new Date(2026, 9, 14, 9)).length === 0)
+
+// Absolvierte Aktivitäten
+const act = mapIntervalsActivity({ id: 'i123', name: 'Morning Run', type: 'Run', start_date_local: '2026-10-12T06:45:10', moving_time: 2700, distance: 8420, icu_training_load: 54.6 })
+check('Aktivität: Zeit, Dauer, Distanz, Belastung', !!act && act.completed === true && act.start.getHours() === 6 && act.plannedMinutes === 45 && Math.abs(act.distanceKm! - 8.42) < 0.001 && act.load === 54.6 && act.id === 'intervals:act:i123')
+check('Aktivität ohne Startzeit (z. B. Strava-Sperre) wird übersprungen', mapIntervalsActivity({ id: 'x' }) === null)
+check('Aktivität belegt Zeit (zählt für freie Zeit)', busyMinutes([act!], new Date(2026, 9, 12)) === 45)
 
 console.log(failed === 0 ? '\nAlle Prüfungen bestanden.' : `\n${failed} Prüfung(en) fehlgeschlagen.`)
 process.exit(failed === 0 ? 0 : 1)

@@ -1,7 +1,7 @@
 import { addDays, startOfWeek } from '../domain/dateUtils'
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL, supabase } from '../lib/supabase'
-import { mapIntervalsEvent } from './intervals'
-import type { IntervalsEventItem } from './intervals'
+import { mapIntervalsActivity, mapIntervalsEvent } from './intervals'
+import type { IntervalsActivityItem, IntervalsEventItem } from './intervals'
 import type { EventSource } from './types'
 
 /** Wird geworfen, wenn noch kein Schlüssel hinterlegt ist. Die Quelle wird dann nicht angezeigt. */
@@ -44,9 +44,16 @@ export const intervalsSource: EventSource = {
     if (status !== 200 || !Array.isArray(body.events)) {
       throw new Error(`Server-Funktion nicht erreichbar (${String(body.error ?? status)}).`)
     }
-    return (body.events as IntervalsEventItem[]).flatMap((item) => {
+    const planned = (body.events as IntervalsEventItem[]).flatMap((item) => {
       const e = mapIntervalsEvent(item)
       return e ? [e] : []
     })
+    const done = Array.isArray(body.activities)
+      ? (body.activities as IntervalsActivityItem[]).flatMap((a) => {
+          const e = mapIntervalsActivity(a)
+          return e ? [e] : []
+        })
+      : []
+    return [...planned, ...done]
   },
 }

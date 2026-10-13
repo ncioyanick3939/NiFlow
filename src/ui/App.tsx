@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createEntry, deleteEntry, updateEntry } from '../data/entries'
+import { createEntry, deleteEntry, skipOccurrence, updateEntry } from '../data/entries'
+import { callPush } from '../data/googlePush'
+import type { PushStatus } from '../data/googlePush'
 import { createExam, createTask, createTasks, deleteExam, deleteTask, updateExam, updateTask } from '../data/planner'
 import { addDays, formatTime, startOfDay } from '../domain/dateUtils'
 import { emptyInput, eventToInput, toDateInput, toTimeInput } from '../domain/entries'
@@ -29,6 +31,7 @@ import TasksPage from './tasks/TasksPage'
 import { useTheme } from './theme'
 import TrainingPage from './TrainingPage'
 import Welcome from './Welcome'
+import { useReminders } from './reminders'
 
 type SheetState =
   | { kind: 'detail'; event: CalendarEvent }
@@ -59,6 +62,7 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const readOnly = !connected
+  const [push, setPush] = useState<PushStatus | null>(null)
 
   // Aufgaben mit Datum und Prüfungen erscheinen im Kalender: eine Datenquelle, immer konsistent.
   const events = useMemo(
@@ -72,6 +76,17 @@ export default function App() {
   const examById = useMemo(() => new Map(planner.exams.map((x) => [x.id, x])), [planner.exams])
   const overdueCount = planner.tasks.filter((t) => isOverdue(t, now)).length
 
+  // Status des Google-Abgleichs laden (nur angemeldet). Fehler hier sind nicht kritisch.
+  useEffect(() => {
+    if (!connected) {
+      setPush(null)
+      return
+    }
+    callPush<PushStatus>({ action: 'status' })
+      .then(setPush)
+      .catch(() => setPush(null))
+  }, [connected])
+
   useEffect(() => {
     const onHash = () => setSection(sectionFromHash())
     window.addEventListener('hashchange', onHash)
@@ -83,6 +98,21 @@ export default function App() {
     clearTimeout(toastTimer.current)
     toastTimer.current = setTimeout(() => setToast(null), 4000)
   }, [])
+
+  useReminders(events, planner.tasks, connected, (r) => showToast(`${r.title} · ${r.body}`))
+
+  /** Nach einer Änderung an eigenen Terminen: in Google nachführen, wenn der Abgleich aktiv ist. */
+  const pushToGoogle = useCallback(
+    async (payload: Record<string, unknown>) => {
+      if (!push?.enabled) return
+      try {
+        await callPush(payload)
+      } catch (err) {
+        showToast(`Gespeichert, aber nicht zu Google übertragen: ${err instanceof Error ? err.message : ''}`)
+      }
+    },
+    [push, showToast],
+  )
 
   const navigate = useCallback((s: Section) => {
     setSection(s)
@@ -125,19 +155,29 @@ export default function App() {
 
   // Eigene Einträge
   const saveEntry = async (input: EntryInput, editId?: string) => {
+    let id = editId
     if (editId) await updateEntry(editId, input)
-    else await createEntry(input)
+    else id = await createEntry(input)
     setSheet(null)
+    if (input.type === 'event' && id) await pushToGoogle({ action: 'upsert', entry_id: id })
     await reload(['own'])
   }
   const moveEntry = async (e: CalendarEvent, input: EntryInput) => {
     await updateEntry(e.externalId, input)
     setSheet(null)
+    if (e.kind !== 'note') await pushToGoogle({ action: 'upsert', entry_id: e.externalId })
     await reload(['own'])
   }
   const removeEntry = async (e: CalendarEvent) => {
     await deleteEntry(e.externalId)
     setSheet(null)
+    if (e.googleEventId) await pushToGoogle({ action: 'delete', google_event_id: e.googleEventId })
+    await reload(['own'])
+  }
+  const skipEntry = async (e: CalendarEvent) => {
+    await skipOccurrence(e.externalId, e.exdates ?? [], e.ref?.occurrence ?? toDateInput(e.start))
+    setSheet(null)
+    await pushToGoogle({ action: 'upsert', entry_id: e.externalId })
     await reload(['own'])
   }
   const quickNote = async (title: string) => {
@@ -381,6 +421,11 @@ export default function App() {
               void disconnectGoogle()
             }}
             onChanged={() => void reload(['intervals'])}
+            push={push}
+            onPush={(next) => {
+              setPush(next)
+              void reload(['own'])
+            }}
           />
         )}
       </main>
@@ -412,6 +457,7 @@ export default function App() {
             onEdit={(e) => setSheet({ kind: 'form', input: eventToInput(e), editId: e.externalId })}
             onMove={moveEntry}
             onDelete={removeEntry}
+            onSkip={skipEntry}
             onAddNote={(date, title) => createNote(date, `Notiz: ${title}`)}
           />
         )}

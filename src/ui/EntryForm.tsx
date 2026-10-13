@@ -2,6 +2,8 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { validateEntry } from '../domain/entries'
 import type { EntryErrors, EntryInput } from '../domain/entries'
+import { RECURRENCE_LABEL } from '../domain/recurrence'
+import type { Recurrence } from '../domain/recurrence'
 import { PRIORITY_LABEL } from '../domain/types'
 import type { Priority } from '../domain/types'
 import Icon from './icons'
@@ -18,6 +20,15 @@ interface Props {
 }
 
 const PRIORITIES: (Priority | null)[] = [null, 'low', 'medium', 'high', 'urgent']
+const RECURRENCES: Recurrence[] = ['none', 'daily', 'weekdays', 'weekly', 'biweekly', 'monthly']
+export const REMINDERS: { value: number | null; label: string }[] = [
+  { value: null, label: 'Keine' },
+  { value: 0, label: 'Zum Beginn' },
+  { value: 10, label: '10 min vorher' },
+  { value: 30, label: '30 min vorher' },
+  { value: 60, label: '1 h vorher' },
+  { value: 1440, label: '1 Tag vorher' },
+]
 
 export default function EntryForm({ initial, editing, onSave, onCancel, examName }: Props) {
   const [v, setV] = useState<EntryInput>(initial)
@@ -123,6 +134,43 @@ export default function EntryForm({ initial, editing, onSave, onCancel, examName
           </>
         )}
       </div>
+
+      {!isNote && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label" htmlFor="f-rec">Wiederholen</label>
+            <select id="f-rec" className="field" value={v.recurrence ?? 'none'} onChange={(e) => set('recurrence', e.target.value as Recurrence)}>
+              {RECURRENCES.map((r) => (
+                <option key={r} value={r}>{RECURRENCE_LABEL[r]}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label" htmlFor="f-rem">Erinnerung</label>
+            <select
+              id="f-rem"
+              className="field"
+              value={v.reminderMinutes ?? ''}
+              disabled={v.allDay}
+              onChange={(e) => set('reminderMinutes', e.target.value === '' ? null : Number(e.target.value))}
+            >
+              {REMINDERS.map((r) => (
+                <option key={r.label} value={r.value ?? ''}>{r.label}</option>
+              ))}
+            </select>
+          </div>
+          {v.recurrence && v.recurrence !== 'none' && (
+            <div>
+              <label className="label" htmlFor="f-until">Serie endet <span className="font-normal">(optional)</span></label>
+              <input id="f-until" type="date" className="field tnum" value={v.recurrenceUntil ?? ''} min={v.date} onChange={(e) => set('recurrenceUntil', e.target.value)} aria-invalid={!!errors.recurrenceUntil} />
+              {err('recurrenceUntil')}
+            </div>
+          )}
+          {editing && v.recurrence && v.recurrence !== 'none' && (
+            <p className="col-span-2 text-xs text-muted">Änderungen gelten für die ganze Serie.</p>
+          )}
+        </div>
+      )}
 
       <fieldset>
         <legend className="label">Kategorie</legend>

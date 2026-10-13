@@ -80,11 +80,12 @@ async function getJson<T>(url: string, token: string): Promise<T> {
 
 /** Lädt alle angezeigten Kalender des Nutzers für den Zeitraum [from, to). */
 export async function fetchGoogleEvents(token: string, from: Date, to: Date): Promise<CalendarEvent[]> {
-  const list = await getJson<{ items?: { id: string; selected?: boolean }[] }>(
+  const list = await getJson<{ items?: { id: string; selected?: boolean; description?: string }[] }>(
     `${API}/users/me/calendarList?minAccessRole=reader`,
     token,
   )
-  const calendars = (list.items ?? []).filter((c) => c.selected)
+  // Den eigenen Kalender «NiFlow» nicht nochmals lesen: Diese Termine zeigt NiFlow schon selbst.
+  const calendars = (list.items ?? []).filter((c) => c.selected && !c.description?.startsWith('Von NiFlow verwaltet'))
 
   const perCalendar = await Promise.all(
     calendars.map(async (cal) => {

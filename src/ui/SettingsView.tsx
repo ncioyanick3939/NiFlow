@@ -2,6 +2,9 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { formatTime } from '../domain/dateUtils'
 import { callIntervals } from '../sources/intervalsSource'
+import { callPush } from '../data/googlePush'
+import type { PushStatus } from '../data/googlePush'
+import { useNotifyPermission } from './reminders'
 import type { SourceState } from '../sources/types'
 import Icon from './icons'
 import { Segmented } from './kit'
@@ -16,15 +19,38 @@ interface Props {
   onConnect: () => void
   onSignOut: () => void
   onChanged: () => void
+  push: PushStatus | null
+  onPush: (s: PushStatus) => void
 }
 
 type Message = { kind: 'ok' | 'error'; text: string } | null
 
-export default function SettingsView({ email, demo, states, theme, onTheme, onConnect, onSignOut, onChanged }: Props) {
+export default function SettingsView({ email, demo, states, theme, onTheme, onConnect, onSignOut, onChanged, push, onPush }: Props) {
   const [key, setKey] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<Message>(null)
   const state = (id: string) => states.find((s) => s.id === id)
+  const notify = useNotifyPermission()
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushMsg, setPushMsg] = useState<{ kind: "ok" | "error"; text: string; reconnect?: boolean } | null>(null)
+
+  const runPush = async (payload: Record<string, unknown>, done: (r: Record<string, unknown>) => string) => {
+    setPushBusy(true)
+    setPushMsg(null)
+    try {
+      const r = await callPush(payload)
+      setPushMsg({ kind: 'ok', text: done(r) })
+      const status = await callPush<PushStatus>({ action: 'status' })
+      onPush(status)
+    } catch (err) {
+      const code = (err as { code?: string }).code
+      setPushMsg({ kind: 'error', text: err instanceof Error ? err.message : 'Fehler', reconnect: code === 'reauth' || code === 'scope_missing' })
+    } finally {
+      setPushBusy(false)
+    }
+  }
+  const summary = (r: Record<string, unknown>) =>
+    `${Number(r.pushed ?? 0)} Termine übertragen${Number(r.removed ?? 0) ? `, ${Number(r.removed)} entfernt` : ''}${Number(r.failed ?? 0) ? `, ${Number(r.failed)} fehlgeschlagen` : ''}.`
 
   const run = async (payload: Record<string, unknown>, ok: string) => {
     setBusy(true)
@@ -136,13 +162,73 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
         </Group>
       )}
 
-      <Group title="Was noch kommt">
-        <ul className="space-y-1.5 text-sm text-muted">
-          <li>Aufgaben mit Priorität und Fälligkeit, Prüfungen mit Lernaufgaben</li>
-          <li>Aktivitäten mit Wiederholung, eigener Intervals-Bereich mit absolvierten Einheiten</li>
-          <li>Eigene Einträge in Google Kalender eintragen (braucht eine zusätzliche Google-Berechtigung)</li>
-        </ul>
-      </Group>
+      {email && (
+        <Group title="In Google eintragen">
+          <p className="mb-3 text-sm text-muted">
+            Deine eigenen Termine (nicht Notizen und Aufgaben) erscheinen in einem eigenen Google-Kalender «NiFlow». Deine übrigen
+            Google-Kalender werden nie verändert. Richtung: nur von NiFlow zu Google. Änderungen bitte in NiFlow machen.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {push?.enabled ? (
+              <>
+                <span className="mr-auto flex items-center gap-2 text-sm">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[rgb(var(--study))]" aria-hidden="true" />
+                  Aktiv{push.lastPushAt ? ` · zuletzt abgeglichen ${formatTime(new Date(push.lastPushAt))} Uhr` : ''}
+                </span>
+                <button type="button" className="btn-outline" disabled={pushBusy} onClick={() => void runPush({ action: 'sync_all' }, summary)}>
+                  <Icon name="refresh" size={16} /> {pushBusy ? 'Gleicht ab …' : 'Jetzt abgleichen'}
+                </button>
+                <button type="button" className="btn-ghost" disabled={pushBusy} onClick={() => void runPush({ action: 'disable' }, () => 'Ausgeschaltet. Der Kalender «NiFlow» bleibt in Google bestehen.')}>
+                  Ausschalten
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" className="btn-primary" disabled={pushBusy} onClick={() => void runPush({ action: 'enable' }, (r) => `Eingeschaltet. ${summary(r)}`)}>
+                  {pushBusy ? 'Richtet ein …' : 'Einschalten'}
+                </button>
+                {push?.hasCalendar && (
+                  <button type="button" className="btn-ghost text-danger" disabled={pushBusy} onClick={() => void runPush({ action: 'disable', remove_calendar: true }, () => 'Kalender «NiFlow» in Google gelöscht.')}>
+                    Kalender «NiFlow» in Google löschen
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+          {pushMsg && (
+            <p role={pushMsg.kind === 'error' ? 'alert' : 'status'} className={`mt-2 text-sm ${pushMsg.kind === 'error' ? 'text-danger' : 'text-muted'}`}>
+              {pushMsg.text}{' '}
+              {pushMsg.reconnect && (
+                <button type="button" className="font-medium text-accent hover:underline" onClick={onConnect}>
+                  Neu verbinden
+                </button>
+              )}
+            </p>
+          )}
+        </Group>
+      )}
+
+      {email && (
+        <Group title="Erinnerungen">
+          <p className="mb-3 text-sm text-muted">
+            Erinnerungen stellst du bei Terminen und Aufgaben ein. Sie erscheinen, solange NiFlow in einem Browser-Tab geöffnet ist. Bei
+            geschlossener App kommen noch keine Erinnerungen.
+          </p>
+          {notify.state === 'granted' ? (
+            <p className="flex items-center gap-2 text-sm">
+              <Icon name="check" size={16} className="text-accent" /> Benachrichtigungen sind erlaubt.
+            </p>
+          ) : notify.state === 'denied' ? (
+            <p className="text-sm text-muted">Benachrichtigungen sind im Browser blockiert. Erinnerungen erscheinen deshalb nur als Hinweis in NiFlow.</p>
+          ) : notify.state === 'unsupported' ? (
+            <p className="text-sm text-muted">Dieser Browser unterstützt keine Benachrichtigungen. Erinnerungen erscheinen als Hinweis in NiFlow.</p>
+          ) : (
+            <button type="button" className="btn-outline" onClick={() => void notify.request()}>
+              Benachrichtigungen erlauben
+            </button>
+          )}
+        </Group>
+      )}
     </div>
   )
 }

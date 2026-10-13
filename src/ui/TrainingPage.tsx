@@ -25,8 +25,9 @@ function minutesOf(e: CalendarEvent): number | null {
 export default function TrainingPage({ events, states, now, demo, onOpen, onGoSettings }: Props) {
   const state = states.find((s) => s.id === 'intervals')
   const thisWeek = startOfWeek(now)
+  // Geplante ab dieser Woche, absolvierte auch aus der Vorwoche
   const items = events
-    .filter((e) => e.source === 'intervals' && e.start >= thisWeek)
+    .filter((e) => e.source === 'intervals' && e.start >= (e.completed ? addDays(thisWeek, -7) : thisWeek))
     .sort((a, b) => a.start.getTime() - b.start.getTime())
 
   const weeks = new Map<number, CalendarEvent[]>()
@@ -35,9 +36,13 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
     weeks.set(key, [...(weeks.get(key) ?? []), e])
   }
   const current = weeks.get(thisWeek.getTime()) ?? []
-  const totalMin = current.reduce((sum, e) => sum + (minutesOf(e) ?? 0), 0)
+  const plannedNow = current.filter((e) => !e.completed)
+  const doneNow = current.filter((e) => e.completed)
+  const totalMin = plannedNow.reduce((sum, e) => sum + (minutesOf(e) ?? 0), 0)
+  const doneMin = doneNow.reduce((sum, e) => sum + (minutesOf(e) ?? 0), 0)
+  const loadSum = doneNow.reduce((sum, e) => sum + (e.load ?? 0), 0)
   const bySport = new Map<string, number>()
-  for (const e of current) {
+  for (const e of plannedNow) {
     const k = sportIcon(e.sport)
     bySport.set(k, (bySport.get(k) ?? 0) + (minutesOf(e) ?? 0))
   }
@@ -73,9 +78,9 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
       {state && (
         <>
           <section className="mb-8 grid grid-cols-3 divide-x divide-line rounded-lg border border-line bg-surface">
-            <Stat label="Einheiten diese Woche" value={String(current.length)} />
-            <Stat label="Geplante Zeit" value={totalMin > 0 ? formatDuration(totalMin) : '–'} />
-            <Stat label="Intensiv" value={String(current.filter((e) => e.intensity === 'high').length)} />
+            <Stat label={`Geplant · ${plannedNow.length} Einheiten`} value={totalMin > 0 ? formatDuration(totalMin) : '–'} />
+            <Stat label={`Absolviert · ${doneNow.length} Einheiten`} value={doneMin > 0 ? formatDuration(doneMin) : '–'} />
+            <Stat label="Belastung (absolviert)" value={loadSum > 0 ? String(Math.round(loadSum)) : '–'} />
           </section>
 
           {bySport.size > 0 && (
@@ -99,22 +104,33 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
               {[...weeks.entries()].map(([key, list]) => {
                 const start = new Date(key)
                 const label =
-                  key === thisWeek.getTime() ? 'Diese Woche' : key === addDays(thisWeek, 7).getTime() ? 'Nächste Woche' : `KW ${isoWeek(start)}`
-                const sum = list.reduce((s, e) => s + (minutesOf(e) ?? 0), 0)
+                  key === thisWeek.getTime()
+                    ? 'Diese Woche'
+                    : key === addDays(thisWeek, 7).getTime()
+                      ? 'Nächste Woche'
+                      : key === addDays(thisWeek, -7).getTime()
+                        ? 'Letzte Woche'
+                        : `KW ${isoWeek(start)}`
+                const sum = list.filter((e) => !e.completed).reduce((s, e) => s + (minutesOf(e) ?? 0), 0)
+                const sumDone = list.filter((e) => e.completed).reduce((s, e) => s + (minutesOf(e) ?? 0), 0)
                 return (
                   <section key={key}>
                     <div className="mb-2 flex items-baseline justify-between">
                       <h2 className="text-base font-semibold">{label}</h2>
-                      <span className="tnum text-sm text-muted">{sum > 0 ? formatDuration(sum) : ''}</span>
+                      <span className="tnum text-sm text-muted">
+                        {sum > 0 ? `geplant ${formatDuration(sum)}` : ''}
+                        {sum > 0 && sumDone > 0 ? ' · ' : ''}
+                        {sumDone > 0 ? `absolviert ${formatDuration(sumDone)}` : ''}
+                      </span>
                     </div>
                     <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
                       {list.map((e) => {
                         const min = minutesOf(e)
-                        const past = startOfDay(e.start) < startOfDay(now)
+                        const past = !e.completed && startOfDay(e.start) < startOfDay(now)
                         return (
                           <li key={e.id}>
                             <button type="button" onClick={() => onOpen(e)} className={`cat-training flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-surface2 ${past ? 'opacity-55' : ''}`}>
-                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cat/15 text-cat">
+                              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${e.completed ? 'bg-cat text-surface' : 'bg-cat/15 text-cat'}`}>
                                 <Icon name={sportIcon(e.sport)} size={20} />
                               </span>
                               <span className="min-w-0 flex-1">
@@ -126,7 +142,14 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
                               </span>
                               <span className="flex shrink-0 flex-col items-end gap-1">
                                 <span className="tnum text-sm font-medium">{min ? formatDuration(min) : '–'}</span>
-                                {e.intensity === 'high' && <span className="rounded-sm bg-danger/10 px-1.5 py-px text-[10px] font-semibold uppercase text-danger">Intensiv</span>}
+                                {e.completed ? (
+                                  <span className="tnum text-[11px] text-muted">
+                                    {e.distanceKm ? `${e.distanceKm.toFixed(1)} km` : 'Absolviert'}
+                                    {e.load ? ` · ${Math.round(e.load)} Last` : ''}
+                                  </span>
+                                ) : (
+                                  e.intensity === 'high' && <span className="rounded-sm bg-danger/10 px-1.5 py-px text-[10px] font-semibold uppercase text-danger">Intensiv</span>
+                                )}
                               </span>
                             </button>
                           </li>
@@ -139,7 +162,8 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
             </div>
           )}
           <p className="mt-6 text-xs text-muted">
-            Es werden geplante Trainings und Wettkämpfe angezeigt. Absolvierte Aktivitäten folgen in einer späteren Runde.
+            Geplante Trainings und Wettkämpfe sowie absolvierte Aktivitäten. Aktivitäten, die Intervals.icu von Strava übernommen hat, gibt die
+            Schnittstelle teilweise nicht heraus; sie fehlen dann hier.
           </p>
         </>
       )}

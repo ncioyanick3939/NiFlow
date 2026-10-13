@@ -21,6 +21,8 @@ export interface Task {
   category: Category
   examId: string | null
   estimateMinutes: number | null
+  /** Erinnerung in Minuten vor Fälligkeit (ohne Uhrzeit: vor 08:00 am Fälligkeitstag). */
+  reminderMinutes: number | null
   completedAt: Date | null
   createdAt: Date
 }
@@ -36,6 +38,7 @@ export interface TaskRow {
   category: Category
   exam_id: string | null
   estimate_minutes: number | null
+  reminder_minutes?: number | null
   completed_at: string | null
   created_at: string
 }
@@ -59,6 +62,7 @@ export function rowToTask(r: TaskRow): Task {
     category: r.category,
     examId: r.exam_id,
     estimateMinutes: r.estimate_minutes,
+    reminderMinutes: r.reminder_minutes ?? null,
     completedAt: r.completed_at ? new Date(r.completed_at) : null,
     createdAt: new Date(r.created_at),
   }
@@ -77,6 +81,7 @@ export function taskToRow(t: TaskInput, prevStatus?: TaskStatus) {
     category: t.category,
     exam_id: t.examId || null,
     estimate_minutes: t.estimateMinutes,
+    reminder_minutes: t.dueDate ? t.reminderMinutes : null,
     ...(becameDone ? { completed_at: new Date().toISOString() } : reopened ? { completed_at: null } : {}),
   }
 }
@@ -109,6 +114,7 @@ export function emptyTask(defaults: Partial<TaskInput> = {}): TaskInput {
     category: 'study',
     examId: null,
     estimateMinutes: null,
+    reminderMinutes: null,
     ...defaults,
   }
 }
@@ -123,6 +129,7 @@ export const taskToInput = (t: Task): TaskInput => ({
   category: t.category,
   examId: t.examId,
   estimateMinutes: t.estimateMinutes,
+  reminderMinutes: t.reminderMinutes,
 })
 
 /** Fälligkeit als Zeitpunkt (ohne Uhrzeit: Tagesende), für Vergleiche. */

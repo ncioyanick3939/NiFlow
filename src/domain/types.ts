@@ -29,12 +29,26 @@ export interface CalendarEvent {
   /** Nur eigene Einträge. */
   priority?: Priority
   /** Eigene Daten: aus welcher Tabelle der Eintrag stammt (für Öffnen und Bearbeiten). */
-  ref?: { type: 'entry' | 'task' | 'exam'; id: string }
+  ref?: { type: 'entry' | 'task' | 'exam'; id: string; occurrence?: string }
   /** Aufgaben: erledigt. */
   done?: boolean
   /** Eigene Termine: zugehörige Prüfung (Lerntermin) bzw. Aufgabe. */
   examId?: string | null
   taskId?: string | null
+  /** Serien: Regel, Ende, Ausnahmen und Start des ersten Vorkommens. */
+  recurrence?: import('./recurrence').Recurrence
+  recurrenceUntil?: string | null
+  exdates?: string[]
+  seriesStart?: Date
+  seriesEnd?: Date | null
+  /** Erinnerung in Minuten vor Beginn (eigene Termine). */
+  reminderMinutes?: number | null
+  /** Eigene Termine: Termin im NiFlow-Kalender bei Google (wenn der Abgleich aktiv ist). */
+  googleEventId?: string | null
+  /** Intervals.icu: absolvierte Aktivität (statt geplant), mit Belastung und Distanz. */
+  completed?: boolean
+  load?: number
+  distanceKm?: number
 }
 
 export const CATEGORY_LABEL: Record<Category, string> = {

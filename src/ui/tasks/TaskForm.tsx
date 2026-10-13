@@ -92,6 +92,17 @@ export default function TaskForm({ initial, editing, exams, now, onSave, onCance
           </div>
         </div>
         {v.dueDate && v.dueDate < today && v.status !== 'done' && <p className="mt-1 text-xs text-danger">Liegt in der Vergangenheit.</p>}
+        {v.dueDate && (
+          <div className="mt-3">
+            <label className="label" htmlFor="t-rem">Erinnerung</label>
+            <select id="t-rem" className="field" value={v.reminderMinutes ?? ''} onChange={(e) => set('reminderMinutes', e.target.value === '' ? null : Number(e.target.value))}>
+              <option value="">Keine</option>
+              <option value="0">{v.dueTime ? 'Zur Fälligkeit' : 'Am Fälligkeitstag, 08:00'}</option>
+              <option value="60">1 h vorher</option>
+              <option value="1440">1 Tag vorher</option>
+            </select>
+          </div>
+        )}
       </div>
 
       <fieldset>

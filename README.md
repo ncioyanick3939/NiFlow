@@ -2,7 +2,7 @@
 
 Persönliches Planungssystem für Studium, Training und Alltag (mobile-first Web-App).
 
-## Stand (Runde 2)
+## Stand (Runde 3)
 
 - Neues Design mit hellem und dunklem Modus (Einstellungen → Darstellung)
 - Übersicht: Als Nächstes, Heute mit freier Zeit, Schnellerfassung, Nächste Tage, Training
@@ -12,10 +12,15 @@ Persönliches Planungssystem für Studium, Training und Alltag (mobile-first Web
 - Aufgaben: Heute, Als Nächstes, Diese Woche, Überfällig, Alle, Erledigt; Priorität, Status, Fälligkeit,
   Kategorie, Zeitaufwand, Prüfung; sortieren und filtern; mit Datum auch im Kalender; als Termin einplanen
 - Prüfungen: Countdown, Vorbereitungsstand, Lernstoff, Lernaufgaben (mit bestätigtem Lernplan-Vorschlag), Lerntermine
+- Wiederkehrende Termine (täglich, werktags, wöchentlich, alle 2 Wochen, monatlich), einzelne Vorkommen auslassen
+- Erinnerungen für Termine und Aufgaben (Browser-Benachrichtigung, solange NiFlow geöffnet ist)
+- Intervals.icu: geplante und absolvierte Trainings (Dauer, Distanz, Belastung)
+- Google Kalender schreiben: eigene Termine landen in einem eigenen Kalender «NiFlow» (nur NiFlow → Google)
 - Ohne Anmeldung: Demo mit klar gekennzeichneten, erfundenen Daten
 
-Noch nicht enthalten: wiederkehrende Aktivitäten und Erinnerungen (Runde 3),
-Schreiben in Google Kalender (braucht eine zusätzliche Google-Berechtigung).
+Grenzen: keine Push-Erinnerungen bei geschlossener App; Änderungen in Google am Kalender «NiFlow»
+werden beim nächsten Abgleich überschrieben; von Strava importierte Aktivitäten gibt Intervals.icu
+über die API teilweise nicht heraus.
 
 ## Lokal starten
 
@@ -37,7 +42,11 @@ npm run build    # Typprüfung und Produktions-Build
 npx supabase db push                                   # Tabellen und Zugriffsregeln
 npx supabase functions deploy google-token --no-verify-jwt --use-api
 npx supabase functions deploy intervals-events --no-verify-jwt --use-api
+npx supabase functions deploy google-push --no-verify-jwt --use-api
 ```
+
+Google Cloud → Google Auth Platform → Datenzugriff: zusätzlich den Bereich
+`https://www.googleapis.com/auth/calendar.app.created` hinzufügen, danach in NiFlow neu mit Google anmelden.
 
 Secrets (Supabase → Edge Functions → Secrets): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
 

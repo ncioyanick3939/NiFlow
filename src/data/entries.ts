@@ -1,4 +1,4 @@
-import { inputToRow, rowToEvent, validateEntry } from '../domain/entries'
+import { inputToRow, rowToEvents, validateEntry } from '../domain/entries'
 import type { EntryInput, EntryRow } from '../domain/entries'
 import type { CalendarEvent } from '../domain/types'
 import { supabase } from '../lib/supabase'
@@ -6,7 +6,8 @@ import { supabase } from '../lib/supabase'
 // Zugriff auf die Tabelle "entries". Die Zugriffsregeln (RLS) in der Datenbank sorgen dafür,
 // dass jeder nur seine eigenen Zeilen sieht und ändert.
 
-const COLUMNS = 'id,type,title,body,category,all_day,start_at,end_at,priority,exam_id,task_id'
+const COLUMNS =
+  'id,type,title,body,category,all_day,start_at,end_at,priority,exam_id,task_id,recurrence,recurrence_until,exdates,reminder_minutes,google_event_id'
 
 function describe(error: { message: string; code?: string }): Error {
   if (error.code === '42501') return new Error('Keine Berechtigung. Bitte neu anmelden.')
@@ -21,11 +22,12 @@ export async function listEntries(from: Date, to: Date): Promise<CalendarEvent[]
     .from('entries')
     .select(COLUMNS)
     .lt('start_at', to.toISOString())
-    .or(`end_at.gt.${from.toISOString()},start_at.gte.${from.toISOString()}`)
+    // Serien, die vor dem Zeitraum begonnen haben, laufen eventuell noch hinein
+    .or(`recurrence.neq.none,end_at.gt.${from.toISOString()},start_at.gte.${from.toISOString()}`)
     .order('start_at', { ascending: true })
     .limit(2000)
   if (error) throw describe(error)
-  return (data as EntryRow[]).map(rowToEvent)
+  return (data as EntryRow[]).flatMap((r) => rowToEvents(r, from, to))
 }
 
 function checked(input: EntryInput) {
@@ -34,9 +36,11 @@ function checked(input: EntryInput) {
   return inputToRow(input)
 }
 
-export async function createEntry(input: EntryInput): Promise<void> {
-  const { error } = await supabase.from('entries').insert(checked(input))
+/** Legt einen Eintrag an und gibt seine ID zurück. */
+export async function createEntry(input: EntryInput): Promise<string> {
+  const { data, error } = await supabase.from('entries').insert(checked(input)).select('id').single()
   if (error) throw describe(error)
+  return (data as { id: string }).id
 }
 
 export async function updateEntry(id: string, input: EntryInput): Promise<void> {
@@ -47,6 +51,17 @@ export async function updateEntry(id: string, input: EntryInput): Promise<void> 
     .select('id')
   if (error) throw describe(error)
   if (!data || data.length === 0) throw new Error('Eintrag nicht gefunden. Er wurde vielleicht schon gelöscht.')
+}
+
+/** Ein einzelnes Vorkommen einer Serie auslassen ("yyyy-MM-dd"). */
+export async function skipOccurrence(id: string, current: string[], day: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('entries')
+    .update({ exdates: [...new Set([...current, day])], updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('id')
+  if (error) throw describe(error)
+  if (!data || data.length === 0) throw new Error('Serie nicht gefunden.')
 }
 
 export async function deleteEntry(id: string): Promise<void> {

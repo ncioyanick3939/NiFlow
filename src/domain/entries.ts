@@ -1,7 +1,9 @@
 // Eigene Einträge (Termine/Aktivitäten und Notizen): Eingabe prüfen und in unser Terminformat umwandeln.
 // Reine Logik ohne Oberfläche und ohne Datenbank, damit sie getestet werden kann.
 
-import { addDays } from './dateUtils'
+import { addDays, startOfDay } from './dateUtils'
+import { occurrenceDays } from './recurrence'
+import type { Recurrence } from './recurrence'
 import { makeEventId } from './types'
 import type { CalendarEvent, Category, Priority } from './types'
 
@@ -25,6 +27,12 @@ export interface EntryInput {
   examId?: string | null
   /** Aus dieser Aufgabe eingeplant (optional). */
   taskId?: string | null
+  /** Wiederholung (nur Termine). */
+  recurrence?: Recurrence
+  /** Letzter Tag der Serie "yyyy-MM-dd" oder leer. */
+  recurrenceUntil?: string
+  /** Erinnerung in Minuten vor Beginn, null = keine. */
+  reminderMinutes?: number | null
 }
 
 /** So steht ein Eintrag in der Datenbank (Tabelle entries). */
@@ -40,9 +48,14 @@ export interface EntryRow {
   priority: Priority | null
   exam_id?: string | null
   task_id?: string | null
+  recurrence?: Recurrence
+  recurrence_until?: string | null
+  exdates?: string[]
+  reminder_minutes?: number | null
+  google_event_id?: string | null
 }
 
-export type EntryErrors = Partial<Record<'title' | 'body' | 'date' | 'startTime' | 'endTime', string>>
+export type EntryErrors = Partial<Record<'title' | 'body' | 'date' | 'startTime' | 'endTime' | 'recurrenceUntil', string>>
 
 export const TITLE_MAX = 200
 export const BODY_MAX = 5000
@@ -92,6 +105,11 @@ export function validateEntry(input: EntryInput): EntryErrors | null {
       }
     }
   }
+  if (input.type === 'event' && input.recurrence && input.recurrence !== 'none' && input.recurrenceUntil) {
+    const until = parseDateInput(input.recurrenceUntil)
+    if (!until) errors.recurrenceUntil = 'Ungültiges Enddatum.'
+    else if (input.recurrenceUntil < input.date) errors.recurrenceUntil = 'Das Ende der Serie liegt vor dem ersten Termin.'
+  }
   return Object.keys(errors).length > 0 ? errors : null
 }
 
@@ -121,7 +139,44 @@ export function inputToRow(input: EntryInput): Omit<EntryRow, 'id'> {
     priority: input.type === 'event' ? input.priority : null,
     exam_id: input.examId ?? null,
     task_id: input.taskId ?? null,
+    recurrence: input.type === 'event' ? (input.recurrence ?? 'none') : 'none',
+    recurrence_until: input.type === 'event' && input.recurrence && input.recurrence !== 'none' && input.recurrenceUntil ? input.recurrenceUntil : null,
+    reminder_minutes: input.type === 'event' ? (input.reminderMinutes ?? null) : null,
   }
+}
+
+/** Alle Vorkommen eines Eintrags im Zeitraum [from, to). Ohne Wiederholung genau einer. */
+export function rowToEvents(row: EntryRow, from: Date, to: Date): CalendarEvent[] {
+  const base = rowToEvent(row)
+  const rule = row.recurrence ?? 'none'
+  if (rule === 'none') return [base]
+  const durMs = base.end ? base.end.getTime() - base.start.getTime() : 0
+  const durDays = Math.max(Math.ceil(durMs / 86400000), 0)
+  const until = row.recurrence_until ? parseDateInput(row.recurrence_until) : null
+  return occurrenceDays(base.start, rule, until, row.exdates ?? [], from, to, durDays).map((day) => {
+    const start = base.allDay
+      ? day
+      : new Date(day.getFullYear(), day.getMonth(), day.getDate(), base.start.getHours(), base.start.getMinutes())
+    let end: Date | null = null
+    if (base.end) {
+      if (base.allDay) {
+        end = addDays(day, Math.max(Math.round((startOfDay(base.end).getTime() - startOfDay(base.start).getTime()) / 86400000), 1))
+      } else {
+        // Endzeit über Kalendertage, damit sie bei der Zeitumstellung gleich bleibt
+        const days = Math.round((startOfDay(base.end).getTime() - startOfDay(base.start).getTime()) / 86400000)
+        const d = addDays(day, days)
+        end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), base.end.getHours(), base.end.getMinutes())
+      }
+    }
+    const key = toDateInput(day)
+    return {
+      ...base,
+      id: makeEventId('own', `${row.id}@${key}`),
+      start,
+      end,
+      ref: { type: 'entry' as const, id: row.id, occurrence: key },
+    }
+  })
 }
 
 export function rowToEvent(row: EntryRow): CalendarEvent {
@@ -140,20 +195,32 @@ export function rowToEvent(row: EntryRow): CalendarEvent {
     ref: { type: 'entry', id: row.id },
     examId: row.exam_id ?? null,
     taskId: row.task_id ?? null,
+    recurrence: row.recurrence ?? 'none',
+    recurrenceUntil: row.recurrence_until ?? null,
+    exdates: row.exdates ?? [],
+    seriesStart: new Date(row.start_at),
+    seriesEnd: row.end_at ? new Date(row.end_at) : null,
+    reminderMinutes: row.reminder_minutes ?? null,
+    googleEventId: row.google_event_id ?? null,
   }
 }
 
-/** Für das Bearbeiten: Termin zurück in Formularwerte. */
+/** Für das Bearbeiten: Termin zurück in Formularwerte. Bei Serien zählt der Start der Serie. */
 export function eventToInput(e: CalendarEvent): EntryInput {
+  const start = e.seriesStart ?? e.start
+  const end = e.seriesStart ? (e.seriesEnd ?? null) : e.end
   return {
     type: e.kind === 'note' ? 'note' : 'event',
     title: e.title,
     body: e.description ?? '',
     category: e.category,
     allDay: e.allDay,
-    date: toDateInput(e.start),
-    startTime: e.allDay ? '09:00' : toTimeInput(e.start),
-    endTime: !e.allDay && e.end ? toTimeInput(e.end) : '',
+    date: toDateInput(start),
+    startTime: e.allDay ? '09:00' : toTimeInput(start),
+    endTime: !e.allDay && end ? toTimeInput(end) : '',
+    recurrence: e.recurrence ?? 'none',
+    recurrenceUntil: e.recurrenceUntil ?? '',
+    reminderMinutes: e.reminderMinutes ?? null,
     priority: e.priority ?? null,
     examId: e.examId ?? null,
     taskId: e.taskId ?? null,
@@ -175,5 +242,8 @@ export function emptyInput(type: EntryType, date: Date, now?: Date): EntryInput 
     startTime: `${pad(hour)}:00`,
     endTime: `${pad(Math.min(hour + 1, 23))}:00`,
     priority: null,
+    recurrence: 'none',
+    recurrenceUntil: '',
+    reminderMinutes: null,
   }
 }

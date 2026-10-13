@@ -8,7 +8,9 @@ export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_QoI1ZxdSntM97EfWFvcrNA_2
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
 
-export const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly'
+// Lesen aller Kalender + eigenen Kalender «NiFlow» anlegen und nur dessen Termine verwalten.
+export const GOOGLE_CALENDAR_SCOPE =
+  'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.app.created'
 
 /** Startet die Google-Anmeldung (nur Lesezugriff auf den Kalender). */
 export async function connectGoogle(): Promise<void> {

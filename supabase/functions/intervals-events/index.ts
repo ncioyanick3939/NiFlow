@@ -100,10 +100,28 @@ Deno.serve(async (req) => {
   const key = rows[0]?.intervals_api_key
   if (!key) return json({ error: 'no_key' }, 404)
 
-  const res = await intervals(key, `athlete/0/events?oldest=${body.oldest}&newest=${body.newest}`)
+  // Geplante Einträge und absolvierte Aktivitäten parallel laden.
+  // Aktivitäten: GET /api/v1/athlete/0/activities?oldest=…&newest=… (nur bis heute sinnvoll).
+  const today = new Date().toISOString().slice(0, 10)
+  const actNewest = body.newest < today ? body.newest : today
+  const fields = 'id,name,type,start_date_local,moving_time,elapsed_time,distance,icu_training_load'
+  const [res, actRes] = await Promise.all([
+    intervals(key, `athlete/0/events?oldest=${body.oldest}&newest=${body.newest}`),
+    intervals(key, `athlete/0/activities?oldest=${body.oldest}&newest=${actNewest}&fields=${fields}`),
+  ])
   if (res.status === 401 || res.status === 403) return json({ error: 'invalid_key' }, 401)
   if (!res.ok) return json({ error: 'intervals_error', status: res.status }, 502)
   const events = await res.json().catch(() => null)
   if (!Array.isArray(events)) return json({ error: 'intervals_error', status: 'bad_response' }, 502)
-  return json({ events })
+  // Fehlen die Aktivitäten, liefern wir trotzdem die geplanten Einträge (Fehler wird gemeldet).
+  let activities: unknown[] = []
+  let activitiesError: string | null = null
+  if (actRes.ok) {
+    const a = await actRes.json().catch(() => null)
+    if (Array.isArray(a)) activities = a
+    else activitiesError = 'bad_response'
+  } else {
+    activitiesError = String(actRes.status)
+  }
+  return json({ events, activities, activitiesError })
 })

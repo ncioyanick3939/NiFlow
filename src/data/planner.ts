@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 
 // Zugriff auf Aufgaben und Prüfungen. RLS in der Datenbank begrenzt auf die eigenen Zeilen.
 
-const TASK_COLS = 'id,title,description,due_date,due_time,priority,status,category,exam_id,estimate_minutes,completed_at,created_at'
+const TASK_COLS = 'id,title,description,due_date,due_time,priority,status,category,exam_id,estimate_minutes,reminder_minutes,completed_at,created_at'
 const EXAM_COLS = 'id,title,subject,start_at,end_at,location,format,description,topics,notes,priority,prep_status'
 
 function describe(error: { message: string; code?: string }): Error {
