@@ -81,12 +81,12 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
 
   return (
     <Page title="Einstellungen" sub={email ? `Angemeldet als ${email}` : demo ? 'Demo-Modus' : undefined} width="narrow">
-      <div className="border-b border-line">
+      <div className="space-y-4">
 
       <Group title="Konto">
         {email ? (
           <div className="flex flex-wrap items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-sm bg-ink text-sm font-semibold text-canvas">{email[0]?.toUpperCase()}</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-sm font-bold text-accentink">{email[0]?.toUpperCase()}</span>
             <div className="mr-auto min-w-0">
               <p className="truncate text-sm font-medium">{email}</p>
               <p className="text-xs text-muted">Angemeldet mit Google</p>
@@ -196,7 +196,7 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
             {push?.enabled ? (
               <>
                 <span className="mr-auto flex items-center gap-2 text-sm">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[rgb(var(--study))]" aria-hidden="true" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-[rgb(var(--private))]" aria-hidden="true" />
                   Aktiv{push.lastPushAt ? ` · zuletzt abgeglichen ${formatTime(new Date(push.lastPushAt))} Uhr` : ''}
                 </span>
                 <button type="button" className="btn-outline" disabled={pushBusy} onClick={() => void runPush({ action: 'sync_all' }, summary)}>
@@ -244,7 +244,7 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="grid grid-cols-[minmax(0,1fr)] gap-3 border-t border-line py-6 md:grid-cols-[11rem,minmax(0,1fr)] md:gap-10">
+    <section className="grid grid-cols-[minmax(0,1fr)] gap-3 rounded-3xl bg-surface p-5 shadow-card md:grid-cols-[11rem,minmax(0,1fr)] md:gap-10 md:p-6">
       <h2 className="h-section">{title}</h2>
       <div className="min-w-0">{children}</div>
     </section>
@@ -256,7 +256,7 @@ function SourceLine({ name, detail, s, action, bare }: { name: string; detail: s
   return (
     <div className={`flex flex-wrap items-center gap-3 ${bare ? '' : 'py-4'}`}>
       <span
-        className={`h-2.5 w-2.5 shrink-0 rounded-full ${status === 'ok' ? 'bg-[rgb(var(--study))]' : status === 'error' ? 'bg-danger' : 'bg-line'}`}
+        className={`h-2.5 w-2.5 shrink-0 rounded-full ${status === 'ok' ? 'bg-[rgb(var(--private))]' : status === 'error' ? 'bg-danger' : 'bg-line'}`}
         aria-hidden="true"
       />
       <div className="mr-auto min-w-0">

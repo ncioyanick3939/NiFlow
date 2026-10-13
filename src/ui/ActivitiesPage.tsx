@@ -68,7 +68,7 @@ export default function ActivitiesPage({ events, now, readOnly, onOpen, onTempla
                 onClick={() => onTemplate(t)}
                 className={`${catClass(t.category)} group flex min-h-16 items-center gap-3 border-b border-r border-line px-3.5 py-3 text-left transition-colors duration-150 hover:bg-surface2/60`}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-cat/15 text-cat">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cat/15 text-cat">
                   <Icon name={t.icon} size={18} />
                 </span>
                 <span className="min-w-0">

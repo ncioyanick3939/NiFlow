@@ -2,56 +2,53 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Farben als RGB-Tripel, damit Tailwind Transparenz (z. B. bg-accent/10) berechnen kann. */
+/* «NiFlow Soft» nach dem Vorbild von Structured: warmes Rosa auf hellem Grau, weisse Blätter,
+   grosse runde Formen. Alle Farben als RGB-Tripel, damit Tailwind Transparenz (bg-accent/10) berechnet. */
 :root {
-  /* «Swiss Editorial»: Papier, Tinte, Signalrot. Alles als RGB-Tripel (für bg-accent/10 usw.) */
-  --bg: 244 241 234;        /* #F4F1EA Seitenhintergrund */
-  --surface: 250 249 245;   /* #FAF9F5 helle Flächen */
-  --surface2: 236 232 223;  /* Hover, ruhige Flächen */
-  --line: 216 212 203;      /* #D8D4CB 1-px-Linien */
-  --ink: 27 27 24;          /* #1B1B18 Text */
-  --muted: 119 118 111;     /* #77766F sekundärer Text */
-  --accent: 228 65 43;      /* #E4412B Signalrot: aktiv, jetzt, Hauptaktion */
+  --bg: 242 242 247;        /* Seitenhintergrund, hellgrau */
+  --surface: 255 255 255;   /* Blätter und Karten */
+  --surface2: 238 238 243;  /* Hover, ruhige Flächen, leere Kapseln */
+  --line: 226 226 232;      /* feine Trennlinien */
+  --ink: 20 20 24;          /* Text */
+  --muted: 130 130 140;     /* sekundärer Text */
+  --accent: 217 119 111;    /* Rosé: Hauptaktion, Auswahl, Akzentwörter */
   --accent-ink: 255 255 255;
-  --danger: 196 50 30;      /* Fehler und Überfälliges: Rot, dazu immer ein Wort */
-  /* "deep" = Tinte: invertierte Flächen (aktive Auswahl, Prüfung) */
-  --deep: 27 27 24;
-  --deep-ink: 244 241 234;
-  --deep-muted: 170 167 157;
-  /* Früher Safran, jetzt ebenfalls Signalrot: es gibt nur eine Hervorhebungsfarbe */
-  --sun: 228 65 43;
-  --sun-ink: 255 255 255;
-  --exam: 27 27 24;
-  --warn: 176 112 24;       /* hohe Priorität: gedecktes Ocker */
-  /* Kategorien: gedeckt */
-  --training: 47 74 109;    /* Dunkelblau */
-  --work: 107 106 100;      /* Grau */
-  --study: 94 107 46;       /* Oliv */
-  --private: 180 88 58;     /* Terrakotta */
+  --danger: 220 64 64;      /* überfällig, Fehler */
+  --deep: 38 38 44;         /* dunkle Hervorhebung (Prüfung, Hinweise) */
+  --deep-ink: 255 255 255;
+  --deep-muted: 168 168 178;
+  --sun: 232 178 58;        /* Senfgelb: Countdown, Erfolge */
+  --sun-ink: 52 36 0;
+  --exam: 38 38 44;
+  --warn: 226 140 40;
+  /* Kategorien (gedämpfte Pastellfarben wie bei Structured) */
+  --training: 238 140 92;   /* Pfirsich-Orange */
+  --work: 104 132 170;      /* Schieferblau */
+  --study: 70 140 108;      /* Grün */
+  --private: 224 170 52;    /* Senf */
   color-scheme: light;
 }
 :root.dark {
-  /* Anthrazit statt Schwarz */
-  --bg: 30 30 28;
-  --surface: 38 38 36;
-  --surface2: 48 47 44;
-  --line: 62 61 57;
-  --ink: 236 233 226;
-  --muted: 160 157 148;
-  --accent: 240 88 64;
-  --accent-ink: 255 255 255;
-  --danger: 245 110 90;
-  --deep: 236 233 226;
-  --deep-ink: 30 30 28;
-  --deep-muted: 100 98 92;
-  --sun: 240 88 64;
-  --sun-ink: 255 255 255;
-  --exam: 82 80 74;
-  --warn: 222 164 74;
-  --training: 128 160 204;
-  --work: 166 164 156;
-  --study: 168 182 106;
-  --private: 222 140 108;
+  --bg: 16 16 20;
+  --surface: 30 30 36;
+  --surface2: 44 44 52;
+  --line: 54 54 62;
+  --ink: 244 244 248;
+  --muted: 156 156 168;
+  --accent: 236 146 138;
+  --accent-ink: 36 14 12;
+  --danger: 255 108 108;
+  --deep: 58 58 68;
+  --deep-ink: 248 248 252;
+  --deep-muted: 176 176 188;
+  --sun: 240 190 80;
+  --sun-ink: 52 36 0;
+  --exam: 58 58 68;
+  --warn: 255 176 60;
+  --training: 246 160 116;
+  --work: 128 160 200;
+  --study: 106 184 148;
+  --private: 240 192 80;
   color-scheme: dark;
 }
 
@@ -60,31 +57,31 @@
 .cat-study { --c: var(--study); }
 .cat-private { --c: var(--private); }
 
-/* Eigene Kategorien: gedämpfte Farben, überschreiben die des Grundbereichs */
-.col-teal { --c: 38 112 104; }
-.col-sky { --c: 46 104 148; }
-.col-indigo { --c: 72 74 140; }
-.col-violet { --c: 110 72 130; }
-.col-pink { --c: 160 66 104; }
-.col-red { --c: 176 52 40; }
-.col-orange { --c: 184 98 36; }
-.col-amber { --c: 150 112 20; }
-.col-lime { --c: 92 116 32; }
-.col-green { --c: 52 112 64; }
-.col-slate { --c: 84 92 102; }
-.col-brown { --c: 120 86 60; }
-:root.dark .col-teal { --c: 110 190 178; }
-:root.dark .col-sky { --c: 120 170 214; }
-:root.dark .col-indigo { --c: 150 152 214; }
-:root.dark .col-violet { --c: 184 150 204; }
-:root.dark .col-pink { --c: 222 140 172; }
-:root.dark .col-red { --c: 236 120 104; }
-:root.dark .col-orange { --c: 230 156 100; }
-:root.dark .col-amber { --c: 216 180 90; }
-:root.dark .col-lime { --c: 170 196 100; }
-:root.dark .col-green { --c: 124 190 136; }
-:root.dark .col-slate { --c: 160 168 178; }
-:root.dark .col-brown { --c: 198 160 128; }
+/* Eigene Kategorien überschreiben die Farbe des Grundbereichs */
+.col-teal { --c: 64 160 150; }
+.col-sky { --c: 90 150 205; }
+.col-indigo { --c: 120 120 190; }
+.col-violet { --c: 150 110 190; }
+.col-pink { --c: 214 110 150; }
+.col-red { --c: 215 90 85; }
+.col-orange { --c: 238 140 92; }
+.col-amber { --c: 224 170 52; }
+.col-lime { --c: 140 180 80; }
+.col-green { --c: 70 150 105; }
+.col-slate { --c: 120 132 150; }
+.col-brown { --c: 165 120 90; }
+:root.dark .col-teal { --c: 100 200 190; }
+:root.dark .col-sky { --c: 130 185 235; }
+:root.dark .col-indigo { --c: 160 160 225; }
+:root.dark .col-violet { --c: 190 150 225; }
+:root.dark .col-pink { --c: 240 140 175; }
+:root.dark .col-red { --c: 245 130 125; }
+:root.dark .col-orange { --c: 246 160 116; }
+:root.dark .col-amber { --c: 240 192 80; }
+:root.dark .col-lime { --c: 175 215 115; }
+:root.dark .col-green { --c: 110 195 150; }
+:root.dark .col-slate { --c: 170 182 200; }
+:root.dark .col-brown { --c: 210 165 135; }
 
 @layer base {
   html,
@@ -94,7 +91,6 @@
   }
   body {
     @apply bg-canvas font-sans text-ink antialiased;
-    font-feature-settings: 'ss01', 'cv11';
     /* iPhone: nicht unter Statusleiste, Notch oder Home-Balken zeichnen (Home-Bildschirm-App) */
     padding-top: env(safe-area-inset-top);
     padding-left: env(safe-area-inset-left);
@@ -104,86 +100,100 @@
   button {
     @apply cursor-pointer;
   }
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: rgb(var(--accent));
+  }
   :focus-visible {
     @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-canvas;
   }
 }
 
 @layer components {
-  /* Zeiten, Daten, Dauern, Zahlen: Monospace mit festen Ziffernbreiten, damit alles untereinander steht */
+  /* Zeiten und Zahlen: gleich breite Ziffern, damit alles untereinander steht */
   .tnum {
-    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     font-variant-numeric: tabular-nums;
-    font-size: 0.92em;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
   }
   .btn {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded px-4 text-sm font-medium transition duration-150 disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40;
   }
   .btn-primary {
-    @apply btn bg-accent text-accentink hover:bg-accent/90;
+    @apply btn rounded-full bg-accent text-accentink shadow-pop hover:brightness-105;
   }
   .btn-sun {
-    @apply btn bg-sun font-semibold text-sunink hover:brightness-105;
+    @apply btn bg-sun text-sunink hover:brightness-105;
   }
   .btn-ghost {
     @apply btn text-ink hover:bg-surface2;
   }
   .btn-outline {
-    @apply btn border border-line bg-transparent text-ink hover:bg-surface2;
+    @apply btn bg-surface text-ink shadow-card hover:bg-surface2;
   }
   .field {
-    @apply min-h-11 w-full rounded-md border border-line bg-surface px-3 text-base text-ink md:text-sm placeholder:text-muted/70 transition-colors duration-150 hover:border-muted/50;
+    @apply min-h-11 w-full rounded-xl border border-line bg-surface px-3.5 text-base text-ink md:text-sm placeholder:text-muted/70 transition-colors duration-150 hover:border-muted/50;
   }
   .label {
-    @apply mb-1 block text-xs font-medium text-muted;
+    @apply mb-1 block text-xs font-semibold text-muted;
   }
-  /* Kleine Abschnitts-Beschriftung, normale Schreibweise */
   .eyebrow {
-    @apply text-[13px] font-medium text-muted;
+    @apply text-[13px] font-semibold text-muted;
   }
   .h-display {
-    @apply font-display font-semibold tracking-[-0.025em];
+    @apply font-display font-bold tracking-[-0.035em];
   }
-  /* Abschnittstitel: klein, mit Linie darüber (Fahrplan-Stil) */
+  /* Abschnittstitel */
   .h-section {
-    @apply font-display text-[15px] font-semibold tracking-[-0.005em];
+    @apply font-display text-[18px] font-bold tracking-[-0.02em];
   }
+  /* Weisse, weich abgesetzte Karte */
   .panel {
-    @apply rounded bg-surface;
+    @apply rounded-2xl bg-surface shadow-card;
   }
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold;
   }
-  /* Abschnitt mit 1-px-Linie oben statt Karte */
+  /* Früher Linie oben, jetzt Karte */
   .rule {
-    @apply border-t border-line pt-4;
+    @apply rounded-2xl bg-surface p-4 shadow-card md:p-5;
+  }
+  /* Farbiger Block für Termine und Aufgaben (Tagesplan): getönter Grund, Icon-Kreis in Kategoriefarbe */
+  .block-cat {
+    @apply rounded-2xl bg-cat/[0.13] transition duration-150;
+  }
+  .dot-cat {
+    @apply flex shrink-0 items-center justify-center rounded-full bg-cat text-white;
   }
 }
 
 @keyframes sheet-in {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
 }
 @keyframes pop {
   0% { transform: scale(1); }
-  40% { transform: scale(1.12); }
+  40% { transform: scale(1.2); }
   100% { transform: scale(1); }
 }
-.anim-pop { animation: pop 180ms ease-out; }
+.anim-pop { animation: pop 220ms ease-out; }
 @keyframes grow {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
 }
-.anim-grow { transform-origin: left; animation: grow 300ms cubic-bezier(.2,.7,.2,1); }
+.anim-grow { transform-origin: left; animation: grow 400ms cubic-bezier(.2,.7,.2,1); }
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-.anim-sheet { animation: sheet-in 160ms ease-out; }
+.anim-sheet { animation: sheet-in 200ms ease-out; }
 .anim-fade { animation: fade-in 150ms ease-out; }
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgb(var(--accent) / 0.45); }
+  100% { box-shadow: 0 0 0 10px rgb(var(--accent) / 0); }
+}
+.anim-pulse { animation: pulse-ring 1.8s ease-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .anim-sheet, .anim-fade, .anim-pop, .anim-grow { animation: none; }
+  .anim-sheet, .anim-fade, .anim-pop, .anim-grow, .anim-pulse { animation: none; }
   * { transition-duration: 0.01ms !important; }
 }

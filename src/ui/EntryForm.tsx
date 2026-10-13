@@ -185,7 +185,7 @@ export default function EntryForm({ initial, editing, onSave, onCancel, examName
                 type="button"
                 onClick={() => set('priority', p)}
                 aria-pressed={v.priority === p}
-                className={`min-h-10 rounded border px-3 text-sm transition-colors ${
+                className={`min-h-10 rounded-full border px-4 text-sm transition-colors ${
                   v.priority === p ? 'border-accent bg-accent/10 font-medium text-ink' : 'border-line text-muted hover:text-ink'
                 }`}
               >

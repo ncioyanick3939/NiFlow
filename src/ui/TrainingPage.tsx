@@ -68,7 +68,7 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
       )}
 
       {!state ? (
-        <div className="rounded border border-line bg-surface">
+        <div className="rounded-3xl bg-surface shadow-card">
           <EmptyState
             icon="activity"
             title={demo ? 'Im Demo-Modus nicht verfügbar' : 'Intervals.icu ist noch nicht verbunden'}
@@ -122,7 +122,7 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
           {/* Einheiten nach Wochen */}
           <section className="min-w-0 space-y-6 lg:col-span-8">
             {items.length === 0 ? (
-              <div className="rounded border border-line bg-surface">
+              <div className="rounded-3xl bg-surface shadow-card">
                 <EmptyState icon="activity" title="Keine Trainings" text="In Intervals.icu sind für diesen Zeitraum keine Einheiten eingetragen." />
               </div>
             ) : (
@@ -139,7 +139,7 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
                         return (
                           <li key={e.id}>
                             <button type="button" onClick={() => onOpen(e)} className={`cat-training flex min-h-14 w-full items-center gap-4 py-3 text-left transition-colors duration-150 hover:bg-surface2/50 ${missed ? 'opacity-55' : ''}`}>
-                              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-sm ${e.completed ? 'bg-cat text-surface' : 'border border-dashed border-cat/60 text-cat'}`}>
+                              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${e.completed ? 'bg-cat text-surface' : 'border border-dashed border-cat/60 text-cat'}`}>
                                 <Icon name={sportIcon(e.sport)} size={20} />
                               </span>
                               <span className="min-w-0 flex-1">
@@ -178,7 +178,7 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
               <button type="button" onClick={() => onOpen(next)} className="cat-training rule block w-full text-left">
                 <span className="text-sm text-muted">Nächste Einheit</span>
                 <span className="mt-2 flex items-center gap-4">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-cat text-surface">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cat text-surface">
                     <Icon name={sportIcon(next.sport)} size={22} />
                   </span>
                   <span className="min-w-0">

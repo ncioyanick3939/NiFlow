@@ -11,8 +11,7 @@
     "check": "tsx scripts/check-logic.ts"
   },
   "dependencies": {
-    "@fontsource/instrument-sans": "^5.3.0",
-    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
     "@supabase/supabase-js": "^2.117.3",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"

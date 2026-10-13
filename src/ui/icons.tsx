@@ -108,6 +108,26 @@ const PATHS: Record<string, ReactElement> = {
   refresh: <path d="M20 11A8 8 0 0 0 5.5 7M4 4v4h4M4 13a8 8 0 0 0 14.5 4M20 20v-4h-4" />,
   logout: <path d="M10 4H5v16h5M15 8l4 4-4 4M9 12h10" />,
   arrowRight: <path d="M5 12h14M13 6l6 6-6 6" />,
+  briefcase: (
+    <>
+      <rect x="3" y="7" width="18" height="13" rx="3" />
+      <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 13h18" />
+    </>
+  ),
+  book: (
+    <>
+      <path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z" />
+      <path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3M9 7h6" />
+    </>
+  ),
+  heart: <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />,
+  sparkle: <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.7 2 2 .7-2 .7L19 21l-.7-1.6-2-.7 2-.7z" />,
+  inbox: (
+    <>
+      <path d="M3 13l2.5-7.2A2 2 0 0 1 7.4 4.5h9.2a2 2 0 0 1 1.9 1.3L21 13" />
+      <path d="M3 13v4a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-4h-5l-1 2.5h-6L8 13z" />
+    </>
+  ),
   dumbbell: <path d="M6 8v8M3 10v4M18 8v8M21 10v4M6 12h12" />,
   bike: (
     <>
@@ -171,4 +191,12 @@ export function sportIcon(sport?: string): IconName {
   if (s.includes('ride') || s.includes('bike') || s.includes('cycl')) return 'bike'
   if (s.includes('run')) return 'run'
   return 'dumbbell'
+}
+
+/** Icon passend zur Kategorie (Training: nach Sportart). */
+export function categoryIcon(category: string, sport?: string): IconName {
+  if (category === 'training') return sportIcon(sport)
+  if (category === 'work') return 'briefcase'
+  if (category === 'study') return 'book'
+  return 'heart'
 }

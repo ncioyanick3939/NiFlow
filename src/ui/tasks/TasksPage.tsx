@@ -77,35 +77,34 @@ export default function TasksPage({ tasks, exams, now, loading, error, readOnly,
         onClick={() => setView(v)}
         className={
           compact
-            ? `relative flex min-h-11 shrink-0 items-center gap-2 px-3 text-sm transition-colors duration-150 ${on ? 'font-semibold text-ink' : 'text-muted'}`
-            : `relative flex min-h-11 w-full items-center gap-3 pl-4 pr-1 text-left text-[15px] transition-colors duration-150 ${
-                on ? 'font-semibold text-ink' : 'text-muted hover:text-ink'
+            ? `relative flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-bold shadow-card transition-colors duration-150 ${on ? 'bg-accent text-accentink' : 'bg-surface text-muted'}`
+            : `relative flex min-h-11 w-full items-center gap-3 rounded-2xl px-4 text-left text-[15px] transition-colors duration-150 ${
+                on ? 'bg-accent/[0.12] font-bold text-accent' : 'font-semibold text-muted hover:bg-surface hover:text-ink'
               }`
         }
       >
-        <span className={compact ? `absolute inset-x-2 bottom-0 h-[2px] ${on ? 'bg-accent' : ''}` : `absolute inset-y-2 left-0 w-[2px] ${on ? 'bg-accent' : ''}`} aria-hidden="true" />
         <span className={compact ? '' : 'mr-auto'}>{VIEW_LABEL[v]}</span>
         {v !== 'done' && v !== 'all' && n > 0 && (
-          <span className={`tnum text-xs ${v === 'overdue' ? 'font-semibold text-danger' : 'text-muted'}`}>{n}</span>
+          <span className={`tnum rounded-full px-1.5 text-xs font-bold ${v === 'overdue' ? 'bg-danger text-white' : on ? (compact ? 'text-accentink/80' : 'text-accent') : 'text-muted'}`}>{n}</span>
         )}
       </button>
     )
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-5 pb-28 pt-6 md:px-8 md:pb-12 md:pt-8 lg:px-10">
-      <div className="grid gap-6 lg:grid-cols-[220px,minmax(0,1fr)] lg:gap-10">
+    <div className="mx-auto w-full max-w-[1240px] px-4 pb-36 pt-5 md:px-8 md:pb-12 md:pt-8 lg:px-10">
+      <div className="grid gap-6 lg:grid-cols-[230px,minmax(0,1fr)] lg:gap-10">
         {/* Ansichten */}
         <aside className="min-w-0 lg:sticky lg:top-8 lg:self-start">
-          <h1 className="h-display mb-4 text-[28px] leading-tight md:text-[34px] lg:pl-4">Aufgaben</h1>
-          <div role="tablist" aria-label="Ansicht" className="-mx-5 flex overflow-x-auto border-b border-line px-3 lg:hidden">
+          <h1 className="h-display mb-4 text-[30px] leading-tight md:text-[36px] lg:pl-4">Aufgaben</h1>
+          <div role="tablist" aria-label="Ansicht" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2 md:-mx-8 md:px-8 lg:hidden">
             {VIEWS.map((v) => viewButton(v, true))}
           </div>
           <div role="tablist" aria-label="Ansicht" className="hidden lg:block">
             {VIEWS.map((v) => viewButton(v, false))}
           </div>
           <div className="mt-6 hidden lg:block">
-            <p className="eyebrow mb-1 border-t border-line pl-4 pt-4">Kategorie</p>
+            <p className="eyebrow mb-1 pl-4">Kategorie</p>
             <div className="space-y-0.5">
               {CATEGORIES.map((c) => (
                 <button
@@ -113,9 +112,9 @@ export default function TasksPage({ tasks, exams, now, loading, error, readOnly,
                   type="button"
                   aria-pressed={cat === c}
                   onClick={() => setCat(cat === c ? '' : c)}
-                  className={`${catClass(c)} flex min-h-11 w-full items-center gap-3 pl-4 pr-1 text-left text-sm transition-colors duration-150 ${cat === c ? 'font-semibold text-ink' : 'text-muted hover:text-ink'}`}
+                  className={`${catClass(c)} flex min-h-11 w-full items-center gap-3 rounded-2xl px-4 text-left text-sm transition-colors duration-150 ${cat === c ? 'bg-cat/[0.14] font-bold text-ink' : 'font-semibold text-muted hover:bg-surface hover:text-ink'}`}
                 >
-                  <span className="h-2 w-2 bg-cat" aria-hidden="true" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-cat" aria-hidden="true" />
                   {CATEGORY_LABEL[c]}
                   <span className="tnum ml-auto text-xs">{tasks.filter((t) => t.category === c && t.status !== 'done').length || ''}</span>
                 </button>
@@ -128,33 +127,33 @@ export default function TasksPage({ tasks, exams, now, loading, error, readOnly,
         <section className="min-w-0">
           <div className="mb-3 flex flex-wrap items-center gap-2 lg:pt-3">
             <h2 className="h-section mr-auto">
-              {VIEW_LABEL[view]} <span className="tnum font-normal text-muted">{list.length}</span>
+              {VIEW_LABEL[view]} <span className="tnum rounded-full bg-surface2 px-2 text-sm font-bold text-muted">{list.length}</span>
             </h2>
             <label className="sr-only" htmlFor="t-sort">Sortieren</label>
-            <select id="t-sort" className="field min-h-11 w-auto rounded py-0 text-base md:min-h-9 md:text-xs" value={sort} onChange={(e) => setSort(e.target.value as TaskSort)} disabled={view === 'done'}>
+            <select id="t-sort" className="field min-h-11 w-auto rounded-full py-0 pr-8 text-base font-semibold md:min-h-10 md:text-xs" value={sort} onChange={(e) => setSort(e.target.value as TaskSort)} disabled={view === 'done'}>
               <option value="due">Nach Fälligkeit</option>
               <option value="priority">Nach Priorität</option>
               <option value="category">Nach Kategorie</option>
             </select>
             <label className="sr-only" htmlFor="t-cat">Kategorie</label>
-            <select id="t-cat" className="field min-h-11 w-auto rounded py-0 text-base md:min-h-9 md:text-xs lg:hidden" value={cat} onChange={(e) => setCat(e.target.value as Category | '')}>
+            <select id="t-cat" className="field min-h-11 w-auto rounded-full py-0 pr-8 text-base font-semibold md:min-h-10 md:text-xs lg:hidden" value={cat} onChange={(e) => setCat(e.target.value as Category | '')}>
               <option value="">Alle Kategorien</option>
               {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
             </select>
             <label className="sr-only" htmlFor="t-prio">Priorität</label>
-            <select id="t-prio" className="field min-h-11 w-auto rounded py-0 text-base md:min-h-9 md:text-xs" value={prio} onChange={(e) => setPrio(e.target.value as Priority | '')}>
+            <select id="t-prio" className="field min-h-11 w-auto rounded-full py-0 pr-8 text-base font-semibold md:min-h-10 md:text-xs" value={prio} onChange={(e) => setPrio(e.target.value as Priority | '')}>
               <option value="">Alle Prioritäten</option>
               {(['urgent', 'high', 'medium', 'low'] as Priority[]).map((p) => <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>)}
             </select>
             {!readOnly && (
-              <button type="button" className="btn-primary min-h-11 md:min-h-9" onClick={() => onCreate(view === 'today' ? { dueDate: toDateInput(now) } : {})}>
+              <button type="button" className="btn-primary min-h-11 rounded-full md:min-h-10" onClick={() => onCreate(view === 'today' ? { dueDate: toDateInput(now) } : {})}>
                 <Icon name="plus" size={16} /> Neue Aufgabe
               </button>
             )}
           </div>
 
           {error && (
-            <p className="mb-4 flex items-start gap-2 border-l-2 border-danger bg-surface px-4 py-3 text-sm" role="alert">
+            <p className="mb-4 flex items-start gap-2 rounded-2xl bg-danger/10 px-4 py-3 text-sm" role="alert">
               <Icon name="alert" size={16} className="mt-0.5 shrink-0 text-danger" /> {error}
             </p>
           )}
@@ -170,10 +169,10 @@ export default function TasksPage({ tasks, exams, now, loading, error, readOnly,
             </p>
           )}
 
-          <div className="border-t border-line">
+          <div className="rounded-3xl bg-surface p-2 shadow-card md:p-3">
             {!readOnly && view !== 'done' && (
-              <form onSubmit={quickAdd} className="flex items-center gap-1 border-b border-line transition-colors focus-within:bg-surface">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center text-accent"><Icon name="plus" size={19} /></span>
+              <form onSubmit={quickAdd} className="mb-1 flex items-center gap-1 rounded-2xl bg-surface2 pr-2 transition-colors focus-within:ring-2 focus-within:ring-accent">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center text-accent"><Icon name="plus" size={20} /></span>
                 <label htmlFor="t-quick" className="sr-only">Neue Aufgabe</label>
                 <input
                   id="t-quick"
@@ -190,7 +189,7 @@ export default function TasksPage({ tasks, exams, now, loading, error, readOnly,
             {quickErr && <p className="mb-2 px-3 text-xs text-danger" role="alert">{quickErr}</p>}
 
             {view === 'today' && overdueCount > 0 && (
-              <button type="button" onClick={() => setView('overdue')} className="flex min-h-11 w-full items-center gap-3 border-b border-line px-3 text-left text-sm font-medium text-danger transition-colors hover:bg-surface2/60">
+              <button type="button" onClick={() => setView('overdue')} className="mb-1 flex min-h-11 w-full items-center gap-3 rounded-2xl bg-danger/10 px-3 text-left text-sm font-bold text-danger transition-colors hover:bg-danger/15">
                 <Icon name="alert" size={16} /> {overdueCount} überfällige Aufgabe{overdueCount > 1 ? 'n' : ''} ansehen
               </button>
             )}
@@ -215,12 +214,12 @@ export default function TasksPage({ tasks, exams, now, loading, error, readOnly,
               groups.map((g) => (
                 <div key={g.key}>
                   {g.label && groups.length > 1 && (
-                    <h3 className={`flex items-center gap-2 border-b border-line pb-1.5 pt-5 text-[13px] font-semibold ${g.tone === 'danger' ? 'text-danger' : 'text-muted'}`}>
+                    <h3 className={`flex items-center gap-2 px-3 pb-1 pt-4 text-[13px] font-bold ${g.tone === 'danger' ? 'text-danger' : 'text-muted'}`}>
                       {g.label}
                       <span className="tnum font-normal">{g.tasks.length}</span>
                     </h3>
                   )}
-                  <div className={`divide-y divide-line ${g.tone === 'muted' && g.key === 'done' ? 'opacity-80' : ''}`}>
+                  <div className={`space-y-0.5 ${g.tone === 'muted' && g.key === 'done' ? 'opacity-80' : ''}`}>
                     {g.tasks.map((t) => (
                       <TaskRow key={t.id} task={t} now={now} exam={t.examId ? examById.get(t.examId) : undefined} readOnly={readOnly} onToggle={onToggle} onOpen={onOpen} />
                     ))}

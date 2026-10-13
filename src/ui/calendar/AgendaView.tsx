@@ -23,7 +23,7 @@ export default function AgendaView({ from, days, events, now, onOpen, onCreate }
 
   if (groups.length === 0) {
     return (
-      <div className="rounded border border-line bg-surface">
+      <div className="rounded-3xl bg-surface shadow-card">
         <EmptyState
           icon="calendar"
           title={`Keine Einträge in den nächsten ${days} Tagen`}

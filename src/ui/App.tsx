@@ -374,9 +374,10 @@ export default function App() {
       />
       <main className="min-w-0 flex-1 overflow-x-clip">
         {demo && !connected && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line bg-surface px-5 py-2.5 text-sm md:px-8 lg:px-10">
-            <span className="font-semibold">Demo</span>
-            <span className="mr-auto text-muted">Erfundene Beispieldaten. Zum Speichern eigener Einträge anmelden.</span>
+          <div className="flex items-center gap-x-4 bg-surface px-5 py-1 text-sm md:px-8 lg:px-10">
+            <span className="font-bold sm:mr-0">Demo-Daten</span>
+            <span className="mr-auto hidden text-muted sm:inline">Erfundene Beispieldaten. Zum Speichern eigener Einträge anmelden.</span>
+            <span className="mr-auto sm:hidden" />
             <button type="button" className="min-h-11 font-medium text-accent hover:underline md:min-h-0" onClick={() => void connectGoogle()}>
               Anmelden
             </button>
@@ -514,24 +515,24 @@ export default function App() {
         )}
       </main>
 
-      <BottomBar active={section} onNavigate={navigate} onMore={() => setSheet({ kind: 'more' })} badge={overdueCount} />
+      <BottomBar active={section} onNavigate={navigate} onMore={() => setSheet({ kind: 'more' })} badge={overdueCount} withFab={!readOnly && section !== 'settings' && section !== 'training'} />
 
       {!readOnly && section !== 'settings' && section !== 'training' && (
         <button
           type="button"
           onClick={fab}
-          className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 flex h-14 w-14 items-center justify-center rounded bg-accent text-accentink shadow-float transition-transform duration-150 active:scale-95 md:hidden"
+          className="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] right-3 z-30 flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-full bg-accent text-accentink shadow-pop transition-transform duration-150 active:scale-95 md:hidden"
           aria-label={section === 'tasks' ? 'Neue Aufgabe' : section === 'exams' ? 'Neue Prüfung' : 'Neu erstellen'}
         >
-          <Icon name="plus" size={24} />
+          <Icon name="plus" size={30} />
         </button>
       )}
 
       {toast && (
-        <div role="status" className="anim-sheet fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-4 rounded bg-deep py-2.5 pl-4 pr-2 text-sm text-deepink shadow-float md:bottom-6">
+        <div role="status" className="anim-sheet fixed bottom-[calc(6.5rem+env(safe-area-inset-bottom))] left-1/2 z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-4 rounded-2xl bg-deep py-2.5 pl-4 pr-2 text-sm text-deepink shadow-float md:bottom-6">
           <span className="min-w-0">{toast.msg}</span>
           {toast.action && (
-            <button type="button" onClick={toast.action.run} className="min-h-9 shrink-0 rounded-sm bg-accent px-3 text-sm font-semibold text-accentink">
+            <button type="button" onClick={toast.action.run} className="min-h-9 shrink-0 rounded-xl bg-accent px-3 text-sm font-semibold text-accentink">
               {toast.action.label}
             </button>
           )}
@@ -606,22 +607,22 @@ export default function App() {
           <ExamForm key={sheet.editId ?? 'new'} initial={sheet.input} editing={!!sheet.editId} onSave={(v) => saveExam(v, sheet.editId)} onCancel={close} />
         )}
         {sheet?.kind === 'create' && (
-          <div className="grid grid-cols-2 border-l border-t border-line">
+          <div className="grid grid-cols-2 gap-3">
             {(
               [
-                { icon: 'calendar', label: 'Termin', text: 'Mit Uhrzeit im Kalender', go: () => create(startOfDay(now)) },
-                { icon: 'tasks', label: 'Aufgabe', text: 'Mit Fälligkeit und Priorität', go: () => createTaskSheet() },
-                { icon: 'note', label: 'Notiz', text: 'An einem Tag, ohne Uhrzeit', go: () => createNote(now) },
-                { icon: 'exam', label: 'Prüfung', text: 'Mit Lernaufgaben planen', go: () => createExamSheet() },
-              ] as { icon: IconName; label: string; text: string; go: () => void }[]
+                { icon: 'calendar', label: 'Termin', text: 'Mit Uhrzeit im Kalender', tint: 'cat-work', go: () => create(startOfDay(now)) },
+                { icon: 'tasks', label: 'Aufgabe', text: 'Mit Fälligkeit und Priorität', tint: 'cat-private', go: () => createTaskSheet() },
+                { icon: 'note', label: 'Notiz', text: 'An einem Tag, ohne Uhrzeit', tint: 'col-amber', go: () => createNote(now) },
+                { icon: 'exam', label: 'Prüfung', text: 'Mit Lernaufgaben planen', tint: 'cat-training', go: () => createExamSheet() },
+              ] as { icon: IconName; label: string; text: string; tint: string; go: () => void }[]
             ).map((o) => (
-              <button key={o.label} type="button" onClick={o.go} className="flex flex-col items-start gap-3 border-b border-r border-line p-4 text-left transition-colors duration-150 hover:bg-surface2">
-                <span className="text-accent">
+              <button key={o.label} type="button" onClick={o.go} className={`${o.tint} flex flex-col items-start gap-3 rounded-3xl bg-cat/[0.13] p-4 text-left transition duration-150 hover:bg-cat/[0.2] active:scale-[0.98]`}>
+                <span className="dot-cat h-11 w-11">
                   <Icon name={o.icon} size={20} />
                 </span>
                 <span>
-                  <span className="block text-sm font-semibold">{o.label}</span>
-                  <span className="block text-xs text-muted">{o.text}</span>
+                  <span className="block text-[15px] font-extrabold">{o.label}</span>
+                  <span className="block text-xs font-medium text-muted">{o.text}</span>
                 </span>
               </button>
             ))}
@@ -643,20 +644,20 @@ export default function App() {
         {sheet?.kind === 'more' && (
           <div className="space-y-4">
             <div className="space-y-1">
-              <button type="button" onClick={() => setSheet({ kind: 'search' })} className="flex min-h-12 w-full items-center gap-3 rounded-md px-3 text-left transition-colors hover:bg-surface2">
+              <button type="button" onClick={() => setSheet({ kind: 'search' })} className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-left transition-colors hover:bg-surface2">
                 <Icon name="search" size={20} className="text-muted" />
                 <span className="flex-1 font-medium">Suchen</span>
                 <Icon name="chevronRight" size={16} className="text-muted" />
               </button>
               {SECTIONS.filter((s) => s.id === 'activities' || s.id === 'training' || s.id === 'settings').map((s) => (
-                <button key={s.id} type="button" onClick={() => navigate(s.id)} className="flex min-h-12 w-full items-center gap-3 rounded-md px-3 text-left transition-colors hover:bg-surface2">
-                  <Icon name={s.icon} size={20} className="text-muted" />
+                <button key={s.id} type="button" onClick={() => navigate(s.id)} className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-left transition-colors hover:bg-surface2">
+                  <Icon name={s.icon} size={20} className="text-accent" />
                   <span className="flex-1 font-medium">{s.label}</span>
                   <Icon name="chevronRight" size={16} className="text-muted" />
                 </button>
               ))}
             </div>
-            <div className="border-t border-line pt-4">
+            <div className="pt-2">
               <span className="label">Farbschema</span>
               <Segmented
                 label="Farbschema"

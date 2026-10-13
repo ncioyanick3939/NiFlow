@@ -129,7 +129,7 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
   }
 
   return (
-    <div className="overflow-hidden rounded border border-line bg-surface">
+    <div className="overflow-hidden rounded-3xl bg-surface shadow-card">
       {multi && (
         <div className="grid border-b border-line/70" style={{ gridTemplateColumns: cols }}>
           <div />
@@ -144,7 +144,7 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
                 aria-label={`${formatWeekdayShort(d)} ${d.getDate()}. öffnen`}
               >
                 <span className={`text-xs font-medium ${today ? 'text-ink' : 'text-muted'}`}>{formatWeekdayShort(d)}</span>
-                <span className={`tnum flex h-8 min-w-8 items-center justify-center rounded-sm px-1 text-[16px] font-medium ${today ? 'bg-accent text-accentink' : ''}`}>
+                <span className={`tnum flex h-9 min-w-9 items-center justify-center rounded-full px-1 text-[16px] font-bold ${today ? 'bg-accent text-accentink' : ''}`}>
                   {d.getDate()}
                 </span>
               </button>

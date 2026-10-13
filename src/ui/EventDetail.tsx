@@ -44,7 +44,7 @@ export default function EventDetail({ event: e, readOnly, onEdit, onMove, onDele
   return (
     <div className={`${evClass(e)} space-y-5`}>
       <div className="flex gap-3">
-        <span className="w-1 shrink-0 bg-cat" aria-hidden="true" />
+        <span className="w-1.5 shrink-0 rounded-full bg-cat" aria-hidden="true" />
         <div className="min-w-0">
           <p className="eyebrow flex items-center gap-2">
             {e.source === 'intervals' && <Icon name={sportIcon(e.sport)} size={14} />}

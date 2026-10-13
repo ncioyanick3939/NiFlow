@@ -44,7 +44,7 @@ export default function MonthView({ selected, month, events, now, onOpen, onPick
   const visible = days[35].getMonth() !== month.getMonth() ? days.slice(0, 35) : days
 
   return (
-    <div className="overflow-hidden rounded border border-line bg-surface">
+    <div className="overflow-hidden rounded-3xl bg-surface shadow-card">
       <div className="grid grid-cols-7 border-b border-line/70">
         {WEEKDAYS.map((w) => (
           <div key={w} className="py-2.5 text-center text-xs font-medium text-muted">

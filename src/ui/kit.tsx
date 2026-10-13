@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { formatDuration, formatTime, minutesBetween } from '../domain/dateUtils'
 import { CATEGORY_LABEL, PRIORITY_LABEL } from '../domain/types'
 import type { CalendarEvent, Category, Priority } from '../domain/types'
-import Icon from './icons'
+import Icon, { categoryIcon } from './icons'
 
 export const CATEGORIES: Category[] = ['training', 'work', 'study', 'private']
 
@@ -12,7 +12,7 @@ export const CATEGORIES: Category[] = ['training', 'work', 'study', 'private']
 export const catClass = (c: Category) => `cat-${c}`
 
 export function CategoryDot({ category, className = '' }: { category: Category; className?: string }) {
-  return <span className={`${catClass(category)} inline-block h-2 w-2 shrink-0 bg-cat ${className}`} aria-hidden="true" />
+  return <span className={`${catClass(category)} inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-cat ${className}`} aria-hidden="true" />
 }
 
 const fmtDayShort = new Intl.DateTimeFormat('de-CH', { weekday: 'short', day: 'numeric', month: 'short' })
@@ -62,7 +62,7 @@ export function PriorityTag({ p }: { p?: Priority }) {
   )
 }
 
-/** Eine Zeile in Listen (Agenda, Tagesleiste, Aktivitäten): Zeit links in Monospace, dann Titel und Angaben. */
+/** Eine Zeile in Listen (Agenda, Tagesleiste, Aktivitäten): Zeit links, dann ein farbiger Block mit Titel und Angaben. */
 export function EventRow({ e, onOpen, showDay = false, dim = false }: { e: CalendarEvent; onOpen: (e: CalendarEvent) => void; showDay?: boolean; dim?: boolean }) {
   const kind = kindLabel(e)
   const time = e.kind === 'note' ? 'Notiz' : e.allDay ? (e.kind === 'task' ? 'Fällig' : 'Ganztg.') : formatTime(e.start)
@@ -74,19 +74,18 @@ export function EventRow({ e, onOpen, showDay = false, dim = false }: { e: Calen
     <button
       type="button"
       onClick={() => onOpen(e)}
-      className={`${evClass(e)} group grid min-h-12 w-full grid-cols-[3.5rem,minmax(0,1fr)] items-start gap-3 py-2.5 text-left transition-colors duration-150 hover:bg-surface2/60 ${dim ? 'opacity-55' : ''}`}
+      className={`${evClass(e)} group my-1 grid min-h-14 w-full grid-cols-[3.25rem,minmax(0,1fr)] items-center gap-3 rounded-2xl px-1 py-1 text-left transition-colors duration-150 hover:bg-surface2/70 ${dim ? 'opacity-55' : ''}`}
     >
-      <span className={`tnum pt-px text-[13px] leading-5 ${e.allDay || e.kind === 'note' ? 'text-muted' : 'text-ink'}`}>{time}</span>
-      <span className="flex min-w-0 gap-2.5">
-        <span className={`mt-0.5 w-[3px] shrink-0 self-stretch ${e.kind === 'note' || e.kind === 'task' ? 'bg-cat/40' : 'bg-cat'}`} aria-hidden="true" />
+      <span className={`tnum text-center text-[13px] font-bold leading-5 ${e.allDay || e.kind === 'note' ? 'text-muted' : 'text-ink'}`}>{time}</span>
+      <span className="flex min-w-0 items-center gap-3 rounded-2xl bg-cat/[0.12] px-3 py-2.5">
+        <span className="dot-cat h-8 w-8" aria-hidden="true">
+          <Icon name={e.kind === 'task' ? (e.done ? 'checkCircle' : 'circle') : e.kind === 'note' ? 'note' : e.kind === 'exam' ? 'exam' : categoryIcon(e.category, e.sport)} size={16} />
+        </span>
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2">
-            {e.kind === 'task' && <Icon name={e.done ? 'checkCircle' : 'circle'} size={14} className="shrink-0 text-muted" />}
-            <span className={`truncate text-[15px] leading-5 ${e.done ? 'text-muted line-through' : 'font-medium'}`}>{e.title}</span>
-          </span>
-          <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-muted">
+          <span className={`block truncate text-[15px] leading-5 ${e.done ? 'text-muted line-through' : 'font-bold'}`}>{e.title}</span>
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12.5px] text-muted">
             {meta.length > 0 && <span className="tnum">{meta.join(' · ')}</span>}
-            {kind && e.kind !== 'note' && <span className="font-medium text-ink">{kind}</span>}
+            {kind && e.kind !== 'note' && <span className="font-semibold text-ink/80">{kind}</span>}
             <PriorityTag p={e.priority} />
             <SourceTag e={e} />
           </span>
@@ -132,17 +131,17 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center md:p-6" role="presentation">
-      <div className="anim-fade absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+      <div className="anim-fade absolute inset-0 bg-[rgb(20_22_50/0.45)] backdrop-blur-[2px]" onClick={onClose} aria-hidden="true" />
       <div
         ref={panel}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="anim-sheet relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-surface pb-[env(safe-area-inset-bottom)] shadow-sheet md:max-w-xl md:rounded-2xl"
+        className="anim-sheet relative max-h-[92vh] w-full overflow-y-auto rounded-t-[28px] bg-surface pb-[env(safe-area-inset-bottom)] shadow-sheet md:max-w-xl md:rounded-[28px]"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-surface px-6 pb-3 pt-4">
-          <h2 className="h-display text-lg">{title}</h2>
-          <button type="button" onClick={onClose} className="btn-ghost -mr-2 h-11 min-h-11 w-11 px-0" aria-label="Schliessen">
+        <div className="sticky top-0 z-10 flex items-center justify-between bg-surface px-6 pb-3 pt-5">
+          <h2 className="h-display text-xl">{title}</h2>
+          <button type="button" onClick={onClose} className="btn-ghost -mr-2 h-11 min-h-11 w-11 rounded-full bg-surface2 px-0" aria-label="Schliessen">
             <Icon name="x" size={18} />
           </button>
         </div>
@@ -166,7 +165,7 @@ export function Segmented<T extends string>({
   size?: 'sm' | 'md'
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded border border-line p-0.5">
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-full bg-surface2 p-1">
       {options.map((o) => (
         <button
           key={o.value}
@@ -174,8 +173,8 @@ export function Segmented<T extends string>({
           role="radio"
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
-          className={`rounded-sm px-3 font-medium transition-colors duration-150 ${size === 'sm' ? 'min-h-9 text-xs' : 'min-h-10 text-sm'} ${
-            value === o.value ? 'bg-deep text-deepink' : 'text-muted hover:text-ink'
+          className={`rounded-full px-3.5 font-semibold transition-colors duration-150 ${size === 'sm' ? 'min-h-9 text-xs' : 'min-h-10 text-sm'} ${
+            value === o.value ? 'bg-surface text-ink shadow-card' : 'text-muted hover:text-ink'
           }`}
         >
           {o.label}
@@ -188,7 +187,9 @@ export function Segmented<T extends string>({
 export function EmptyState({ icon, title, text, action }: { icon: Parameters<typeof Icon>[0]['name']; title: string; text: string; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center px-6 py-10 text-center">
-      <Icon name={icon} size={22} className="mb-3 text-muted" />
+      <span className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-accent/10 text-accent">
+        <Icon name={icon} size={24} />
+      </span>
       <p className="h-section">{title}</p>
       <p className="mt-1 max-w-xs text-sm text-muted">{text}</p>
       {action && <div className="mt-4">{action}</div>}

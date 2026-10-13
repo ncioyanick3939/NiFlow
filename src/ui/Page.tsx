@@ -11,7 +11,7 @@ interface Props {
   children: ReactNode
 }
 
-const WIDTH = { normal: 'max-w-[1200px]', narrow: 'max-w-[880px]', full: 'max-w-none' }
+const WIDTH = { normal: 'max-w-[1240px]', narrow: 'max-w-[880px]', full: 'max-w-none' }
 
 /**
  * Gemeinsamer Seitenrahmen: gleiche Ränder, gleiche Kopfzeile, gleiche Abstände auf allen Seiten.
@@ -19,10 +19,10 @@ const WIDTH = { normal: 'max-w-[1200px]', narrow: 'max-w-[880px]', full: 'max-w-
  */
 export default function Page({ title, sub, actions, width = 'normal', children }: Props) {
   return (
-    <div className={`mx-auto w-full ${WIDTH[width]} px-5 pb-28 pt-6 md:px-8 md:pb-12 md:pt-8 lg:px-10`}>
+    <div className={`mx-auto w-full ${WIDTH[width]} px-4 pb-36 pt-5 md:px-8 md:pb-12 md:pt-8 lg:px-10`}>
       <header className="mb-6 flex flex-wrap items-end gap-x-6 gap-y-3 md:mb-8">
         <div className="mr-auto min-w-0">
-          <h1 className="h-display truncate text-[28px] leading-tight md:text-[34px]">{title}</h1>
+          <h1 className="h-display truncate text-[30px] leading-tight md:text-[38px]">{title}</h1>
           {sub && <div className="mt-1 text-sm text-muted">{sub}</div>}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

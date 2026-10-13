@@ -79,7 +79,7 @@ export default function LabelsEditor({ readOnly, onChanged }: { readOnly: boolea
               </li>
             ) : (
               <li key={l.id} className={`${colorClass(l.category, l)} flex min-h-14 items-center gap-3 px-3 py-2`}>
-                <span className="h-3.5 w-3.5 shrink-0 rotate-45 rounded-[3px] bg-cat" aria-hidden="true" />
+                <span className="h-3.5 w-3.5 shrink-0 rounded-full bg-cat" aria-hidden="true" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{l.name}</span>
                   <span className="block text-xs text-muted">
@@ -133,7 +133,7 @@ export default function LabelsEditor({ readOnly, onChanged }: { readOnly: boolea
         <p className="text-xs text-muted">Im Demo-Modus nur zum Ansehen. Nach dem Anmelden legst du hier eigene an.</p>
       ) : (
         <form
-          className="rounded border border-line p-4"
+          className="rounded-2xl bg-surface2 p-4"
           onSubmit={async (ev) => {
             ev.preventDefault()
             const name = draft.name
@@ -184,7 +184,7 @@ function LabelFields({ value, onChange, idPrefix }: { value: Draft; onChange: (d
               type="button"
               aria-pressed={value.category === c}
               onClick={() => onChange({ ...value, category: c })}
-              className={`cat-${c} inline-flex min-h-9 items-center gap-2 rounded border px-3 text-xs transition-colors ${
+              className={`cat-${c} inline-flex min-h-9 items-center gap-2 rounded-full border px-3.5 text-xs transition-colors ${
                 value.category === c ? 'border-cat bg-cat/10 font-medium' : 'border-line text-muted hover:text-ink'
               }`}
             >
@@ -205,7 +205,7 @@ function LabelFields({ value, onChange, idPrefix }: { value: Draft; onChange: (d
               aria-label={LABEL_COLOR_NAME[c]}
               title={LABEL_COLOR_NAME[c]}
               onClick={() => onChange({ ...value, color: c })}
-              className={`col-${c} flex h-10 w-10 items-center justify-center rounded-sm bg-cat text-white transition-transform duration-150 hover:scale-105 ${
+              className={`col-${c} flex h-10 w-10 items-center justify-center rounded-full bg-cat text-white transition-transform duration-150 hover:scale-105 ${
                 value.color === c ? 'ring-2 ring-ink ring-offset-2 ring-offset-surface' : ''
               }`}
             >

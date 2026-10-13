@@ -76,7 +76,7 @@ export default function TaskForm({ initial, editing, exams, now, onSave, onCance
           ].map((q) => {
             const on = q.n === null ? !v.dueDate : v.dueDate === toDateInput(addDays(now, q.n))
             return (
-              <button key={q.l} type="button" onClick={() => quickDue(q.n)} aria-pressed={on} className={`min-h-9 rounded border px-3 text-xs transition-colors ${on ? 'border-accent bg-accent/10 font-medium' : 'border-line text-muted hover:text-ink'}`}>
+              <button key={q.l} type="button" onClick={() => quickDue(q.n)} aria-pressed={on} className={`min-h-9 rounded-full border px-3.5 text-xs transition-colors ${on ? 'border-accent bg-accent/10 font-medium' : 'border-line text-muted hover:text-ink'}`}>
                 {q.l}
               </button>
             )
@@ -110,7 +110,7 @@ export default function TaskForm({ initial, editing, exams, now, onSave, onCance
         <legend className="label">Priorität</legend>
         <div className="flex flex-wrap gap-1.5">
           {PRIOS.map((p) => (
-            <button key={p} type="button" onClick={() => set('priority', p)} aria-pressed={v.priority === p} className={`min-h-9 rounded border px-3 text-xs transition-colors ${v.priority === p ? 'border-accent bg-accent/10 font-medium' : 'border-line text-muted hover:text-ink'}`}>
+            <button key={p} type="button" onClick={() => set('priority', p)} aria-pressed={v.priority === p} className={`min-h-9 rounded-full border px-3.5 text-xs transition-colors ${v.priority === p ? 'border-accent bg-accent/10 font-medium' : 'border-line text-muted hover:text-ink'}`}>
               {PRIORITY_LABEL[p]}
             </button>
           ))}

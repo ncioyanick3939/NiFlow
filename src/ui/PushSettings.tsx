@@ -38,9 +38,9 @@ export default function PushSettings() {
     <div className="space-y-4">
       <p className="text-sm text-muted">Erinnerungen stellst du bei Terminen und Aufgaben ein, zum Beispiel «15 Minuten vorher».</p>
 
-      <div className="rounded border border-line p-4">
+      <div className="rounded-2xl bg-surface2 p-4">
         <div className="flex flex-wrap items-center gap-3">
-          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded ${on ? 'bg-ink text-canvas' : 'bg-surface2 text-muted'}`}>
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${on ? 'bg-accent text-accentink' : 'bg-surface text-muted'}`}>
             <Icon name="bell" size={18} />
           </span>
           <div className="mr-auto min-w-0">
