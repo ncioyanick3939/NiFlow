@@ -3,7 +3,7 @@
 // - Dateien mit Hash im Namen (JS/CSS) und Icons: aus dem Speicher, sonst Netz
 // - Daten (Supabase, Google, Intervals) werden NIE zwischengespeichert
 // - Erinnerungen per Web Push: auch wenn NiFlow geschlossen ist
-const CACHE = 'niflow-v5'
+const CACHE = 'niflow-v6'
 
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (event) => {
@@ -17,6 +17,9 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return
   const url = new URL(req.url)
   if (url.origin !== self.location.origin) return
+
+  // Statische Rechtstexte (Datenschutz, Nutzungsbedingungen): direkt vom Netz, nie als App-Startseite speichern
+  if (/\/(datenschutz|nutzungsbedingungen)\.html$/.test(url.pathname)) return
 
   if (req.mode === 'navigate') {
     event.respondWith(

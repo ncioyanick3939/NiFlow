@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { formatTime } from '../domain/dateUtils'
+import { DELETE_WORD, deleteConfirmed } from '../domain/authText'
 import { callIntervals } from '../sources/intervalsSource'
 import { callPush } from '../data/googlePush'
 import type { PushStatus } from '../data/googlePush'
@@ -12,6 +13,7 @@ import { Segmented } from './kit'
 import Page from './Page'
 import PushSettings from './PushSettings'
 import LabelsEditor from './LabelsEditor'
+import LegalLinks from './LegalLinks'
 import type { ThemeChoice } from './theme'
 
 interface Props {
@@ -28,11 +30,19 @@ interface Props {
   dash: Record<DashSection, boolean>
   onDash: (k: DashSection) => void
   onLabelsChanged: (deleted: boolean) => Promise<void>
+  /** Konto hat eine Google-Anmeldung (Kalender-Verbindung möglich) */
+  hasGoogle: boolean
+  /** Einwilligung zum KI-Planer und Widerruf */
+  aiConsent: boolean
+  onRevokeAi: () => void
+  /** Löscht das Konto samt Daten. Wirft bei Fehlern. */
+  onDeleteAccount: () => Promise<void>
 }
 
 type Message = { kind: 'ok' | 'error'; text: string } | null
 
-export default function SettingsView({ email, demo, states, theme, onTheme, onConnect, onSignOut, onChanged, push, onPush, dash, onDash, onLabelsChanged }: Props) {
+export default function SettingsView({ email, demo, states, theme, onTheme, onConnect, onSignOut, onChanged, push, onPush, dash, onDash, onLabelsChanged, hasGoogle, aiConsent, onRevokeAi, onDeleteAccount }: Props) {
+  const [confirmOut, setConfirmOut] = useState(false)
   const [key, setKey] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<Message>(null)
@@ -89,11 +99,22 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-sm font-bold text-accentink">{email[0]?.toUpperCase()}</span>
             <div className="mr-auto min-w-0">
               <p className="truncate text-sm font-medium">{email}</p>
-              <p className="text-xs text-muted">Angemeldet mit Google</p>
+              <p className="text-xs text-muted">{hasGoogle ? 'Angemeldet mit Google' : 'Angemeldet mit E-Mail und Passwort'}</p>
             </div>
-            <button type="button" className="btn-outline" onClick={onSignOut}>
-              <Icon name="logout" size={16} /> Abmelden
-            </button>
+            {confirmOut ? (
+              <div className="flex items-center gap-2">
+                <button type="button" className="btn-ghost" onClick={() => setConfirmOut(false)}>
+                  Abbrechen
+                </button>
+                <button type="button" className="btn-primary" onClick={onSignOut} autoFocus>
+                  <Icon name="logout" size={16} /> Ja, abmelden
+                </button>
+              </div>
+            ) : (
+              <button type="button" className="btn-outline" onClick={() => setConfirmOut(true)}>
+                <Icon name="logout" size={16} /> Abmelden
+              </button>
+            )}
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-3">
@@ -142,9 +163,15 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
             <SourceLine name="Eigene Einträge" detail="Gespeichert in deiner geschützten Datenbank" s={state('own')} />
             <SourceLine
               name="Google Kalender"
-              detail="Nur lesen. Eigene Einträge in Google eintragen folgt."
+              detail={hasGoogle ? 'Termine aus deinen Google-Kalendern, nur lesen.' : 'Nicht verbunden. Melde dich dafür mit Google an, am besten mit derselben E-Mail-Adresse wie bei NiFlow.'}
               s={state('google')}
-              action={state('google')?.status === 'error' && <button type="button" className="btn-outline min-h-9 text-xs" onClick={onConnect}>Neu verbinden</button>}
+              action={
+                (!hasGoogle || state('google')?.status === 'error') && (
+                  <button type="button" className="btn-outline min-h-9 text-xs" onClick={onConnect}>
+                    {hasGoogle ? 'Neu verbinden' : 'Mit Google verbinden'}
+                  </button>
+                )
+              }
             />
             <div className="py-4">
               <SourceLine name="Intervals.icu" detail="Geplante Trainings und Wettkämpfe, nur lesen" s={state('intervals')} bare />
@@ -186,7 +213,7 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
         </Group>
       )}
 
-      {email && (
+      {email && hasGoogle && (
         <Group title="In Google eintragen">
           <p className="mb-3 text-sm text-muted">
             Deine eigenen Termine (nicht Notizen und Aufgaben) erscheinen in einem eigenen Google-Kalender «NiFlow». Deine übrigen
@@ -237,6 +264,25 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
           <PushSettings />
         </Group>
       )}
+
+      <Group title="Datenschutz">
+        <LegalLinks className="text-sm" />
+        {email && (
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line pt-4">
+            <div className="mr-auto min-w-0">
+              <p className="text-sm font-medium">Planungs-Assistent (KI)</p>
+              <p className="text-xs text-muted">{aiConsent ? 'Du hast der Weitergabe an die KI zugestimmt.' : 'Noch nicht aktiviert. Beim ersten Öffnen fragen wir dich um Erlaubnis.'}</p>
+            </div>
+            {aiConsent && (
+              <button type="button" className="btn-outline min-h-9 text-xs" onClick={onRevokeAi}>
+                Einwilligung widerrufen
+              </button>
+            )}
+          </div>
+        )}
+      </Group>
+
+      {email && <DeleteAccount email={email} onDelete={onDeleteAccount} />}
       </div>
     </Page>
   )
@@ -268,5 +314,57 @@ function SourceLine({ name, detail, s, action, bare }: { name: string; detail: s
       </div>
       {action}
     </div>
+  )
+}
+
+/** Konto löschen: Erklärung, Bestätigungswort tippen, dann endgültig. */
+function DeleteAccount({ email, onDelete }: { email: string; onDelete: () => Promise<void> }) {
+  const [open, setOpen] = useState(false)
+  const [word, setWord] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <Group title="Konto löschen">
+      <p className="text-sm text-muted">
+        Löscht dein Konto <span className="font-medium text-ink">{email}</span> und alle Daten dauerhaft: Termine, Aufgaben, Prüfungen, Kategorien, gespeicherte Schlüssel und
+        Erinnerungen. Das kann nicht rückgängig gemacht werden. Der Kalender «NiFlow» in deinem Google-Konto bleibt bestehen. Lösche ihn vorher unter «In Google eintragen», wenn du das möchtest.
+      </p>
+      {!open ? (
+        <button type="button" className="btn-outline mt-3 text-danger" onClick={() => setOpen(true)}>
+          <Icon name="trash" size={16} /> Konto löschen …
+        </button>
+      ) : (
+        <form
+          className="mt-3 space-y-2"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            if (!deleteConfirmed(word) || busy) return
+            setBusy(true)
+            setError(null)
+            try {
+              await onDelete()
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Das Konto konnte nicht gelöscht werden.')
+              setBusy(false)
+            }
+          }}
+        >
+          <label className="label" htmlFor="delete-word">
+            Tippe «{DELETE_WORD}», um zu bestätigen
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <input id="delete-word" className="field max-w-[12rem]" value={word} onChange={(e) => setWord(e.target.value)} autoComplete="off" autoCapitalize="characters" spellCheck={false} />
+            <button type="submit" className="btn bg-danger text-white hover:brightness-105" disabled={!deleteConfirmed(word) || busy}>
+              {busy ? 'Löscht …' : 'Endgültig löschen'}
+            </button>
+            <button type="button" className="btn-ghost" disabled={busy} onClick={() => { setOpen(false); setWord(''); setError(null) }}>
+              Abbrechen
+            </button>
+          </div>
+          {error && <p role="alert" className="text-sm font-medium text-danger">{error}</p>}
+        </form>
+      )}
+    </Group>
   )
 }

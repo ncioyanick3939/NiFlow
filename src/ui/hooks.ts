@@ -39,20 +39,25 @@ export function useMediaQuery(query: string): boolean {
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null)
   const [ready, setReady] = useState(false)
+  // true, solange jemand über den Link «Passwort zurücksetzen» gekommen ist und noch ein neues wählt
+  const [recovery, setRecovery] = useState(false)
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setReady(true)
     })
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => {
+    const { data } = supabase.auth.onAuthStateChange((event, next) => {
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true)
+      if (event === 'SIGNED_OUT') setRecovery(false)
       setSession(next)
       setReady(true)
     })
     return () => data.subscription.unsubscribe()
   }, [])
 
-  return { session, ready, connected: !!session }
+  const endRecovery = useCallback(() => setRecovery(false), [])
+  return { session, ready, connected: !!session, recovery, endRecovery }
 }
 
 export type DataMode = 'live' | 'demo' | 'off'

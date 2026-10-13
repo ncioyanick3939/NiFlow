@@ -7,7 +7,7 @@ import type { CalendarEvent } from '../../domain/types'
 import Icon from '../icons'
 import { EmptyState } from '../kit'
 import TaskRow from '../tasks/TaskRow'
-import { countdownLabel } from './ExamDetail'
+import ExamCard from './ExamCard'
 
 interface Props {
   exams: Exam[]
@@ -24,13 +24,6 @@ interface Props {
 }
 
 const fmtDate = new Intl.DateTimeFormat('de-CH', { weekday: 'long', day: 'numeric', month: 'long' })
-
-function urgency(days: number): 'now' | 'soon' | 'later' | 'past' {
-  if (days < 0) return 'past'
-  if (days <= 3) return 'now'
-  if (days <= 7) return 'soon'
-  return 'later'
-}
 
 /**
  * Prüfungen: die nächste gross hervorgehoben (mit Lernaufgaben direkt zum Abhaken),
@@ -147,44 +140,15 @@ export default function ExamsPage({ exams, tasks, sessions, now, loading, error,
             )
           })()}
 
-          {/* Weitere Prüfungen als Fahrplan: Datum, Titel, Stand, Countdown */}
+          {/* Weitere Prüfungen: gleiche dunkle Karte wie im Dashboard */}
           {rest.length > 0 && (
-            <section className="rule lg:col-span-12">
-              <h2 className="h-section mb-1">Danach</h2>
-              <ol className="space-y-1">
-                {rest.map((x) => {
-                  const s = stats(x)
-                  const days = daysUntil(x, now)
-                  const u = urgency(days)
-                  return (
-                    <li key={x.id}>
-                      <button type="button" onClick={() => onOpen(x)} className="grid w-full grid-cols-[3.5rem,minmax(0,1fr)] items-center gap-4 rounded-2xl px-2 py-3 text-left transition-colors duration-150 hover:bg-surface2/70 sm:grid-cols-[3.5rem,minmax(0,1fr),8rem]">
-                        <span className="flex h-14 w-14 flex-col items-center justify-center rounded-2xl bg-surface2 leading-none">
-                          <span className="text-[10px] font-bold uppercase text-muted">{x.start.toLocaleDateString('de-CH', { month: 'short' }).replace('.', '')}</span>
-                          <span className="tnum mt-0.5 text-[19px] font-extrabold">{x.start.getDate()}</span>
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-[15px] font-bold">{x.title}</span>
-                          <span className="mt-0.5 block truncate text-[13px] text-muted">
-                            {x.subject && x.subject !== x.title ? `${x.subject} · ` : ''}
-                            {PREP_LABEL[x.prepStatus]}
-                            {s.open > 0 ? `, ${s.open} offen` : ''}
-                          </span>
-                          <span className="mt-2 block h-2 w-32 overflow-hidden rounded-full bg-surface2" aria-hidden="true">
-                            <span className="block h-full rounded-full bg-accent" style={{ width: `${Math.max(s.progress * 100, 4)}%` }} />
-                          </span>
-                          <span className={`tnum mt-1.5 block text-[13px] sm:hidden ${u === 'now' ? 'font-bold text-accent' : 'text-muted'}`}>{countdownLabel(days)}</span>
-                        </span>
-                        <span className={`tnum hidden text-right text-[13px] sm:block ${u === 'now' ? 'font-bold text-accent' : u === 'soon' ? 'font-semibold text-ink' : 'text-muted'}`}>
-                          {countdownLabel(days)}
-                          {u === 'now' && <span className="block text-xs font-normal">Bald</span>}
-                          {u === 'soon' && <span className="block text-xs text-muted">Diese Woche</span>}
-                        </span>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ol>
+            <section className="lg:col-span-12" aria-label="Weitere Prüfungen">
+              <h2 className="h-section mb-3">Danach</h2>
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {rest.map((x) => (
+                  <ExamCard key={x.id} exam={x} tasks={tasks.filter((t) => t.examId === x.id)} now={now} onOpen={() => onOpen(x)} />
+                ))}
+              </div>
             </section>
           )}
         </div>

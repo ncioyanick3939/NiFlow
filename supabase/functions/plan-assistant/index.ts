@@ -147,7 +147,8 @@ Deno.serve(async (req) => {
       headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
       body: JSON.stringify({
         model: Deno.env.get('AI_MODEL') || 'claude-sonnet-5-5',
-        max_tokens: 2500,
+        // Reichlich Platz: Neuere Modelle "denken" zuerst, das zählt zur Länge. Bei zu wenig Platz bliebe die Antwort leer.
+        max_tokens: 12000,
         system,
         messages,
         tools: [TOOL],
@@ -155,8 +156,9 @@ Deno.serve(async (req) => {
         tool_choice: { type: 'auto' },
       }),
     })
-  } catch {
-    return json({ error: 'ai_error' }, 502)
+  } catch (err) {
+    console.error('anthropic fetch', err)
+    return json({ error: 'ai_error', detail: `Verbindung zur KI fehlgeschlagen (${err instanceof Error ? err.name : 'Fehler'})` }, 502)
   }
   if (!res.ok) {
     const raw = await res.text().catch(() => '')
@@ -178,13 +180,43 @@ Deno.serve(async (req) => {
     return json({ error: 'ai_error', detail: `${res.status} ${kind} ${message}`.trim().slice(0, 200) }, 502)
   }
 
-  const data = (await res.json().catch(() => null)) as { content?: { type: string; name?: string; input?: Record<string, unknown>; text?: string }[] } | null
+  const data = (await res.json().catch(() => null)) as {
+    stop_reason?: string
+    content?: { type: string; name?: string; input?: unknown; text?: string }[]
+  } | null
   const blocks = data?.content ?? []
   const tool = blocks.find((b) => b.type === 'tool_use' && b.name === 'antworte')
-  const reply =
-    typeof tool?.input?.reply === 'string' ? tool.input.reply : blocks.find((b) => b.type === 'text')?.text ?? ''
-  const proposals = Array.isArray(tool?.input?.proposals) ? tool!.input!.proposals : []
-  if (!reply && !proposals.length) return json({ error: 'ai_error' }, 502)
+  // Manche Modelle liefern verschachtelte Werte als Text. Beides wird akzeptiert.
+  const asObject = (v: unknown): Record<string, unknown> => {
+    if (typeof v === 'string') {
+      try {
+        const p = JSON.parse(v)
+        return p && typeof p === 'object' ? (p as Record<string, unknown>) : {}
+      } catch {
+        return {}
+      }
+    }
+    return v && typeof v === 'object' ? (v as Record<string, unknown>) : {}
+  }
+  const input = asObject(tool?.input)
+  let proposals: unknown[] = []
+  if (Array.isArray(input.proposals)) proposals = input.proposals
+  else if (typeof input.proposals === 'string') {
+    try {
+      const p = JSON.parse(input.proposals)
+      if (Array.isArray(p)) proposals = p
+    } catch {
+      // ignorieren
+    }
+  }
+  let reply = typeof input.reply === 'string' ? input.reply.trim() : ''
+  if (!reply) reply = (blocks.find((b) => b.type === 'text')?.text ?? '').trim()
+  if (!reply && proposals.length) reply = 'Hier sind meine Vorschläge.'
+  if (!reply && !proposals.length) {
+    const types = blocks.map((b) => b.type).join(',') || 'keine'
+    console.error('anthropic leer', data?.stop_reason, types)
+    return json({ error: 'ai_error', detail: `leere Antwort (stop_reason ${data?.stop_reason ?? '?'}, Blöcke: ${types})` }, 502)
+  }
 
   if (usageOk) {
     // Erst nach erfolgreicher Antwort zählen. Ein Fehler hier ist nicht kritisch.

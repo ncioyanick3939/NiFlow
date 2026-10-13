@@ -31,6 +31,10 @@ import { moveBy, rangeFrom, resizeBy, shiftDays } from '../src/domain/move'
 import { mapGoogleEvent } from '../src/sources/googleCalendar'
 import { buildAiContext, findConflict, parseProposals, quickPrompts } from '../src/domain/aiPlan'
 import type { Exam } from '../src/domain/exams'
+import { parseInline, parseMarkdown } from '../src/domain/miniMarkdown'
+import { authErrorText, deleteConfirmed, validateCredentials, validateNewPassword } from '../src/domain/authText'
+import { AI_CONSENT_KEY, hasAiConsent, setAiConsent } from '../src/domain/aiConsent'
+import { hasGoogleIdentity } from '../src/lib/supabase'
 
 let failed = 0
 function check(name: string, ok: boolean, detail = '') {
@@ -412,6 +416,51 @@ check('Kategorie: Farbvorschlag ist noch frei', suggestColor(L) !== 'teal')
   check('KI-Vorschläge: höchstens 20 werden angesehen', parseProposals(Array.from({ length: 30 }, (_, i) => ({ kind: 'add_task', title: `T${i}`, reason: '' })), ctx, tasksAi, evAi, now).proposals.length === 20)
   const qp = quickPrompts(examsAi, tasksAi, now)
   check('KI-Startfragen: nennen Fach und überfällige Aufgaben', qp.some((q) => q.includes('Statistik')) && qp.some((q) => q.includes('überfällig')) && qp.length <= 5)
+}
+
+// KI-Antworten: Markdown darstellen
+{
+  const md = parseMarkdown('**Kompetenznachweis:** Die Prüfung ist in **KW 5**.\nDafür brauchst du:\n- Thesenpaper (1 Seite)\n- Optional: *Feedback* per Mail\n\n1. Erst lesen\n2) Dann schreiben\n\n## Tipp\nStern * einzeln und **offen')
+  check('Markdown: Absatz, Liste, Nummerierung, Überschrift, Absatz', md.map((b) => b.type).join() === 'p,ul,ol,h,p', md.map((b) => b.type).join())
+  const p0 = md[0].type === 'p' ? md[0].inlines : []
+  check('Markdown: fett erkannt, Sterne verschwinden', p0[0]?.bold === true && p0[0].text === 'Kompetenznachweis:' && !p0.some((i) => i.text.includes('*')))
+  check('Markdown: Aufzählung hat 2 Punkte, kursiv im zweiten', md[1].type === 'ul' && md[1].items.length === 2 && md[1].items[1].some((i) => i.italic))
+  check('Markdown: nummerierte Liste mit . und )', md[2].type === 'ol' && md[2].items.length === 2)
+  check('Markdown: offenes ** wird nicht angezeigt', !JSON.stringify(md[4]).includes('**'))
+  check('Markdown: Code und HTML bleiben Text', parseInline('`x` <b>y</b>').some((i) => i.code) && parseInline('<b>y</b>').map((i) => i.text).join('') === '<b>y</b>')
+  check('Markdown: leerer Text ergibt nichts', parseMarkdown('  \n').length === 0)
+}
+
+// Anmeldung per E-Mail, Konto löschen, KI-Einwilligung
+{
+  check('Anmeldung: ungültige E-Mail wird abgelehnt', validateCredentials('login', 'abc', 'x') !== null && validateCredentials('login', 'a@b', 'x') !== null)
+  check('Anmeldung: gültige Eingaben für Login', validateCredentials('login', ' nico@bfh.ch ', 'geheim') === null)
+  check('Anmeldung: Login ohne Passwort wird abgelehnt', validateCredentials('login', 'nico@bfh.ch', '') !== null)
+  check('Registrierung: Passwort mindestens 8 Zeichen', validateCredentials('register', 'nico@bfh.ch', 'kurz', 'kurz') !== null)
+  check('Registrierung: Wiederholung muss gleich sein', validateCredentials('register', 'nico@bfh.ch', 'langes-passwort', 'anderes-passwort') !== null)
+  check('Registrierung: gültig', validateCredentials('register', 'nico@bfh.ch', 'langes-passwort', 'langes-passwort') === null)
+  check('Passwort zurücksetzen: braucht nur eine E-Mail', validateCredentials('reset', 'nico@bfh.ch', '') === null)
+  check('Neues Passwort: Länge und Wiederholung', validateNewPassword('1234567', '1234567') !== null && validateNewPassword('12345678', '12345679') !== null && validateNewPassword('12345678', '12345678') === null)
+  check('Fehlertexte: falsches Passwort ist verständlich und verrät kein Konto', authErrorText('Invalid login credentials').startsWith('E-Mail oder Passwort stimmt nicht'))
+  check('Fehlertexte: unbestätigte E-Mail, Limit, Netzwerk', authErrorText('Email not confirmed').includes('bestätige') && authErrorText('email rate limit exceeded').includes('Zu viele') && authErrorText('Failed to fetch').includes('Verbindung'))
+  check('Fehlertexte: unbekannter Fehler zeigt keine englische Rohmeldung', !/[a-z]{4,} [a-z]{4,}.*error/i.test(authErrorText('Some internal error 42')) && authErrorText('Some internal error 42').startsWith('Das hat leider nicht'))
+  check('Konto löschen: nur das Wort LÖSCHEN bestätigt (auch klein)', deleteConfirmed('LÖSCHEN') && deleteConfirmed(' löschen ') && !deleteConfirmed('') && !deleteConfirmed('loeschen') && !deleteConfirmed('LÖSCHE'))
+
+  const mem = new Map<string, string>()
+  const store = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, v) }
+  check('KI-Einwilligung: anfangs nicht erteilt', !hasAiConsent(store, 'u1') && !hasAiConsent(store, null))
+  check('KI-Einwilligung: erteilen gilt nur für diese Person', setAiConsent(store, 'u1', true) && hasAiConsent(store, 'u1') && !hasAiConsent(store, 'u2'))
+  check('KI-Einwilligung: widerrufen', setAiConsent(store, 'u1', false) && !hasAiConsent(store, 'u1'))
+  mem.set(AI_CONSENT_KEY, 'kaputt{')
+  check('KI-Einwilligung: kaputter Speicher gilt als nicht erteilt', !hasAiConsent(store, 'u1'))
+  mem.set(AI_CONSENT_KEY, JSON.stringify({ u1: { v: 0, at: 'x' } }))
+  check('KI-Einwilligung: alte Version wird neu erfragt', !hasAiConsent(store, 'u1'))
+  const broken = { getItem: () => { throw new Error('gesperrt') }, setItem: () => { throw new Error('gesperrt') } }
+  check('KI-Einwilligung: gesperrter Speicher wirft nicht', !hasAiConsent(broken, 'u1') && setAiConsent(broken, 'u1', true) === false && setAiConsent(null, 'u1', true) === false)
+
+  check('Google-Konto erkannt über identities', hasGoogleIdentity({ user: { identities: [{ provider: 'google' }] } }))
+  check('Google-Konto erkannt über app_metadata', hasGoogleIdentity({ user: { app_metadata: { providers: ['email', 'google'] } } }))
+  check('E-Mail-Konto ohne Google wird erkannt', !hasGoogleIdentity({ user: { identities: [{ provider: 'email' }], app_metadata: { provider: 'email', providers: ['email'] } } }) && !hasGoogleIdentity(null))
 }
 
 console.log(failed === 0 ? '\nAlle Prüfungen bestanden.' : `\n${failed} Prüfung(en) fehlgeschlagen.`)

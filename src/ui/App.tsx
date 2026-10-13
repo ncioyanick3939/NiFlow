@@ -14,8 +14,9 @@ import type { ExamInput } from '../domain/exams'
 import { emptyTask, isOverdue, taskToEvent, taskToInput } from '../domain/tasks'
 import type { Task, TaskInput } from '../domain/tasks'
 import type { CalendarEvent } from '../domain/types'
-import { connectGoogle, disconnectGoogle } from '../lib/supabase'
+import { connectGoogle, deleteAccount, disconnectGoogle, hasGoogleIdentity } from '../lib/supabase'
 import AssistantPanel from './assistant/AssistantPanel'
+import { useAiConsent } from './assistant/useAiConsent'
 import { useAssistant } from './assistant/useAssistant'
 import CalendarPage from './calendar/CalendarPage'
 import Dashboard from './Dashboard'
@@ -61,7 +62,8 @@ function sectionFromHash(): Section {
 export default function App() {
   const now = useNow()
   const theme = useTheme()
-  const { session, ready, connected } = useAuth()
+  const { session, ready, connected, recovery, endRecovery } = useAuth()
+  const aiConsent = useAiConsent(session?.user.id)
   const [demo, setDemo] = useState(false)
   const mode = connected ? 'live' : demo ? 'demo' : 'off'
   const { events: sourceEvents, states, loading, reload } = useEvents(mode, ready)
@@ -354,7 +356,8 @@ export default function App() {
   }
 
   if (!ready) return <div className="min-h-dvh" />
-  if (!connected && !demo) return <Welcome onConnect={() => void connectGoogle()} onDemo={() => setDemo(true)} />
+  if (recovery) return <Welcome recovery onRecoveryDone={endRecovery} onGoogle={() => void connectGoogle()} onDemo={() => setDemo(true)} />
+  if (!connected && !demo) return <Welcome onGoogle={() => void connectGoogle()} onDemo={() => setDemo(true)} />
 
   const errors = states.filter((s) => s.status === 'error')
   const meta = session?.user.user_metadata as { full_name?: string; name?: string } | undefined
@@ -411,7 +414,7 @@ export default function App() {
             <span className="font-bold sm:mr-0">Demo-Daten</span>
             <span className="mr-auto hidden text-muted sm:inline">Erfundene Beispieldaten. Zum Speichern eigener Einträge anmelden.</span>
             <span className="mr-auto sm:hidden" />
-            <button type="button" className="min-h-11 font-medium text-accent hover:underline md:min-h-0" onClick={() => void connectGoogle()}>
+            <button type="button" className="min-h-11 font-medium text-accent hover:underline md:min-h-0" onClick={() => setDemo(false)}>
               Anmelden
             </button>
             <button type="button" className="min-h-11 text-muted hover:text-ink md:min-h-0" onClick={() => setDemo(false)}>
@@ -533,6 +536,18 @@ export default function App() {
               setDemo(false)
               void disconnectGoogle()
             }}
+            hasGoogle={hasGoogleIdentity(session)}
+            aiConsent={aiConsent.given}
+            onRevokeAi={() => {
+              aiConsent.revoke()
+              assistant.clear()
+            }}
+            onDeleteAccount={async () => {
+              await deleteAccount()
+              setDemo(false)
+              setSheet(null)
+              assistant.clear()
+            }}
             onChanged={() => void reload(['intervals'])}
             onLabelsChanged={async (deleted) => {
               await labels.reload()
@@ -559,6 +574,19 @@ export default function App() {
           aria-label={section === 'tasks' ? 'Neue Aufgabe' : section === 'exams' ? 'Neue Prüfung' : 'Neu erstellen'}
         >
           <Icon name="plus" size={30} />
+        </button>
+      )}
+
+      {!readOnly && !sheet && (
+        <button
+          type="button"
+          onClick={() => setSheet({ kind: 'assistant' })}
+          className={`fixed right-[1.375rem] z-30 flex h-12 w-12 items-center justify-center rounded-full bg-surface text-accent shadow-float ring-1 ring-accent/20 transition-transform duration-150 active:scale-95 md:hidden ${
+            section !== 'settings' && section !== 'training' ? 'bottom-[calc(5.5rem+env(safe-area-inset-bottom))]' : 'bottom-[calc(5rem+env(safe-area-inset-bottom))]'
+          }`}
+          aria-label="Planungs-Assistent öffnen"
+        >
+          <Icon name="sparkle" size={22} />
         </button>
       )}
 
@@ -663,7 +691,7 @@ export default function App() {
           </div>
         )}
         {sheet?.kind === 'assistant' && (
-          <AssistantPanel chat={assistant} suggestions={quickPrompts(planner.exams, planner.tasks, now)} onApply={applyProposals} />
+          <AssistantPanel chat={assistant} consent={aiConsent.given} onConsent={aiConsent.give} suggestions={quickPrompts(planner.exams, planner.tasks, now)} onApply={applyProposals} />
         )}
         {sheet?.kind === 'search' && (
           <SearchPanel
@@ -700,6 +728,21 @@ export default function App() {
                   <Icon name="chevronRight" size={16} className="text-muted" />
                 </button>
               ))}
+              {connected && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Möchtest du dich abmelden?')) {
+                      setSheet(null)
+                      void disconnectGoogle()
+                    }
+                  }}
+                  className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-left transition-colors hover:bg-surface2"
+                >
+                  <Icon name="logout" size={20} className="text-muted" />
+                  <span className="flex-1 font-medium">Abmelden</span>
+                </button>
+              )}
             </div>
             <div className="pt-2">
               <span className="label">Farbschema</span>

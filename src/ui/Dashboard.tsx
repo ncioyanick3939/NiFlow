@@ -12,7 +12,7 @@ import {
   startOfWeek,
 } from '../domain/dateUtils'
 import { toDateInput } from '../domain/entries'
-import { PREP_LABEL, daysUntil } from '../domain/exams'
+import { daysUntil } from '../domain/exams'
 import type { Exam } from '../domain/exams'
 import { deadlineUrgency, eventsForDay, nextEvent } from '../domain/schedule'
 import { PRIORITY_RANK, inView, isOverdue, sortTasks } from '../domain/tasks'
@@ -23,6 +23,7 @@ import WeekStrip from './dashboard/WeekStrip'
 import type { DashSection } from './hooks'
 import Icon, { categoryIcon } from './icons'
 import { colorClass, evClass, useLabelsCtx } from './labels'
+import ExamCard from './exams/ExamCard'
 import TaskRow from './tasks/TaskRow'
 
 interface Props {
@@ -212,9 +213,9 @@ export default function Dashboard(p: Props) {
           </div>
           <div className="flex shrink-0 items-center gap-1.5 pb-1">
             {p.onAssistant && (
-              <button type="button" onClick={p.onAssistant} className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/[0.14] text-accent transition active:scale-95 md:w-auto md:gap-1.5 md:px-4" aria-label="Planungs-Assistent öffnen">
+              <button type="button" onClick={p.onAssistant} className="hidden h-10 items-center justify-center gap-1.5 rounded-full bg-accent/[0.14] px-4 text-accent transition active:scale-95 md:flex" aria-label="Planungs-Assistent öffnen">
                 <Icon name="sparkle" size={18} />
-                <span className="hidden text-sm font-bold md:inline">Assistent</span>
+                <span className="text-sm font-bold">Assistent</span>
               </button>
             )}
             {!isToday && (
@@ -484,7 +485,16 @@ export default function Dashboard(p: Props) {
           <aside className="min-w-0 space-y-4 px-4 md:px-0">
             {p.prefs.exams &&
               (exam ? (
-                <ExamSpotlight exam={exam} tasks={p.tasks.filter((t) => t.examId === exam.id)} now={now} onOpen={() => p.onOpenExam(exam)} more={upcomingExams.length - 1} onAll={p.onGoExams} />
+                <div className="space-y-3">
+                  {upcomingExams.slice(0, 4).map((x, i) => (
+                    <ExamCard key={x.id} exam={x} tasks={p.tasks.filter((t) => t.examId === x.id)} now={now} onOpen={() => p.onOpenExam(x)} label={i === 0 ? 'Nächste Prüfung' : 'Prüfung'} />
+                  ))}
+                  {upcomingExams.length > 4 && (
+                    <button type="button" onClick={p.onGoExams} className="min-h-11 w-full rounded-full bg-surface px-4 text-sm font-bold text-accent shadow-card hover:bg-surface2">
+                      Alle {upcomingExams.length} Prüfungen anzeigen
+                    </button>
+                  )}
+                </div>
               ) : (
                 <section className="rule">
                   <h2 className="h-section">Keine Prüfung geplant</h2>
@@ -652,45 +662,6 @@ function Ring({ done, total, small }: { done: number; total: number; small?: boo
 }
 
 /** Nächste Prüfung: grosser Countdown, Lernfortschritt. */
-function ExamSpotlight({ exam, tasks, now, onOpen, more, onAll }: { exam: Exam; tasks: Task[]; now: Date; onOpen: () => void; more: number; onAll: () => void }) {
-  const days = daysUntil(exam, now)
-  const done = tasks.filter((t) => t.status === 'done').length
-  const progress = tasks.length > 0 ? done / tasks.length : exam.prepStatus === 'ready' ? 1 : 0
-  return (
-    <section className="overflow-hidden rounded-3xl bg-deep p-5 text-deepink shadow-float">
-      <p className="flex items-center gap-2 text-[13px] font-bold text-deepmuted">
-        <Icon name="exam" size={15} /> Nächste Prüfung
-      </p>
-      <button type="button" onClick={onOpen} className="group mt-3 block w-full text-left">
-        <span className="flex items-center justify-between gap-4">
-          <span className="min-w-0">
-            <span className="block truncate text-[20px] font-extrabold leading-tight tracking-[-0.02em]">{exam.title}</span>
-            <span className="tnum mt-1 block text-[13px] font-medium text-deepmuted">
-              {exam.start.toLocaleDateString('de-CH', { weekday: 'long', day: 'numeric', month: 'long' })}, {formatTime(exam.start)}
-            </span>
-          </span>
-          <span className="shrink-0 rounded-2xl bg-sun px-3.5 py-2 text-center text-sunink">
-            <span className="tnum block text-[30px] font-extrabold leading-none">{days}</span>
-            <span className="block text-[11px] font-bold">{days === 0 ? 'heute' : days === 1 ? 'Tag' : 'Tage'}</span>
-          </span>
-        </span>
-        <span className="mt-4 block h-2.5 overflow-hidden rounded-full bg-deepink/15" aria-hidden="true">
-          <span className="anim-grow block h-full rounded-full bg-sun" style={{ width: `${Math.max(progress * 100, 3)}%` }} />
-        </span>
-        <span className="mt-2 flex justify-between gap-3 text-xs font-semibold text-deepmuted">
-          <span>{PREP_LABEL[exam.prepStatus]}</span>
-          <span className="tnum">{tasks.length > 0 ? `${done}/${tasks.length} Lernaufgaben` : 'Keine Lernaufgaben'}</span>
-        </span>
-      </button>
-      {more > 0 && (
-        <button type="button" onClick={onAll} className="mt-2 min-h-11 rounded-full px-3 text-sm font-bold text-sun hover:bg-white/10">
-          {more} weitere Prüfung{more > 1 ? 'en' : ''}
-        </button>
-      )}
-    </section>
-  )
-}
-
 function QuickAdd({ onTask, onNote }: { onTask: (t: string) => Promise<void>; onNote: (t: string) => Promise<void> }) {
   const [text, setText] = useState('')
   const [asNote, setAsNote] = useState(false)

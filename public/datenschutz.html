@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Datenschutzerklärung – NiFlow</title>
+<style>
+:root{color-scheme:light dark;--bg:#f2f2f7;--fg:#1c1c1e;--muted:#6b6b72;--card:#fff;--accent:#d9645c;--warn:#fff4d6;--warnfg:#5c4300}
+@media (prefers-color-scheme:dark){:root{--bg:#000;--fg:#f2f2f7;--muted:#a1a1a8;--card:#1c1c1e;--warn:#3a2f10;--warnfg:#f4d98a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif}
+main{max-width:46rem;margin:0 auto;padding:1.5rem 1rem 4rem}
+article{background:var(--card);border-radius:1.5rem;padding:1.5rem 1.25rem}
+h1{font-size:1.75rem;line-height:1.2;margin:.5rem 0 1rem}h2{font-size:1.15rem;margin:1.75rem 0 .4rem}
+p,li{margin:.4rem 0}ul{padding-left:1.2rem}a{color:var(--accent)}
+.muted{color:var(--muted);font-size:.9rem}
+.draft{background:var(--warn);color:var(--warnfg);border-radius:1rem;padding:.75rem 1rem;font-size:.9rem;margin:1rem 0}
+mark{background:var(--warn);color:var(--warnfg);padding:0 .25rem;border-radius:.25rem}
+table{border-collapse:collapse;width:100%;font-size:.92rem}th,td{text-align:left;vertical-align:top;padding:.5rem .4rem;border-bottom:1px solid rgba(128,128,128,.25)}
+@media (max-width:30rem){th,td{display:block;padding:.15rem 0}tr{display:block;padding:.5rem 0;border-bottom:1px solid rgba(128,128,128,.25)}td,th{border:0}}
+</style>
+</head>
+<body><main><p><a href="./">← Zurück zu NiFlow</a></p><article>
+<h1>Datenschutzerklärung</h1>
+<p class="muted">Stand: <mark>[DATUM EINTRAGEN]</mark></p>
+<div class="draft"><strong>Entwurf.</strong> Dieser Text beschreibt, wie NiFlow Daten tatsächlich verarbeitet. Gelb markierte Stellen müssen vor der Veröffentlichung im App Store ausgefüllt und von einer fachkundigen Person geprüft werden. Er ist keine Rechtsberatung.</div>
+
+<h2>1. Wer ist verantwortlich?</h2>
+<p><mark>[VOLLSTÄNDIGER NAME ODER FIRMA]</mark><br><mark>[STRASSE UND NUMMER, PLZ ORT, SCHWEIZ]</mark><br>E-Mail: <mark>[KONTAKT-E-MAIL]</mark></p>
+
+<h2>2. Welche Daten verarbeitet NiFlow?</h2>
+<table>
+<tr><th>Daten</th><th>Wozu</th></tr>
+<tr><td>E-Mail-Adresse und Passwort (als Hash) oder Google-Konto-Kennung</td><td>Anmeldung und Zuordnung deiner Daten zu dir</td></tr>
+<tr><td>Deine Einträge: Termine, Notizen, Aufgaben, Prüfungen, Kategorien (Titel, Zeiten, Orte, Beschreibungen)</td><td>Anzeigen und Planen in der App</td></tr>
+<tr><td>Google Kalender (nur wenn du Google verbindest): Termine lesen; eigenen Kalender «NiFlow» anlegen und darin deine Termine nachführen. Gespeichert wird ein Google-Zugriffstoken (Refresh-Token) auf dem Server.</td><td>Termine aus Google in NiFlow anzeigen, eigene Termine nach Google übertragen. Andere Google-Kalender werden nie verändert.</td></tr>
+<tr><td>Intervals.icu API-Schlüssel (nur wenn du ihn hinterlegst)</td><td>Geplante und absolvierte Trainings anzeigen. Der Schlüssel liegt nur auf dem Server und wird in der App nie angezeigt.</td></tr>
+<tr><td>Erinnerungen: Push-Adresse deines Geräts und die geplanten Erinnerungen mit Titel und Zeit</td><td>Erinnerungen auch bei geschlossener App senden</td></tr>
+<tr><td>KI-Planer: Zähler der Anfragen pro Person (nur Zeitpunkt, kein Inhalt)</td><td>Tageslimit gegen unbeabsichtigte Kosten</td></tr>
+<tr><td>Technische Daten (IP-Adresse, Zeitpunkt) beim Aufruf der App und der Server</td><td>Betrieb und Sicherheit; fallen bei den Hosting-Anbietern an</td></tr>
+</table>
+
+<h2>3. KI-Planer (Planungs-Assistent)</h2>
+<p>Der Assistent ist freiwillig. Erst nachdem du ausdrücklich zugestimmt hast, sendet NiFlow bei jeder Frage deine Nachricht und eine Übersicht deines Plans der nächsten 14 Tage an unseren Server und von dort an den KI-Anbieter <strong>Anthropic</strong> (USA). Die Übersicht enthält Titel, Zeiten und Kategorien von Terminen und Aufgaben sowie Prüfungsthemen. <strong>Notizen und Beschreibungen werden nicht gesendet.</strong> Vorschläge der KI werden nur übernommen, wenn du sie bestätigst. Du kannst die Einwilligung jederzeit unter Einstellungen → Datenschutz widerrufen.</p>
+<p><mark>[PRÜFEN: Aufbewahrung und Nutzung der Anfragen bei Anthropic gemäss deren aktuellen Bedingungen eintragen]</mark></p>
+
+<h2>4. Dienstleister</h2>
+<ul>
+<li><strong>Supabase</strong> (Datenbank, Anmeldung, Server-Funktionen), Standort der Daten: <mark>[REGION DES SUPABASE-PROJEKTS EINTRAGEN]</mark></li>
+<li><strong>GitHub Pages</strong> (Auslieferung der App-Dateien)</li>
+<li><strong>Google</strong> (Anmeldung und Kalender, nur wenn du es nutzt)</li>
+<li><strong>Intervals.icu</strong> (Trainingsdaten, nur wenn du es nutzt)</li>
+<li><strong>Anthropic</strong> (KI-Planer, nur mit deiner Zustimmung)</li>
+<li><strong>Push-Dienste von Apple, Google oder Mozilla</strong> (Zustellung von Erinnerungen, nur wenn du sie einschaltest)</li>
+</ul>
+<p>Einige dieser Anbieter sitzen im Ausland, insbesondere in den USA. <mark>[GRUNDLAGE FÜR DIE ÜBERMITTLUNG, z. B. Standardvertragsklauseln oder Data Privacy Framework, PRÜFEN]</mark></p>
+
+<h2>5. Wie lange bleiben die Daten?</h2>
+<p>Deine Daten bleiben gespeichert, bis du dein Konto löschst. Mit «Konto löschen» (Einstellungen) werden dein Konto und alle zugehörigen Daten sofort und dauerhaft gelöscht, ebenso der gespeicherte Google-Zugriff (er wird zusätzlich bei Google widerrufen). Der Kalender «NiFlow» in deinem Google-Konto bleibt bestehen; du kannst ihn vorher in den Einstellungen löschen oder selbst in Google entfernen. <mark>[AUFBEWAHRUNG VON SERVER-LOGS BEIM HOSTING-ANBIETER ERGÄNZEN]</mark></p>
+
+<h2>6. Deine Rechte</h2>
+<p>Du kannst Auskunft über deine Daten verlangen, sie berichtigen oder löschen lassen. Löschen geht direkt in der App. Für alles andere schreibe an <mark>[KONTAKT-E-MAIL]</mark>. Bei Nutzung aus der EU hast du zudem das Recht auf Beschwerde bei der Aufsichtsbehörde. In der Schweiz ist das der Eidgenössische Datenschutz- und Öffentlichkeitsbeauftragte (EDÖB).</p>
+
+<h2>7. Sicherheit</h2>
+<p>Die Verbindung ist verschlüsselt. Jede Person sieht in der Datenbank nur ihre eigenen Einträge (Zugriffsregeln pro Person). Geheime Schlüssel (Google, Intervals.icu, KI) liegen nur auf dem Server und nie in der App. Kein System ist vollständig sicher.</p>
+
+<h2>8. Kinder</h2>
+<p>NiFlow richtet sich an Personen ab <mark>[MINDESTALTER FESTLEGEN, z. B. 16]</mark> Jahren.</p>
+
+<h2>9. Änderungen</h2>
+<p>Wenn sich ändert, welche Daten an die KI gehen, fragen wir neu um Erlaubnis. Weitere Änderungen dieser Erklärung stehen hier mit neuem Datum.</p>
+</article></main></body></html>

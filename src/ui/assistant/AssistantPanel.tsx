@@ -4,6 +4,7 @@ import { parseDateInput } from '../../domain/entries'
 import type { Proposal } from '../../domain/aiPlan'
 import { categoryIcon } from '../icons'
 import Icon from '../icons'
+import RichText from './RichText'
 import type { ChatMsg, useAssistant } from './useAssistant'
 
 type Chat = ReturnType<typeof useAssistant>
@@ -11,6 +12,9 @@ type Chat = ReturnType<typeof useAssistant>
 interface Props {
   chat: Chat
   suggestions: string[]
+  /** Einwilligung zur Weitergabe an die KI (Apple 5.1.2(i)). Ohne sie wird nichts gesendet. */
+  consent: boolean
+  onConsent: () => void
   /** Legt die gewählten Vorschläge an und meldet pro Vorschlag, ob es geklappt hat. */
   onApply: (list: Proposal[]) => Promise<{ ok: boolean[]; error?: string }>
 }
@@ -53,7 +57,9 @@ function Bubble({ m, onToggle, onApply, onDismiss }: { m: ChatMsg; onToggle: (i:
 
   return (
     <div className="space-y-2.5">
-      <p className={`max-w-[92%] whitespace-pre-wrap rounded-3xl rounded-bl-lg px-4 py-2.5 text-[15px] ${m.error ? 'bg-danger/10 text-danger' : 'bg-surface2'}`}>{m.text}</p>
+      <div className={`max-w-[94%] rounded-3xl rounded-bl-lg px-4 py-3 text-[15px] leading-relaxed ${m.error ? 'bg-danger/10 text-danger' : 'bg-surface2'}`}>
+        {m.error ? <p className="whitespace-pre-wrap">{m.text}</p> : <RichText text={m.text} />}
+      </div>
       {items.length > 0 && (
         <ul className="space-y-2">
           {items.map((it, i) => {
@@ -128,7 +134,7 @@ function Bubble({ m, onToggle, onApply, onDismiss }: { m: ChatMsg; onToggle: (i:
   )
 }
 
-export default function AssistantPanel({ chat, suggestions, onApply }: Props) {
+export default function AssistantPanel({ chat, suggestions, consent, onConsent, onApply }: Props) {
   const { messages, busy, send, toggle, settle, clear } = chat
   const [text, setText] = useState('')
   const end = useRef<HTMLDivElement>(null)
@@ -146,6 +152,8 @@ export default function AssistantPanel({ chat, suggestions, onApply }: Props) {
     setText('')
     void send(value)
   }
+
+  if (!consent) return <ConsentCard onConsent={onConsent} />
 
   return (
     <div className="flex flex-col">
@@ -245,6 +253,45 @@ export default function AssistantPanel({ chat, suggestions, onApply }: Props) {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/** Zustimmungsfenster vor der ersten KI-Anfrage: was geht an wen, und dass es freiwillig ist. */
+function ConsentCard({ onConsent }: { onConsent: () => void }) {
+  return (
+    <div className="space-y-5 py-2" data-autofocus tabIndex={-1}>
+      <div className="flex items-start gap-3">
+        <span className="dot-cat cat-study h-12 w-12 shrink-0">
+          <Icon name="sparkle" size={22} />
+        </span>
+        <div>
+          <p className="text-[17px] font-extrabold leading-tight">Bevor du den Assistenten nutzt</p>
+          <p className="mt-1 text-sm text-muted">Der Planungs-Assistent ist freiwillig. Alles andere in NiFlow funktioniert auch ohne ihn.</p>
+        </div>
+      </div>
+      <div className="space-y-3 rounded-3xl bg-surface2 p-4 text-sm leading-relaxed">
+        <p>
+          <span className="font-bold">Was gesendet wird:</span> Bei jeder Frage sendet NiFlow deine Nachricht und eine Übersicht der nächsten 14 Tage an die KI: Titel, Zeiten und
+          Kategorien deiner Termine und Aufgaben sowie Prüfungsthemen. Notizen und Beschreibungen werden nicht gesendet.
+        </p>
+        <p>
+          <span className="font-bold">An wen:</span> Die Übersicht geht über unseren Server an den KI-Anbieter Anthropic (USA), der daraus die Antwort erstellt.
+        </p>
+        <p>
+          <span className="font-bold">Du behältst die Kontrolle:</span> Nichts wird ohne dein OK in deinen Plan übernommen. Die Einwilligung kannst du jederzeit in den Einstellungen widerrufen.
+        </p>
+      </div>
+      <p className="text-xs text-muted">
+        Details stehen in der{' '}
+        <a href="./datenschutz.html" target="_blank" rel="noopener" className="font-semibold underline underline-offset-2">
+          Datenschutzerklärung
+        </a>
+        .
+      </p>
+      <button type="button" onClick={onConsent} className="btn-primary min-h-12 w-full">
+        Ich bin einverstanden
+      </button>
     </div>
   )
 }

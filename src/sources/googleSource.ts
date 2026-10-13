@@ -1,5 +1,6 @@
 import { addDays, startOfWeek } from '../domain/dateUtils'
-import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL, supabase } from '../lib/supabase'
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL, hasGoogleIdentity, supabase } from '../lib/supabase'
+import { NotConfigured } from './intervalsSource'
 import { fetchGoogleEvents } from './googleCalendar'
 import type { EventSource } from './types'
 
@@ -14,6 +15,8 @@ async function getAccessToken(): Promise<string> {
   const { data } = await supabase.auth.getSession()
   const session = data.session
   if (!session) throw new Error('Nicht verbunden. Bitte mit Google verbinden.')
+  // Konto ohne Google-Anmeldung (E-Mail): Google ist einfach nicht eingerichtet, kein Fehler.
+  if (!hasGoogleIdentity(session)) throw new NotConfigured()
 
   const res = await fetch(`${SUPABASE_URL}/functions/v1/google-token`, {
     method: 'POST',

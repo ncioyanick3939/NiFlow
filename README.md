@@ -56,6 +56,7 @@ npx supabase functions deploy intervals-events --no-verify-jwt --use-api
 npx supabase functions deploy google-push --no-verify-jwt --use-api
 npx supabase functions deploy push --no-verify-jwt --use-api
 npx supabase functions deploy plan-assistant --no-verify-jwt --use-api
+npx supabase functions deploy delete-account --no-verify-jwt --use-api
 ```
 
 Google Cloud → Google Auth Platform → Datenzugriff: zusätzlich den Bereich
@@ -85,6 +86,15 @@ deiner Bestätigung etwas an.
    `npx supabase secrets set ANTHROPIC_API_KEY=...` (oder Supabase → Edge Functions → Secrets).
 3. Optional: `AI_MODEL` (Standard `claude-sonnet-5-5`) und `AI_DAILY_LIMIT` (Standard 40 Anfragen pro 24 Stunden).
 4. Migration `ai_usage` einspielen (`npx supabase db push`) und die Funktion hochladen (siehe oben).
+
+## Anmeldung mit E-Mail, Konto löschen, Rechtstexte
+
+- E-Mail-Anmeldung braucht in Supabase → Authentication → Providers → Email (standardmässig an). Unter Authentication → URL Configuration
+  müssen `Site URL` und `Redirect URLs` die App-Adresse enthalten (`https://<name>.github.io/NiFlow/`), sonst führen die Links in den E-Mails ins Leere.
+- Die eingebauten Supabase-E-Mails sind stark begrenzt (wenige pro Stunde). Für echte Nutzer: Authentication → SMTP Settings mit eigenem Mailanbieter.
+- «Konto löschen» ruft die Funktion `delete-account` auf. Alle Tabellen hängen per `on delete cascade` am Konto.
+- `public/datenschutz.html` und `public/nutzungsbedingungen.html` sind Entwürfe. Alle gelb markierten Stellen ausfüllen und prüfen lassen.
+- Sign in with Apple (Pflicht im App Store, sobald Google als Anmeldung angeboten wird) folgt, sobald das Apple-Developer-Konto besteht.
 
 ## Aufbau
 

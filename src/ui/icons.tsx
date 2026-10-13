@@ -27,6 +27,7 @@ const PATHS: Record<string, ReactElement> = {
   plus: <path d="M12 5v14M5 12h14" />,
   bell: <path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0" />,
   chevronLeft: <path d="M15 6l-6 6 6 6" />,
+  mail: <path d="M4 6h16v12H4zM4 7l8 6 8-6" />,
   chevronRight: <path d="M9 6l6 6-6 6" />,
   chevronDown: <path d="M6 9l6 6 6-6" />,
   x: <path d="M6 6l12 12M18 6L6 18" />,
