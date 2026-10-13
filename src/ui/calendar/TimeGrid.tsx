@@ -49,9 +49,9 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
   const cols = `3.25rem repeat(${days.length}, minmax(0, 1fr))`
 
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-surface">
+    <div className="overflow-hidden rounded-xl bg-surface">
       {multi && (
-        <div className="grid border-b border-line" style={{ gridTemplateColumns: cols }}>
+        <div className="grid border-b border-line/70" style={{ gridTemplateColumns: cols }}>
           <div />
           {days.map((d) => {
             const today = isSameDay(d, now)
@@ -63,8 +63,8 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
                 className="flex flex-col items-center gap-0.5 py-2 transition-colors hover:bg-surface2"
                 aria-label={`${formatWeekdayShort(d)} ${d.getDate()}. öffnen`}
               >
-                <span className={`text-[11px] font-medium uppercase tracking-wide ${today ? 'text-accent' : 'text-muted'}`}>{formatWeekdayShort(d)}</span>
-                <span className={`tnum flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold ${today ? 'bg-accent text-accentink' : ''}`}>
+                <span className={`text-xs font-medium ${today ? 'text-ink' : 'text-muted'}`}>{formatWeekdayShort(d)}</span>
+                <span className={`h-display tnum flex h-9 w-9 items-center justify-center rounded-full text-lg ${today ? 'bg-sun text-sunink' : ''}`}>
                   {d.getDate()}
                 </span>
               </button>
@@ -74,17 +74,17 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
       )}
 
       {hasAllDay && (
-        <div className="grid border-b border-line bg-surface2/50" style={{ gridTemplateColumns: cols }}>
-          <div className="px-1 py-1.5 text-right text-[10px] leading-4 text-muted">ganzt.</div>
+        <div className="grid border-b border-line/70" style={{ gridTemplateColumns: cols }}>
+          <div className="px-1 py-2 text-right text-[10px] leading-4 text-muted">Tag</div>
           {perDay.map((d) => (
-            <div key={d.date.getTime()} className="min-w-0 space-y-1 border-l border-line p-1">
+            <div key={d.date.getTime()} className="min-w-0 space-y-1 border-l border-line/60 p-1.5">
               {d.allDay.map((e) => (
                 <button
                   key={e.id}
                   type="button"
                   onClick={() => onOpen(e)}
-                  className={`${catClass(e.category)} flex w-full items-center gap-1 truncate rounded-sm px-1.5 py-0.5 text-left text-[11px] font-medium transition-opacity hover:opacity-80 ${
-                    e.kind === 'note' ? 'border border-dashed border-cat/60 text-ink' : e.kind === 'task' ? 'border border-cat/40 text-ink' : 'bg-cat/15 text-ink'
+                  className={`${catClass(e.category)} flex w-full items-center gap-1 truncate rounded-md px-2 py-1 text-left text-[11px] font-medium transition-opacity hover:opacity-80 ${
+                    e.kind === 'note' ? 'bg-surface2 text-ink' : e.kind === 'task' ? 'border border-cat/50 text-ink' : 'bg-cat/15 text-ink'
                   }`}
                 >
                   {e.kind === 'note' && <Icon name="note" size={11} className="shrink-0 text-muted" />}
@@ -114,14 +114,23 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
             return (
               <div
                 key={date.getTime()}
-                className={`relative border-l border-line ${onCreateAt ? 'cursor-cell' : ''} ${today && multi ? 'bg-accent/[0.03]' : ''}`}
-                style={{ backgroundImage: 'linear-gradient(to bottom, rgb(var(--line)) 1px, transparent 1px)', backgroundSize: `100% ${HOUR_PX}px` }}
+                className={`relative border-l border-line/60 ${onCreateAt ? 'cursor-cell' : ''} ${today && multi ? 'bg-sun/[0.05]' : ''}`}
+                style={{ backgroundImage: 'linear-gradient(to bottom, rgb(var(--line) / 0.7) 1px, transparent 1px)', backgroundSize: `100% ${HOUR_PX}px` }}
                 onClick={(ev) => createAt(date, ev)}
               >
                 {blocks.map((b) => {
                   const e = b.event
                   const height = Math.max(b.width * DAY_PX, 22)
                   const short = height < 40
+                  // Art sichtbar machen: Prüfung voll gefärbt, Lerntermin gestrichelt, Aufgabe als Umriss, Training absolviert mit Haken
+                  const style =
+                    e.kind === 'exam'
+                      ? { background: 'rgb(var(--exam))', color: 'white' }
+                      : e.kind === 'task'
+                        ? { background: 'rgb(var(--surface))', border: '1.5px solid rgb(var(--c) / 0.6)' }
+                        : e.examId
+                          ? { background: 'linear-gradient(rgb(var(--c) / 0.1), rgb(var(--c) / 0.1)), rgb(var(--surface))', border: '1.5px dashed rgb(var(--c) / 0.7)' }
+                          : { background: 'linear-gradient(rgb(var(--c) / 0.17), rgb(var(--c) / 0.17)), rgb(var(--surface))' }
                   return (
                     <button
                       key={e.id}
@@ -130,12 +139,11 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
                         ev.stopPropagation()
                         onOpen(e)
                       }}
-                      className={`${catClass(e.category)} absolute flex flex-col justify-start overflow-hidden rounded-[6px] border-l-[3px] border-cat px-1.5 text-left text-ink transition-[filter] hover:brightness-95 dark:hover:brightness-125 ${
-                        overlaps.has(e.id) ? 'ring-1 ring-danger/60' : ''
-                      }`}
+                      className={`${catClass(e.category)} absolute flex flex-col justify-start overflow-hidden rounded-[9px] px-2 text-left transition-[filter,transform] hover:brightness-95 active:scale-[0.99] dark:hover:brightness-125 ${
+                        e.kind === 'exam' ? '' : 'text-ink'
+                      } ${overlaps.has(e.id) ? 'ring-2 ring-danger/50' : ''} ${e.kind !== 'exam' && e.kind !== 'task' && !e.examId ? 'border-l-[3px] border-cat' : ''}`}
                       style={{
-                        // Deckender Hintergrund mit Farbton, damit die Stundenlinien nicht durchscheinen
-                        background: 'linear-gradient(rgb(var(--c) / 0.16), rgb(var(--c) / 0.16)), rgb(var(--surface))',
+                        ...style,
                         top: b.left * DAY_PX + 1,
                         height: height - 2,
                         left: `calc(${(b.lane / b.lanes) * 100}% + 2px)`,
@@ -144,11 +152,12 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
                       title={`${e.title}${overlaps.has(e.id) ? ' (überschneidet sich)' : ''}`}
                     >
                       <span className={`block truncate text-[11px] font-semibold leading-tight ${short ? 'pt-0.5' : 'pt-1'}`}>
-                        {short && <span className="tnum mr-1 font-normal text-muted">{formatTime(e.start)}</span>}
-                        <span className={e.done ? 'text-muted line-through' : ''}>{e.kind === 'exam' ? `Prüfung: ${e.title}` : e.title}</span>
+                        {short && <span className={`tnum mr-1 font-normal ${e.kind === 'exam' ? 'text-white/80' : 'text-muted'}`}>{formatTime(e.start)}</span>}
+                        {e.kind === 'task' && <Icon name={e.done ? 'checkCircle' : 'circle'} size={11} className="mr-1 inline -translate-y-px text-muted" />}
+                        <span className={e.done && e.kind === 'task' ? 'text-muted line-through' : ''}>{e.kind === 'exam' ? `Prüfung: ${e.title}` : e.title}</span>
                       </span>
                       {!short && (
-                        <span className="tnum block truncate text-[10px] text-muted">
+                        <span className={`tnum block truncate text-[10px] ${e.kind === 'exam' ? 'text-white/80' : 'text-muted'}`}>
                           {formatTime(e.start)}
                           {e.end ? `–${formatTime(e.end)}` : ''}
                         </span>
@@ -158,8 +167,8 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
                 })}
                 {today && (
                   <div className="pointer-events-none absolute inset-x-0 z-10 flex items-center" style={{ top: nowTop }} aria-hidden="true">
-                    <span className="-ml-1 h-2 w-2 rounded-full bg-danger" />
-                    <span className="h-px flex-1 bg-danger" />
+                    <span className="-ml-1.5 h-3 w-3 rounded-full bg-sun ring-2 ring-surface" />
+                    <span className="h-0.5 flex-1 bg-sun" />
                   </div>
                 )}
               </div>

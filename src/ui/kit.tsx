@@ -37,7 +37,7 @@ export function SourceTag({ e }: { e: CalendarEvent }) {
     e.source === 'own' ? null : e.source === 'google' ? 'Google' : e.source === 'intervals' ? 'Intervals' : 'Demo'
   if (!label) return null
   return (
-    <span className="inline-flex items-center rounded-sm border border-line px-1.5 py-px text-[10px] font-medium uppercase tracking-wide text-muted">
+    <span className="inline-flex items-center rounded-full bg-surface2 px-2 py-px text-[10px] font-medium text-muted">
       {label}
     </span>
   )
@@ -46,7 +46,7 @@ export function SourceTag({ e }: { e: CalendarEvent }) {
 const PRIORITY_STYLE: Record<Priority, string> = {
   low: 'text-muted',
   medium: 'text-ink',
-  high: '',
+  high: 'text-warn',
   urgent: 'text-danger',
 }
 
@@ -54,7 +54,7 @@ export function PriorityTag({ p }: { p?: Priority }) {
   // Nur hohe Prioritäten markieren, sonst wird es unruhig
   if (!p || p === 'low' || p === 'medium') return null
   return (
-    <span className={`inline-flex items-center gap-1 text-[11px] font-semibold ${PRIORITY_STYLE[p]}`} style={p === 'high' ? { color: 'rgb(var(--private))' } : undefined}>
+    <span className={`inline-flex items-center gap-1 text-[11px] font-semibold ${PRIORITY_STYLE[p]}`}>
       <span aria-hidden="true">{p === 'urgent' ? '!!' : '!'}</span>
       {PRIORITY_LABEL[p]}
     </span>
@@ -134,21 +134,21 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center md:p-6" role="presentation">
-      <div className="anim-fade absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+      <div className="anim-fade absolute inset-0 bg-deep/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden="true" />
       <div
         ref={panel}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="anim-sheet relative max-h-[92vh] w-full overflow-y-auto rounded-t-xl border border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-sheet md:max-w-lg md:rounded-xl"
+        className="anim-sheet relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-surface pb-[env(safe-area-inset-bottom)] shadow-sheet md:max-w-xl md:rounded-2xl"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-surface/95 px-5 py-3 backdrop-blur">
-          <h2 className="text-base font-semibold">{title}</h2>
+        <div className="sticky top-0 z-10 flex items-center justify-between bg-surface/95 px-6 pb-2 pt-4 backdrop-blur">
+          <h2 className="h-display text-xl">{title}</h2>
           <button type="button" onClick={onClose} className="btn-ghost -mr-2 h-10 min-h-10 w-10 px-0" aria-label="Schliessen">
             <Icon name="x" size={18} />
           </button>
         </div>
-        <div className="px-5 py-4">{children}</div>
+        <div className="px-6 pb-6 pt-2">{children}</div>
       </div>
     </div>
   )
@@ -168,7 +168,7 @@ export function Segmented<T extends string>({
   size?: 'sm' | 'md'
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-md bg-surface2 p-0.5">
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-full bg-surface2 p-1">
       {options.map((o) => (
         <button
           key={o.value}
@@ -176,8 +176,8 @@ export function Segmented<T extends string>({
           role="radio"
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
-          className={`rounded-[6px] px-3 font-medium transition-colors ${size === 'sm' ? 'min-h-9 text-xs' : 'min-h-10 text-sm'} ${
-            value === o.value ? 'bg-surface text-ink shadow-pop' : 'text-muted hover:text-ink'
+          className={`rounded-full px-3.5 font-medium transition-colors ${size === 'sm' ? 'min-h-8 text-xs' : 'min-h-9 text-sm'} ${
+            value === o.value ? 'bg-deep text-deepink' : 'text-muted hover:text-ink'
           }`}
         >
           {o.label}
@@ -190,10 +190,10 @@ export function Segmented<T extends string>({
 export function EmptyState({ icon, title, text, action }: { icon: Parameters<typeof Icon>[0]['name']; title: string; text: string; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center px-6 py-10 text-center">
-      <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-surface2 text-muted">
+      <span className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-sun/20 text-ink">
         <Icon name={icon} size={20} />
       </span>
-      <p className="text-sm font-semibold">{title}</p>
+      <p className="h-section">{title}</p>
       <p className="mt-1 max-w-xs text-sm text-muted">{text}</p>
       {action && <div className="mt-4">{action}</div>}
     </div>

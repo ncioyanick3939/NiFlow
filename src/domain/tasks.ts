@@ -240,3 +240,42 @@ export function formatDue(t: Task, now: Date): string | null {
     diff === 0 ? 'Heute' : diff === 1 ? 'Morgen' : diff === -1 ? 'Gestern' : fmtDue.format(d).replace(/\./g, '')
   return t.dueTime ? `${day} ${t.dueTime}` : day
 }
+
+export interface TaskGroup {
+  key: string
+  label: string
+  tasks: Task[]
+  tone?: 'danger' | 'muted'
+}
+
+/**
+ * Gruppiert eine (bereits sortierte) Liste für die Anzeige.
+ * Nach Fälligkeit: Überfällig, Heute, Morgen, Diese Woche, Später, Ohne Datum.
+ * Erledigt: eine gedämpfte Gruppe. Bei anderer Sortierung: keine Gruppen.
+ */
+export function groupTasks(list: Task[], view: TaskView, sort: TaskSort, now: Date): TaskGroup[] {
+  if (list.length === 0) return []
+  if (view === 'done') return [{ key: 'done', label: 'Erledigt', tasks: list, tone: 'muted' }]
+  if (sort !== 'due') return [{ key: 'all', label: '', tasks: list }]
+  const today = toDateInput(now)
+  const tomorrow = toDateInput(addDays(startOfDay(now), 1))
+  const sunday = toDateInput(addDays(startOfWeek(now), 6))
+  const buckets: TaskGroup[] = [
+    { key: 'overdue', label: 'Überfällig', tasks: [], tone: 'danger' },
+    { key: 'today', label: 'Heute', tasks: [] },
+    { key: 'tomorrow', label: 'Morgen', tasks: [] },
+    { key: 'week', label: 'Diese Woche', tasks: [] },
+    { key: 'later', label: 'Später', tasks: [] },
+    { key: 'none', label: 'Ohne Datum', tasks: [], tone: 'muted' },
+  ]
+  const at = (k: string) => buckets.find((b) => b.key === k)!.tasks
+  for (const t of list) {
+    if (!t.dueDate) at('none').push(t)
+    else if (isOverdue(t, now)) at('overdue').push(t)
+    else if (t.dueDate === today) at('today').push(t)
+    else if (t.dueDate === tomorrow) at('tomorrow').push(t)
+    else if (t.dueDate <= sunday) at('week').push(t)
+    else at('later').push(t)
+  }
+  return buckets.filter((b) => b.tasks.length > 0)
+}

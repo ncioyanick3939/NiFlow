@@ -23,7 +23,7 @@ export default function AgendaView({ from, days, events, now, onOpen, onCreate }
 
   if (groups.length === 0) {
     return (
-      <div className="rounded-lg border border-line bg-surface">
+      <div className="rounded-xl bg-surface">
         <EmptyState
           icon="calendar"
           title={`Keine Einträge in den nächsten ${days} Tagen`}
@@ -35,17 +35,17 @@ export default function AgendaView({ from, days, events, now, onOpen, onCreate }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="divide-y divide-line/60 rounded-xl bg-surface px-4 md:px-6">
       {groups.map((g) => {
         const today = isSameDay(g.date, now)
         const past = g.date < startOfDay(now)
         return (
-          <section key={g.date.getTime()} className="grid gap-x-6 md:grid-cols-[9rem,1fr]">
-            <header className="mb-1 flex items-baseline gap-2 md:mb-0 md:block md:pt-2">
-              <p className={`text-sm font-semibold capitalize ${today ? 'text-accent' : ''}`}>{today ? 'Heute' : formatWeekday(g.date)}</p>
-              <p className="tnum text-xs text-muted">{formatDateLong(g.date)}</p>
+          <section key={g.date.getTime()} className="grid gap-x-6 py-4 md:grid-cols-[10rem,1fr]">
+            <header className="mb-1 flex items-baseline gap-3 md:mb-0 md:block md:pt-2">
+              <p className={`h-display text-lg capitalize leading-tight ${today ? 'text-accent' : ''}`}>{today ? 'Heute' : formatWeekday(g.date)}</p>
+              <p className="tnum text-sm text-muted">{formatDateLong(g.date)}</p>
             </header>
-            <div className="border-l border-line pl-2 md:pl-3">
+            <div>
               {g.items.map((e) => (
                 <EventRow key={e.id} e={e} onOpen={onOpen} dim={past} />
               ))}

@@ -49,12 +49,12 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
   const sportName: Record<string, string> = { swim: 'Schwimmen', bike: 'Rad', run: 'Laufen', dumbbell: 'Weiteres' }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pb-28 pt-6 md:px-8 md:pb-10 md:pt-10">
+    <div className="mx-auto w-full max-w-[880px] px-5 pb-28 pt-6 md:px-8 md:pb-12 md:pt-8 lg:px-10">
       <header className="mb-6">
         <p className="flex items-center gap-2 text-sm text-muted">
           <Icon name="activity" size={14} /> Intervals.icu · importiert, nur lesen
         </p>
-        <h1 className="mt-1 text-[1.75rem] font-semibold leading-tight tracking-tight">Training</h1>
+        <h1 className="mt-1 h-display text-[28px] leading-tight md:text-[34px]">Training</h1>
       </header>
 
       {state?.status === 'error' && (
@@ -65,7 +65,7 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
       )}
 
       {!state && (
-        <div className="rounded-lg border border-line bg-surface">
+        <div className="rounded-xl bg-surface">
           <EmptyState
             icon="activity"
             title={demo ? 'Im Demo-Modus nicht verfügbar' : 'Intervals.icu ist noch nicht verbunden'}
@@ -77,7 +77,7 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
 
       {state && (
         <>
-          <section className="mb-8 grid grid-cols-3 divide-x divide-line rounded-lg border border-line bg-surface">
+          <section className="mb-8 grid grid-cols-3 divide-x divide-line rounded-xl bg-surface">
             <Stat label={`Geplant · ${plannedNow.length} Einheiten`} value={totalMin > 0 ? formatDuration(totalMin) : '–'} />
             <Stat label={`Absolviert · ${doneNow.length} Einheiten`} value={doneMin > 0 ? formatDuration(doneMin) : '–'} />
             <Stat label="Belastung (absolviert)" value={loadSum > 0 ? String(Math.round(loadSum)) : '–'} />
@@ -96,7 +96,7 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
           )}
 
           {items.length === 0 ? (
-            <div className="rounded-lg border border-line bg-surface">
+            <div className="rounded-xl bg-surface">
               <EmptyState icon="activity" title="Keine geplanten Trainings" text="In Intervals.icu sind für diese und die nächsten Wochen keine Trainings eingetragen." />
             </div>
           ) : (
@@ -116,14 +116,14 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
                 return (
                   <section key={key}>
                     <div className="mb-2 flex items-baseline justify-between">
-                      <h2 className="text-base font-semibold">{label}</h2>
+                      <h2 className="h-section">{label}</h2>
                       <span className="tnum text-sm text-muted">
                         {sum > 0 ? `geplant ${formatDuration(sum)}` : ''}
                         {sum > 0 && sumDone > 0 ? ' · ' : ''}
                         {sumDone > 0 ? `absolviert ${formatDuration(sumDone)}` : ''}
                       </span>
                     </div>
-                    <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
+                    <ul className="divide-y divide-line rounded-xl bg-surface">
                       {list.map((e) => {
                         const min = minutesOf(e)
                         const past = !e.completed && startOfDay(e.start) < startOfDay(now)

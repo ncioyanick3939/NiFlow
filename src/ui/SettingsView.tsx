@@ -78,8 +78,8 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 pb-28 pt-6 md:px-8 md:pb-10 md:pt-10">
-      <h1 className="mb-8 text-[1.75rem] font-semibold leading-tight tracking-tight">Einstellungen</h1>
+    <div className="mx-auto w-full max-w-[880px] px-5 pb-28 pt-6 md:px-8 md:pb-12 md:pt-8 lg:px-10">
+      <h1 className="mb-8 h-display text-[28px] leading-tight md:text-[34px]">Einstellungen</h1>
 
       <Group title="Konto">
         {email ? (

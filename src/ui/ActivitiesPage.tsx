@@ -50,8 +50,8 @@ export default function ActivitiesPage({ events, now, readOnly, onOpen, onTempla
   const upcoming = own.filter((e) => e.start >= startOfDay(now) && e.start < addDays(startOfDay(now), 14))
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-28 pt-6 md:px-8 md:pb-10 md:pt-10">
-      <h1 className="mb-6 text-[1.75rem] font-semibold leading-tight tracking-tight">Aktivitäten</h1>
+    <div className="mx-auto w-full max-w-[1200px] px-5 pb-28 pt-6 md:px-8 md:pb-12 md:pt-8 lg:px-10">
+      <h1 className="mb-6 h-display text-[28px] leading-tight md:text-[34px]">Aktivitäten</h1>
 
       {!readOnly && (
         <section className="mb-8">
@@ -62,7 +62,7 @@ export default function ActivitiesPage({ events, now, readOnly, onOpen, onTempla
                 key={t.label}
                 type="button"
                 onClick={() => onTemplate(t)}
-                className={`${catClass(t.category)} flex items-center gap-3 rounded-lg border border-line bg-surface px-3 py-3 text-left transition-colors hover:border-cat hover:bg-cat/[0.06]`}
+                className={`${catClass(t.category)} flex items-center gap-3 rounded-xl bg-surface px-3 py-3 text-left transition-colors hover:border-cat hover:bg-cat/[0.06]`}
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cat/15 text-cat">
                   <Icon name={t.icon} size={17} />
@@ -79,18 +79,18 @@ export default function ActivitiesPage({ events, now, readOnly, onOpen, onTempla
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr),20rem]">
         <section className="min-w-0">
-          <h2 className="mb-3 text-base font-semibold">Nächste zwei Wochen</h2>
+          <h2 className="h-section mb-3">Nächste zwei Wochen</h2>
           <AgendaView from={now} days={14} events={upcoming} now={now} onOpen={onOpen} />
         </section>
 
         <aside className="space-y-8">
           <section>
-            <h2 className="mb-3 text-base font-semibold">Diese Woche geplant</h2>
+            <h2 className="h-section mb-3">Diese Woche geplant</h2>
             <PlanBars events={events} now={now} />
           </section>
 
           <section>
-            <h2 className="mb-2 text-base font-semibold">Regelmässig</h2>
+            <h2 className="h-section mb-2">Regelmässig</h2>
             {series.size === 0 ? (
               <p className="text-sm text-muted">Noch keine wiederkehrenden Aktivitäten. Im Formular unter «Wiederholen» legst du eine Serie an.</p>
             ) : (

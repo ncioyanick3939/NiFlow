@@ -2,7 +2,7 @@
 // bis Google Kalender verbunden ist. Sie werden in der App immer als "Testdaten" gekennzeichnet.
 // Sie sind relativ zur aktuellen Woche, damit immer etwas sichtbar ist.
 
-import { addDays, atTime, startOfWeek } from '../domain/dateUtils'
+import { addDays, atTime, startOfDay, startOfWeek } from '../domain/dateUtils'
 import { makeEventId } from '../domain/types'
 import type { CalendarEvent, Category, EventKind, Intensity } from '../domain/types'
 import type { EventSource } from './types'
@@ -85,6 +85,33 @@ export function createTestEvents(now: Date): CalendarEvent[] {
     kind: 'event',
   })
 
+  // Zwei Notizen, um die Notizanzeige zu zeigen
+  const today = startOfDay(now)
+  events.push(
+    {
+      id: makeEventId('test', 'note-today'),
+      source: 'test',
+      externalId: 'note-today',
+      title: 'Lernnotizen Statistik',
+      description: 'Hypothesentests: Fehler 1. und 2. Art nochmals anschauen.',
+      start: today,
+      end: addDays(today, 1),
+      allDay: true,
+      category: 'study',
+      kind: 'note',
+    },
+    {
+      id: makeEventId('test', 'note-friday'),
+      source: 'test',
+      externalId: 'note-friday',
+      title: 'Geschenk für Grossmutter abholen',
+      start: friday,
+      end: addDays(friday, 1),
+      allDay: true,
+      category: 'private',
+      kind: 'note',
+    },
+  )
   return events
 }
 

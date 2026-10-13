@@ -335,8 +335,8 @@ export default function App() {
       />
       <main className="min-w-0 flex-1">
         {demo && !connected && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line bg-accent/10 px-4 py-2.5 text-sm md:px-8">
-            <span className="font-semibold text-accent">Demo</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-sun/25 px-5 py-2.5 text-sm md:px-8 lg:px-10">
+            <span className="font-semibold">Demo</span>
             <span className="mr-auto text-muted">Erfundene Beispieldaten. Zum Speichern eigener Einträge anmelden.</span>
             <button type="button" className="font-medium text-accent hover:underline" onClick={() => void connectGoogle()}>
               Anmelden
@@ -396,6 +396,8 @@ export default function App() {
             onQuickTask={(title) => quickTask(emptyTask({ title, dueDate: toDateInput(now) }))}
             prefs={dash.prefs}
             onSearch={() => setSheet({ kind: 'search' })}
+            onCreateTask={() => createTaskSheet({ dueDate: toDateInput(now) })}
+            onCreateExam={createExamSheet}
           />
         )}
         {section === 'calendar' && (
@@ -408,6 +410,7 @@ export default function App() {
             readOnly={readOnly}
             onOpen={openEvent}
             onCreate={(d, t) => create(d, t)}
+            onCreateNote={(d) => createNote(d)}
           />
         )}
         {section === 'tasks' && (
@@ -435,6 +438,8 @@ export default function App() {
             readOnly={readOnly}
             onOpen={(x) => setSheet({ kind: 'exam', examId: x.id })}
             onCreate={createExamSheet}
+            onToggleTask={toggleTask}
+            onOpenTask={openTask}
           />
         )}
         {section === 'activities' && <ActivitiesPage events={events} now={now} readOnly={readOnly} onOpen={openEvent} onTemplate={fromTemplate} />}
@@ -471,7 +476,7 @@ export default function App() {
         <button
           type="button"
           onClick={fab}
-          className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-accentink shadow-sheet transition-transform active:scale-95 md:hidden"
+          className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-sun text-sunink shadow-float transition-transform active:scale-95 md:hidden"
           aria-label={section === 'tasks' ? 'Neue Aufgabe' : section === 'exams' ? 'Neue Prüfung' : 'Neu erstellen'}
         >
           <Icon name="plus" size={24} />
@@ -561,8 +566,8 @@ export default function App() {
                 { icon: 'exam', label: 'Prüfung', text: 'Mit Lernaufgaben planen', go: () => createExamSheet() },
               ] as { icon: IconName; label: string; text: string; go: () => void }[]
             ).map((o) => (
-              <button key={o.label} type="button" onClick={o.go} className="flex flex-col items-start gap-2 rounded-lg border border-line p-4 text-left transition-colors hover:border-accent hover:bg-accent/[0.04]">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10 text-accent">
+              <button key={o.label} type="button" onClick={o.go} className="flex flex-col items-start gap-3 rounded-xl bg-surface2 p-4 text-left transition-colors hover:bg-sun/20">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-deep text-sun">
                   <Icon name={o.icon} size={18} />
                 </span>
                 <span>

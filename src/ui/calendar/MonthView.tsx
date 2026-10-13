@@ -7,6 +7,8 @@ import { catClass } from '../kit'
 const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 
 interface Props {
+  /** Ausgewählter Tag (mit Seitenleiste) */
+  selected?: Date
   month: Date
   events: CalendarEvent[]
   now: Date
@@ -14,7 +16,7 @@ interface Props {
   onPickDay: (d: Date) => void
 }
 
-export default function MonthView({ month, events, now, onOpen, onPickDay }: Props) {
+export default function MonthView({ selected, month, events, now, onOpen, onPickDay }: Props) {
   const first = new Date(month.getFullYear(), month.getMonth(), 1)
   const start = startOfWeek(first)
   const days = Array.from({ length: 42 }, (_, i) => addDays(start, i))
@@ -22,10 +24,10 @@ export default function MonthView({ month, events, now, onOpen, onPickDay }: Pro
   const visible = days[35].getMonth() !== month.getMonth() ? days.slice(0, 35) : days
 
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-surface">
-      <div className="grid grid-cols-7 border-b border-line">
+    <div className="overflow-hidden rounded-xl bg-surface">
+      <div className="grid grid-cols-7 border-b border-line/70">
         {WEEKDAYS.map((w) => (
-          <div key={w} className="py-2 text-center text-[11px] font-medium uppercase tracking-wide text-muted">
+          <div key={w} className="py-2.5 text-center text-xs font-medium text-muted">
             {w}
           </div>
         ))}
@@ -36,6 +38,7 @@ export default function MonthView({ month, events, now, onOpen, onPickDay }: Pro
           const all = [...allDay, ...timed]
           const inMonth = d.getMonth() === month.getMonth()
           const today = isSameDay(d, now)
+          const isSel = !!selected && isSameDay(d, selected)
           return (
             <div
               key={d.getTime()}
@@ -49,13 +52,13 @@ export default function MonthView({ month, events, now, onOpen, onPickDay }: Pro
                 }
               }}
               aria-label={`${d.getDate()}. ${all.length} Einträge, Tag öffnen`}
-              className={`min-h-[4.5rem] cursor-pointer border-line p-1 transition-colors hover:bg-surface2 md:min-h-[7.5rem] md:p-1.5 ${i % 7 !== 0 ? 'border-l' : ''} ${
+              className={`relative min-h-[4.5rem] cursor-pointer border-line/60 p-1 transition-colors hover:bg-surface2/70 md:min-h-[8rem] md:p-2 ${i % 7 !== 0 ? 'border-l' : ''} ${
                 i >= 7 ? 'border-t' : ''
-              } ${inMonth ? '' : 'bg-surface2/40'}`}
+              } ${inMonth ? '' : 'bg-canvas/60'} ${isSel ? 'bg-accent/[0.06] shadow-[inset_0_0_0_2px_rgb(var(--accent))]' : ''}`}
             >
               <span
-                className={`tnum mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
-                  today ? 'bg-accent text-accentink' : inMonth ? '' : 'text-muted/60'
+                className={`tnum mb-1 flex h-7 w-7 items-center justify-center rounded-full text-[13px] font-semibold ${
+                  today ? 'bg-sun text-sunink' : inMonth ? '' : 'text-muted/50'
                 }`}
               >
                 {d.getDate()}
@@ -76,8 +79,8 @@ export default function MonthView({ month, events, now, onOpen, onPickDay }: Pro
                       ev.stopPropagation()
                       onOpen(e)
                     }}
-                    className={`${catClass(e.category)} flex w-full items-center gap-1.5 truncate rounded-sm px-1 py-0.5 text-left text-[11px] transition-colors hover:bg-cat/15 ${
-                      e.allDay && e.kind !== 'note' ? 'bg-cat/15 font-medium' : ''
+                    className={`${catClass(e.category)} flex w-full items-center gap-1.5 truncate rounded-md px-1.5 py-[3px] text-left text-[11px] transition-colors ${
+                      e.kind === 'exam' ? 'bg-exam font-semibold text-white' : e.allDay && e.kind !== 'note' && e.kind !== 'task' ? 'bg-cat/15 font-medium hover:bg-cat/25' : 'hover:bg-cat/10'
                     }`}
                   >
                     {e.kind === 'note' || e.kind === 'task' ? (
@@ -85,11 +88,11 @@ export default function MonthView({ month, events, now, onOpen, onPickDay }: Pro
                     ) : (
                       !e.allDay && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-cat" aria-hidden="true" />
                     )}
-                    {!e.allDay && <span className="tnum shrink-0 text-muted">{formatTime(e.start)}</span>}
-                    <span className={`truncate ${e.done ? 'text-muted line-through' : ''} ${e.kind === 'exam' ? 'font-semibold' : ''}`}>{e.title}</span>
+                    {!e.allDay && <span className={`tnum shrink-0 ${e.kind === 'exam' ? 'text-white/80' : 'text-muted'}`}>{formatTime(e.start)}</span>}
+                    <span className={`truncate ${e.done && e.kind === 'task' ? 'text-muted line-through' : ''}`}>{e.title}</span>
                   </button>
                 ))}
-                {all.length > 3 && <p className="px-1 text-[11px] font-medium text-muted">+{all.length - 3} weitere</p>}
+                {all.length > 3 && <p className="px-1.5 text-[11px] font-medium text-muted">{all.length - 3} weitere</p>}
               </div>
             </div>
           )

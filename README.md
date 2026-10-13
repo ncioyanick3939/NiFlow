@@ -2,7 +2,7 @@
 
 Persönliches Planungssystem für Studium, Training und Alltag (mobile-first Web-App).
 
-## Stand (Runde 4)
+## Stand (Runde 5: Redesign «Aare»)
 
 - Neues Design mit hellem und dunklem Modus (Einstellungen → Darstellung)
 - Übersicht: Als Nächstes, Heute mit freier Zeit, Schnellerfassung, Nächste Tage, Training

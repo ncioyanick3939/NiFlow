@@ -18,7 +18,7 @@ import { mapIntervalsActivity, mapIntervalsEvent } from '../src/sources/interval
 import { NotConfigured } from '../src/sources/intervalsSource'
 import { emptyInput, eventToInput, inputToRow, parseDateInput, rowToEvent, validateEntry } from '../src/domain/entries'
 import type { EntryRow } from '../src/domain/entries'
-import { emptyTask, formatDue, inView, isOverdue, sortTasks, taskToEvent, taskToRow, validateTask } from '../src/domain/tasks'
+import { emptyTask, formatDue, groupTasks, inView, isOverdue, sortTasks, taskToEvent, taskToRow, validateTask } from '../src/domain/tasks'
 import type { Task } from '../src/domain/tasks'
 import { daysUntil, emptyExam, examToRow, rowToExam, suggestStudyTasks, validateExam } from '../src/domain/exams'
 import type { ExamRow } from '../src/domain/exams'
@@ -60,7 +60,7 @@ check('Mittwoch: Belegung ohne Doppelzählung', wedBusy === 195 + 360 + 90, `${w
 
 // 5. Ganztägiger Termin am Freitag
 const fri = eventsForDay(events, day(4))
-check('Freitag: ganztägiger Termin erkannt', fri.allDay.length === 1)
+check('Freitag: ganztägiger Termin erkannt (plus Notiz)', fri.allDay.filter((e) => e.kind !== 'note').length === 1 && fri.allDay.length === 2)
 const friSlots = findFreeSlots(fri, day(4), now)
 check('Freitag: freie Zeit als unsicher markiert', friSlots.length > 0 && friSlots.every((s) => s.uncertain))
 
@@ -314,6 +314,12 @@ check('Suche im Notiztext und mehrere Wörter', search('hypothesen wiederholen',
 check('Suche: Serie erscheint nur einmal', search('schwimmen', { events: ser, tasks: [], exams: [] }, new Date(2026, 9, 25)).events.length === 1)
 check('Suche: Lernstoff einer Prüfung', search('verteilungen', { events: [], tasks: [], exams: [sEx] }, tNow).exams.length === 1)
 check('Leere Suche liefert nichts, letzte Notizen schon', search('  ', { events: [sNote], tasks: [], exams: [] }, tNow).notes.length === 0 && recentNotes([sNote]).length === 1)
+
+// Gruppierung der Aufgaben
+const grp = groupTasks(sortTasks([tNoDate, tYesterday, tToday, tSunday, tNextWeek, mk({ dueDate: '2026-10-14' })], 'due'), 'all', 'due', tNow)
+check('Gruppen in fester Reihenfolge', grp.map((g) => g.key).join() === 'overdue,today,tomorrow,week,later,none', grp.map((g) => g.key).join())
+check('Gruppen: andere Sortierung ohne Gruppen', groupTasks([tToday, tYesterday], 'all', 'priority', tNow).length === 1)
+check('Gruppen: leere Liste', groupTasks([], 'all', 'due', tNow).length === 0)
 
 console.log(failed === 0 ? '\nAlle Prüfungen bestanden.' : `\n${failed} Prüfung(en) fehlgeschlagen.`)
 process.exit(failed === 0 ? 0 : 1)

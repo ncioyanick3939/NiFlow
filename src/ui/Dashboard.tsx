@@ -1,17 +1,29 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { addDays, formatCountdown, formatDateLong, formatDuration, formatTime, formatWeekday, isoWeek, startOfDay } from '../domain/dateUtils'
-import { deadlineUrgency, eventsForDay, findFreeSlots, findOverlaps, isHeavyDay, busyMinutes, nextEvent } from '../domain/schedule'
-import type { CalendarEvent } from '../domain/types'
+import {
+  addDays,
+  formatCountdown,
+  formatDateLong,
+  formatDuration,
+  formatTime,
+  formatWeekday,
+  isoWeek,
+  startOfDay,
+} from '../domain/dateUtils'
 import { PREP_LABEL, daysUntil } from '../domain/exams'
 import type { Exam } from '../domain/exams'
+import { deadlineUrgency, eventsForDay, findFreeSlots, nextEvent } from '../domain/schedule'
 import { PRIORITY_RANK, inView, isOverdue, sortTasks } from '../domain/tasks'
 import type { Task } from '../domain/tasks'
-import Icon, { sportIcon } from './icons'
-import { CATEGORY_LABEL, EmptyState, EventRow, Segmented, catClass, formatEventTime } from './kit'
-import TaskRow from './tasks/TaskRow'
-import PlanBars from './PlanBars'
+import { CATEGORY_LABEL } from '../domain/types'
+import type { CalendarEvent } from '../domain/types'
+import DayRiver from './dashboard/DayRiver'
+import WeekStrip from './dashboard/WeekStrip'
 import type { DashSection } from './hooks'
+import Icon, { sportIcon } from './icons'
+import type { IconName } from './icons'
+import { catClass, formatEventTime } from './kit'
+import TaskRow from './tasks/TaskRow'
 
 interface Props {
   events: CalendarEvent[]
@@ -33,410 +45,390 @@ interface Props {
   onGoTasks: () => void
   onGoExams: () => void
   onQuickTask: (title: string) => Promise<void>
+  onCreateTask: () => void
+  onCreateExam: () => void
   prefs: Record<DashSection, boolean>
   onSearch: () => void
 }
 
 function greeting(now: Date): string {
   const h = now.getHours()
+  if (h < 5) return 'Gute Nacht'
   if (h < 11) return 'Guten Morgen'
   if (h < 17) return 'Guten Tag'
   return 'Guten Abend'
 }
 
-type Row = { kind: 'event'; e: CalendarEvent; t: number } | { kind: 'free'; start: Date; end: Date; minutes: number; study: { start: Date; end: Date } | null; t: number }
+const fmtShortDay = new Intl.DateTimeFormat('de-CH', { weekday: 'short' })
 
+/**
+ * Übersicht mit klarer Rangfolge:
+ * 1. Tagesfluss (dunkel, gross): was als Nächstes kommt und wie der Tag aussieht
+ * 2. Nächste Prüfung (farbig) und Dringendes (rechts)
+ * 3. Aufgaben für heute (breit) und nächste Tage (schmal)
+ * 4. Woche und Ergänzendes (unten, kompakt)
+ */
 export default function Dashboard(p: Props) {
   const { events, now } = p
   const today = startOfDay(now)
-  const dayAll = eventsForDay(events, today)
-  const day = { timed: dayAll.timed.filter((e) => e.kind !== 'task'), allDay: dayAll.allDay.filter((e) => e.kind !== 'task') }
-  const notes = day.allDay.filter((e) => e.kind === 'note')
-  const allDayEvents = day.allDay.filter((e) => e.kind !== 'note')
+  const all = eventsForDay(events, today)
+  const timed = all.timed.filter((e) => e.kind !== 'task')
+  const allDay = all.allDay.filter((e) => e.kind !== 'task' && e.kind !== 'note')
+  const notes = all.allDay.filter((e) => e.kind === 'note')
+  const next = nextEvent(events, now)
+  const free = findFreeSlots({ timed, allDay: all.allDay.filter((e) => e.kind !== 'task') }, today, now)
+  const nextFree = p.prefs.free ? free.find((f) => f.study) ?? free[0] : undefined
+  const remaining = timed.filter((e) => (e.end ?? e.start) >= now)
+
   const overdue = sortTasks(p.tasks.filter((t) => isOverdue(t, now)), 'due')
   const todayTasks = sortTasks(p.tasks.filter((t) => inView(t, 'today', now) && !isOverdue(t, now)), 'priority')
   const doneToday = p.tasks.filter((t) => t.status === 'done' && t.completedAt && startOfDay(t.completedAt).getTime() === today.getTime()).length
-  const focus = sortTasks(
-    p.tasks.filter((t) => t.status !== 'done' && PRIORITY_RANK[t.priority] <= 1 && !inView(t, 'today', now) && !isOverdue(t, now) && inView(t, 'next', now)),
-    'priority',
-  ).slice(0, 4)
-  const unplanned = p.tasks.filter((t) => t.status !== 'done' && !t.dueDate).length
-  const nextExams = p.exams.filter((x) => daysUntil(x, now) >= 0).sort((a, b) => a.start.getTime() - b.start.getTime()).slice(0, 3)
+  const urgentDeadlines = events.filter((e) => deadlineUrgency(e, now) !== null).sort((a, b) => a.start.getTime() - b.start.getTime())
+  const soonImportant = sortTasks(
+    p.tasks.filter((t) => t.status !== 'done' && PRIORITY_RANK[t.priority] <= 1 && inView(t, 'next', now)),
+    'due',
+  ).slice(0, 3)
+  const upcomingExams = p.exams.filter((x) => daysUntil(x, now) >= 0).sort((a, b) => a.start.getTime() - b.start.getTime())
+  const exam = upcomingExams[0]
   const examById = new Map(p.exams.map((x) => [x.id, x]))
-  const next = nextEvent(events, now)
-  const overlaps = findOverlaps(day.timed)
-  const busy = busyMinutes(day.timed, today)
-  const urgent = events
-    .filter((e) => deadlineUrgency(e, now) !== null)
-    .sort((a, b) => a.start.getTime() - b.start.getTime())
-  const free = p.prefs.free ? findFreeSlots(day, today, now) : []
-  const rows: Row[] = [
-    ...day.timed.map((e): Row => ({ kind: 'event', e, t: e.start.getTime() })),
-    ...free.map((f): Row => ({ kind: 'free', ...f, t: f.start.getTime() })),
-  ].sort((a, b) => a.t - b.t)
-
-  const upcomingDays = Array.from({ length: 6 }, (_, i) => addDays(today, i + 1)).map((d) => {
-    const { allDay, timed } = eventsForDay(events, d)
-    return { date: d, items: [...allDay, ...timed] }
+  const days = Array.from({ length: 5 }, (_, i) => addDays(today, i + 1)).map((d) => {
+    const { allDay: ad, timed: tm } = eventsForDay(events, d)
+    return { date: d, items: [...ad, ...tm].filter((e) => e.kind !== 'note') }
   })
-  const training = events
-    .filter((e) => e.source === 'intervals' && e.start >= today)
-    .sort((a, b) => a.start.getTime() - b.start.getTime())
-    .slice(0, 3)
+  const training = events.filter((e) => e.source === 'intervals' && !e.completed && e.start >= today).sort((a, b) => a.start.getTime() - b.start.getTime())[0]
+
+  const hasSide = notes.length > 0 || (p.prefs.training && !!training)
+  const quickActions: { label: string; icon: IconName; go: () => void }[] = [
+    { label: 'Aufgabe', icon: 'tasks', go: p.onCreateTask },
+    { label: 'Termin', icon: 'calendar', go: () => p.onCreate(today) },
+    { label: 'Notiz', icon: 'note', go: () => p.onCreateNote(today) },
+    { label: 'Prüfung', icon: 'exam', go: p.onCreateExam },
+  ]
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-28 pt-6 md:px-8 md:pb-10 md:pt-10">
-      <header className="mb-6 flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-        <p className="tnum text-sm text-muted">
-          <span className="capitalize">{formatWeekday(now)}</span>, {formatDateLong(now)} · KW {isoWeek(now)}
-        </p>
-        <h1 className="mt-1 text-[1.75rem] font-semibold leading-tight tracking-tight">
-          {greeting(now)}
-          {p.firstName ? `, ${p.firstName}` : ''}
-        </h1>
+    <div className="mx-auto w-full max-w-[1200px] px-5 pb-28 pt-6 md:px-8 md:pb-12 md:pt-8 lg:px-10">
+      {/* Kopf: Begrüssung, Datum, schnelle Aktionen */}
+      <header className="mb-6 flex flex-wrap items-end gap-x-6 gap-y-4 md:mb-8">
+        <div className="mr-auto min-w-0">
+          <p className="tnum text-sm text-muted">
+            <span className="capitalize">{formatWeekday(now)}</span>, {formatDateLong(now)}, KW {isoWeek(now)}
+          </p>
+          <h1 className="h-display mt-1 text-[32px] leading-[1.1] md:text-[40px]">
+            {greeting(now)}
+            {p.firstName ? `, ${p.firstName}` : ''}
+          </h1>
         </div>
-        <button type="button" onClick={p.onSearch} className="btn-outline h-11 w-11 shrink-0 px-0 md:hidden" aria-label="Suchen">
-          <Icon name="search" size={18} />
-        </button>
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+          {!p.readOnly &&
+            quickActions.map((a) => (
+              <button key={a.label} type="button" onClick={a.go} className="btn-outline min-h-10 flex-1 px-3.5 sm:flex-none">
+                <Icon name={a.icon} size={16} /> {a.label}
+              </button>
+            ))}
+          <button type="button" onClick={p.onSearch} className="btn-outline h-10 min-h-10 w-10 px-0 md:hidden" aria-label="Suchen">
+            <Icon name="search" size={17} />
+          </button>
+        </div>
       </header>
 
-      {(urgent.length > 0 || overlaps.size > 0 || isHeavyDay(busy)) && (
-        <div className="mb-6 space-y-2">
-          {urgent.slice(0, 3).map((e) => (
-            <button
-              key={e.id}
-              type="button"
-              onClick={() => p.onOpen(e)}
-              className="flex w-full items-center gap-3 rounded-md border border-danger/30 bg-danger/[0.06] px-3 py-2.5 text-left text-sm transition-colors hover:bg-danger/10"
-            >
-              <Icon name="alert" size={16} className="shrink-0 text-danger" />
-              <span className="min-w-0 flex-1 truncate">
-                <span className="font-semibold">{e.kind === 'exam' ? 'Prüfung' : 'Frist'}:</span> {e.title}
-              </span>
-              <span className="tnum shrink-0 font-semibold text-danger">{formatCountdown(now, e.start)}</span>
-            </button>
-          ))}
-          {overlaps.size > 0 && (
-            <p className="flex items-center gap-3 rounded-md bg-surface2 px-3 py-2.5 text-sm">
-              <Icon name="alert" size={16} className="shrink-0 text-muted" />
-              Heute überschneiden sich {overlaps.size} Termine.
-            </p>
-          )}
-          {isHeavyDay(busy) && (
-            <p className="flex items-center gap-3 rounded-md bg-surface2 px-3 py-2.5 text-sm">
-              <Icon name="clock" size={16} className="shrink-0 text-muted" />
-              Langer Tag: {formatDuration(busy)} verplant.
-            </p>
-          )}
-        </div>
-      )}
-
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr),20rem]">
-        <div className="min-w-0 space-y-8">
-          {/* Als Nächstes */}
-          {next ? (
-            <button
-              type="button"
-              onClick={() => p.onOpen(next)}
-              className={`${catClass(next.category)} group relative w-full overflow-hidden rounded-xl bg-accent px-5 py-5 text-left text-accentink transition-transform duration-150 hover:-translate-y-px md:px-6`}
-            >
-              <span className="text-xs font-medium uppercase tracking-wider opacity-80">Als Nächstes</span>
-              <span className="mt-2 flex items-end justify-between gap-4">
-                <span className="min-w-0">
-                  <span className="block truncate text-xl font-semibold">{next.title}</span>
-                  <span className="tnum mt-1 block text-sm opacity-85">
-                    {formatEventTime(next, startOfDay(next.start).getTime() !== today.getTime())} · {CATEGORY_LABEL[next.category]}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:gap-6">
+        {/* 1. Tagesfluss */}
+        <section className="relative overflow-hidden rounded-2xl bg-deep p-6 text-deepink md:p-8 lg:col-span-8" aria-label="Dein Tag">
+          <svg className="pointer-events-none absolute -right-10 -top-6 h-48 w-80 text-deepink/[0.05]" viewBox="0 0 320 190" fill="none" stroke="currentColor" strokeWidth="18" aria-hidden="true">
+            <path d="M0 60c40 0 50-40 90-40s50 40 90 40 50-40 90-40 40 40 50 40" />
+            <path d="M0 130c40 0 50-40 90-40s50 40 90 40 50-40 90-40 40 40 50 40" />
+          </svg>
+          <div className="relative flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+            <div className="min-w-0">
+              <p className="text-sm text-deepmuted">{next ? 'Als Nächstes' : 'Heute'}</p>
+              {next ? (
+                <button type="button" onClick={() => p.onOpen(next)} className="mt-1 block max-w-full text-left">
+                  <span className="h-display block truncate text-[26px] leading-tight md:text-[30px]">{next.title}</span>
+                  <span className="tnum mt-1 flex flex-wrap items-center gap-x-3 text-sm text-deepmuted">
+                    <span>{formatEventTime(next, startOfDay(next.start).getTime() !== today.getTime())}</span>
+                    <span className={`${catClass(next.category)} inline-flex items-center gap-1.5`}>
+                      <span className="h-2 w-2 rounded-full bg-cat" aria-hidden="true" />
+                      {CATEGORY_LABEL[next.category]}
+                    </span>
                   </span>
-                </span>
-                <span className="tnum shrink-0 text-2xl font-semibold">{formatCountdown(now, next.start)}</span>
-              </span>
-            </button>
-          ) : (
-            !p.loading && (
-              <div className="rounded-xl border border-dashed border-line px-5 py-5 text-sm text-muted">Kein weiterer Termin geplant.</div>
-            )
-          )}
-
-          {/* Heute */}
-          <section>
-            <div className="mb-2 flex items-baseline justify-between">
-              <h2 className="text-base font-semibold">Heute</h2>
-              <button type="button" className="text-sm font-medium text-accent hover:underline" onClick={() => p.onOpenDay(today)}>
-                Im Kalender öffnen
-              </button>
+                </button>
+              ) : (
+                <p className="h-display mt-1 text-[26px] leading-tight">{p.loading ? 'Lädt …' : 'Keine weiteren Termine'}</p>
+              )}
             </div>
-            {p.loading && events.length === 0 ? (
-              <p className="py-6 text-sm text-muted">Lädt …</p>
-            ) : rows.length === 0 && allDayEvents.length === 0 ? (
-              <div className="rounded-lg border border-line bg-surface">
-                <EmptyState
-                  icon="calendar"
-                  title="Heute ist nichts geplant"
-                  text="Das gilt für alle verbundenen Quellen. Nutze die Zeit oder plane etwas ein."
-                  action={!p.readOnly && <button type="button" className="btn-primary" onClick={() => p.onCreate(today)}>Termin planen</button>}
-                />
-              </div>
+            {next && <p className="h-display tnum text-[34px] leading-none text-sun md:text-[44px]">{formatCountdown(now, next.start)}</p>}
+          </div>
+
+          <div className="relative mt-7">
+            <DayRiver timed={timed} free={p.prefs.free ? free : []} day={today} now={now} onOpen={p.onOpen} />
+          </div>
+
+          <div className="relative mt-5 grid gap-x-8 gap-y-1 sm:grid-cols-2">
+            {[...allDay, ...remaining].slice(0, 6).map((e) => (
+              <button key={e.id} type="button" onClick={() => p.onOpen(e)} className={`${catClass(e.category)} flex min-h-10 items-center gap-3 rounded-md px-2 text-left text-sm transition-colors hover:bg-deepink/[0.07]`}>
+                <span className="h-2 w-2 shrink-0 rounded-full bg-cat" aria-hidden="true" />
+                <span className="tnum w-11 shrink-0 text-deepmuted">{e.allDay ? 'Tag' : formatTime(e.start)}</span>
+                <span className="truncate">{e.title}</span>
+              </button>
+            ))}
+            {[...allDay, ...remaining].length === 0 && !p.loading && <p className="px-2 text-sm text-deepmuted">Der restliche Tag ist frei.</p>}
+          </div>
+
+          <div className="relative mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-deepink/10 pt-4 text-sm">
+            {nextFree ? (
+              <span className="mr-auto text-deepmuted">
+                Frei {formatTime(nextFree.start)}–{formatTime(nextFree.end)}
+                {nextFree.study ? ', genug für einen Lernblock' : ''}
+              </span>
             ) : (
-              <div className="rounded-lg border border-line bg-surface p-1.5">
-                {allDayEvents.map((e) => (
-                  <EventRow key={e.id} e={e} onOpen={p.onOpen} />
-                ))}
-                {rows.map((r) =>
-                  r.kind === 'event' ? (
-                    <EventRow key={r.e.id} e={r.e} onOpen={p.onOpen} dim={(r.e.end ?? r.e.start) < now} />
-                  ) : (
-                    <div key={`free-${r.t}`} className="flex items-center gap-3 rounded-md px-2 py-2 text-sm">
-                      <span className="w-[3px] self-stretch rounded-full border-l border-dashed border-muted/50" aria-hidden="true" />
-                      <span className="min-w-0 flex-1">
-                        <span className="text-muted">Frei</span>{' '}
-                        <span className="tnum text-muted">
-                          {formatTime(r.start)}–{formatTime(r.end)} · {formatDuration(r.minutes)}
-                        </span>
-                        {r.study && <span className="ml-2 text-xs font-medium text-accent">Lernblock möglich</span>}
-                      </span>
-                      {!p.readOnly && (
-                        <button
-                          type="button"
-                          className="btn-ghost min-h-9 px-2 text-xs text-accent"
-                          onClick={() => p.onCreate(today, r.study?.start ?? r.start)}
-                        >
-                          <Icon name="plus" size={14} /> Einplanen
-                        </button>
-                      )}
-                    </div>
-                  ),
+              <span className="mr-auto text-deepmuted">{timed.length} Termine heute</span>
+            )}
+            {nextFree && !p.readOnly && (
+              <button type="button" className="font-semibold text-sun hover:underline" onClick={() => p.onCreate(today, nextFree.study?.start ?? nextFree.start)}>
+                Einplanen
+              </button>
+            )}
+            <button type="button" className="font-semibold text-deepink hover:underline" onClick={() => p.onOpenDay(today)}>
+              Tag im Kalender
+            </button>
+          </div>
+        </section>
+
+        {/* 2. Rechte Spalte: nächste Prüfung, Dringendes */}
+        <div className="flex flex-col gap-5 lg:col-span-4 lg:gap-6">
+          {p.prefs.exams &&
+            (exam ? (
+              <ExamSpotlight exam={exam} tasks={p.tasks.filter((t) => t.examId === exam.id)} now={now} onOpen={() => p.onOpenExam(exam)} more={upcomingExams.length - 1} onAll={p.onGoExams} />
+            ) : (
+              <section className="flex flex-col items-start gap-3 rounded-2xl border-2 border-dashed border-line p-6">
+                <p className="h-section">Keine Prüfung geplant</p>
+                <p className="text-sm text-muted">Trag deine nächste Prüfung ein, dann plant NiFlow mit dir die Lernaufgaben.</p>
+                {!p.readOnly && (
+                  <button type="button" className="btn-outline min-h-10" onClick={p.onCreateExam}>
+                    <Icon name="plus" size={16} /> Prüfung anlegen
+                  </button>
                 )}
-              </div>
+              </section>
+            ))}
+
+          <section className="rounded-2xl bg-surface p-5">
+            <h2 className="h-section mb-2 flex items-center gap-2">
+              Dringend
+              {overdue.length + urgentDeadlines.length > 0 && (
+                <span className="tnum rounded-full bg-danger px-2 text-xs font-bold leading-5 text-white">{overdue.length + urgentDeadlines.length}</span>
+              )}
+            </h2>
+            {overdue.length + urgentDeadlines.length + soonImportant.length === 0 ? (
+              <p className="text-sm text-muted">Nichts überfällig, keine Frist in den nächsten 48 Stunden.</p>
+            ) : (
+              <ul className="space-y-1">
+                {urgentDeadlines.slice(0, 3).map((e) => (
+                  <li key={e.id}>
+                    <button type="button" onClick={() => p.onOpen(e)} className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-surface2">
+                      <Icon name="alert" size={16} className="shrink-0 text-danger" />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">{e.title}</span>
+                      <span className="tnum shrink-0 text-xs font-semibold text-danger">{formatCountdown(now, e.start)}</span>
+                    </button>
+                  </li>
+                ))}
+                {overdue.slice(0, 3).map((t) => (
+                  <li key={t.id}>
+                    <TaskRow task={t} now={now} exam={t.examId ? examById.get(t.examId) : undefined} readOnly={p.readOnly} onToggle={p.onToggleTask} onOpen={p.onOpenTask} compact />
+                  </li>
+                ))}
+                {overdue.length + urgentDeadlines.length === 0 &&
+                  soonImportant.map((t) => (
+                    <li key={t.id}>
+                      <TaskRow task={t} now={now} exam={t.examId ? examById.get(t.examId) : undefined} readOnly={p.readOnly} onToggle={p.onToggleTask} onOpen={p.onOpenTask} compact />
+                    </li>
+                  ))}
+              </ul>
             )}
           </section>
+        </div>
 
-          {/* Aufgaben */}
-          {p.prefs.tasks && (
-          <section>
-            <div className="mb-1 flex items-baseline justify-between">
-              <h2 className="text-base font-semibold">
-                Aufgaben{' '}
-                {doneToday > 0 && <span className="tnum ml-1 text-xs font-normal text-muted">{doneToday} heute erledigt</span>}
-              </h2>
-              <button type="button" className="text-sm font-medium text-accent hover:underline" onClick={p.onGoTasks}>
-                Alle Aufgaben
-              </button>
+        {/* 3. Aufgaben für heute */}
+        {p.prefs.tasks && (
+          <section className="rounded-2xl bg-surface p-5 md:p-6 lg:col-span-7 lg:self-start">
+            <div className="mb-3 flex items-baseline gap-3">
+              <h2 className="h-section mr-auto">Aufgaben für heute</h2>
+              <span className="tnum text-sm text-muted">
+                {todayTasks.length} offen{doneToday > 0 ? `, ${doneToday} erledigt` : ''}
+              </span>
             </div>
-            {overdue.length + todayTasks.length === 0 ? (
-              <p className="py-3 text-sm text-muted">Für heute ist nichts offen.{unplanned > 0 ? ` ${unplanned} Aufgabe${unplanned > 1 ? 'n haben' : ' hat'} noch kein Datum.` : ''}</p>
+            {todayTasks.length + doneToday > 0 && (
+              <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-surface2" aria-hidden="true">
+                <div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${(doneToday / (todayTasks.length + doneToday)) * 100}%` }} />
+              </div>
+            )}
+            {todayTasks.length === 0 ? (
+              <p className="py-2 text-sm text-muted">{doneToday > 0 ? 'Alles für heute erledigt.' : 'Für heute ist nichts fällig.'}</p>
             ) : (
               <div className="divide-y divide-line/70">
-                {[...overdue, ...todayTasks].map((t) => (
+                {todayTasks.map((t) => (
                   <TaskRow key={t.id} task={t} now={now} exam={t.examId ? examById.get(t.examId) : undefined} readOnly={p.readOnly} onToggle={p.onToggleTask} onOpen={p.onOpenTask} compact />
                 ))}
               </div>
             )}
-            {focus.length > 0 && (
-              <div className="mt-4">
-                <p className="eyebrow mb-1">Bald wichtig</p>
-                <div className="divide-y divide-line/70">
-                  {focus.map((t) => (
-                    <TaskRow key={t.id} task={t} now={now} exam={t.examId ? examById.get(t.examId) : undefined} readOnly={p.readOnly} onToggle={p.onToggleTask} onOpen={p.onOpenTask} compact />
-                  ))}
-                </div>
-              </div>
-            )}
-            {unplanned > 0 && overdue.length + todayTasks.length > 0 && (
-              <button type="button" onClick={p.onGoTasks} className="mt-2 text-xs text-muted hover:text-ink">
-                {unplanned} Aufgabe{unplanned > 1 ? 'n' : ''} ohne Datum noch nicht eingeplant
-              </button>
-            )}
+            {!p.readOnly && p.prefs.quick && <QuickAdd onTask={p.onQuickTask} onNote={p.onQuickNote} />}
+            <button type="button" className="mt-3 text-sm font-semibold text-accent hover:underline" onClick={p.onGoTasks}>
+              Alle Aufgaben
+            </button>
           </section>
-          )}
-        </div>
+        )}
 
-        <aside className="space-y-8">
-          {!p.readOnly && p.prefs.quick && <QuickCapture onQuickNote={p.onQuickNote} onQuickTask={p.onQuickTask} onCreate={() => p.onCreate(today)} onCreateNote={() => p.onCreateNote(today)} />}
-
-          {p.prefs.exams && (
-          <section>
-            <div className="mb-2 flex items-baseline justify-between">
-              <h2 className="text-base font-semibold">Prüfungen</h2>
-              <button type="button" className="text-sm font-medium text-accent hover:underline" onClick={p.onGoExams}>
-                {nextExams.length > 0 ? 'Alle' : 'Anlegen'}
-              </button>
-            </div>
-            {nextExams.length === 0 ? (
-              <p className="text-sm text-muted">Keine anstehenden Prüfungen.</p>
-            ) : (
-              <ul className="space-y-1">
-                {nextExams.map((x) => {
-                  const d = daysUntil(x, now)
-                  const open = p.tasks.filter((t) => t.examId === x.id && t.status !== 'done').length
-                  return (
-                    <li key={x.id}>
-                      <button type="button" onClick={() => p.onOpenExam(x)} className="flex w-full items-center gap-3 rounded-md px-1 py-2 text-left transition-colors hover:bg-surface2">
-                        <span className={`tnum flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-md text-sm font-semibold leading-none ${d <= 3 ? 'bg-danger/10 text-danger' : d <= 7 ? 'bg-[rgb(var(--private)/0.12)]' : 'bg-surface2'}`}>
-                          {d}
-                          <span className="mt-0.5 text-[9px] font-medium">{d === 1 ? 'Tag' : 'Tage'}</span>
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-medium">{x.title}</span>
-                          <span className="block text-xs text-muted">
-                            {PREP_LABEL[x.prepStatus]}
-                            {open > 0 ? ` · ${open} offen` : ''}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </section>
-          )}
-
-          {notes.length > 0 && (
-            <section>
-              <h2 className="mb-2 text-base font-semibold">Notizen für heute</h2>
-              <div className="space-y-2">
-                {notes.map((n) => (
-                  <button
-                    key={n.id}
-                    type="button"
-                    onClick={() => p.onOpen(n)}
-                    className={`${catClass(n.category)} block w-full rounded-md border-l-[3px] border-cat bg-surface2 px-3 py-2.5 text-left transition-colors hover:bg-line/60`}
-                  >
-                    <span className="block truncate text-sm font-medium">{n.title}</span>
-                    {n.description && <span className="mt-0.5 line-clamp-2 block text-xs text-muted">{n.description}</span>}
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {p.prefs.plan && (
-            <section>
-              <h2 className="mb-3 text-base font-semibold">Diese Woche geplant</h2>
-              <PlanBars events={events} now={now} compact />
-            </section>
-          )}
-
-          {p.prefs.days && (
-          <section>
-            <h2 className="mb-2 text-base font-semibold">Nächste Tage</h2>
-            <ol className="divide-y divide-line">
-              {upcomingDays.map((d) => (
+        {/* 3b. Nächste Tage */}
+        {p.prefs.days && (
+          <section className={`rounded-2xl bg-surface p-5 md:p-6 lg:self-start ${p.prefs.tasks ? 'lg:col-span-5' : 'lg:col-span-12'}`}>
+            <h2 className="h-section mb-3">Nächste Tage</h2>
+            <ol className="space-y-1">
+              {days.map((d) => (
                 <li key={d.date.getTime()}>
-                  <button type="button" onClick={() => p.onOpenDay(d.date)} className="flex w-full gap-3 py-2.5 text-left transition-colors hover:bg-surface2">
-                    <span className="w-10 shrink-0 text-center">
-                      <span className="block text-[10px] font-medium uppercase text-muted">
-                        {new Intl.DateTimeFormat('de-CH', { weekday: 'short' }).format(d.date).replace('.', '')}
-                      </span>
-                      <span className="tnum block text-base font-semibold">{d.date.getDate()}</span>
+                  <button type="button" onClick={() => p.onOpenDay(d.date)} className="flex w-full gap-4 rounded-lg px-2 py-2 text-left transition-colors hover:bg-surface2">
+                    <span className="w-9 shrink-0 text-center">
+                      <span className="block text-xs text-muted">{fmtShortDay.format(d.date).replace('.', '')}</span>
+                      <span className="h-display tnum block text-xl leading-tight">{d.date.getDate()}</span>
                     </span>
-                    <span className="min-w-0 flex-1 space-y-0.5 pt-0.5">
-                      {d.items.length === 0 && <span className="block text-xs text-muted">Frei</span>}
+                    <span className="min-w-0 flex-1 space-y-1 pt-0.5">
+                      {d.items.length === 0 && <span className="block pt-1.5 text-sm text-muted">Frei</span>}
                       {d.items.slice(0, 3).map((e) => (
-                        <span key={e.id} className={`${catClass(e.category)} flex items-center gap-2 text-xs`}>
-                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${e.kind === 'note' ? 'border border-cat' : 'bg-cat'}`} aria-hidden="true" />
+                        <span key={e.id} className={`${catClass(e.category)} flex items-center gap-2 text-sm`}>
+                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${e.kind === 'task' ? 'border border-cat' : 'bg-cat'}`} aria-hidden="true" />
                           {!e.allDay && <span className="tnum shrink-0 text-muted">{formatTime(e.start)}</span>}
-                          <span className="truncate">{e.title}</span>
+                          <span className={`truncate ${e.kind === 'exam' ? 'font-semibold' : ''}`}>{e.title}</span>
                         </span>
                       ))}
-                      {d.items.length > 3 && <span className="block text-[11px] text-muted">+{d.items.length - 3} weitere</span>}
+                      {d.items.length > 3 && <span className="block text-xs text-muted">{d.items.length - 3} weitere</span>}
                     </span>
                   </button>
                 </li>
               ))}
             </ol>
           </section>
-          )}
+        )}
 
-          {p.prefs.training && training.length > 0 && (
-            <section>
-              <div className="mb-2 flex items-baseline justify-between">
-                <h2 className="text-base font-semibold">Training</h2>
-                <button type="button" className="text-sm font-medium text-accent hover:underline" onClick={p.onGoTraining}>
-                  Alle
-                </button>
-              </div>
-              <div className="space-y-1">
-                {training.map((e) => (
-                  <button key={e.id} type="button" onClick={() => p.onOpen(e)} className="cat-training flex w-full items-center gap-3 rounded-md px-1 py-2 text-left transition-colors hover:bg-surface2">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cat/15 text-cat">
-                      <Icon name={sportIcon(e.sport)} size={18} />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium">{e.title}</span>
-                      <span className="tnum block text-xs text-muted">
-                        {formatEventTime(e, true).split(' · ')[0]}
-                        {e.allDay ? '' : ` · ${formatTime(e.start)}`}
-                        {e.plannedMinutes ? ` · ${formatDuration(e.plannedMinutes)}` : ''}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-        </aside>
+        {/* 4. Woche */}
+        {p.prefs.plan && (
+          <section className={`rounded-2xl bg-surface p-5 md:p-6 ${hasSide ? 'lg:col-span-8' : 'lg:col-span-12'}`}>
+            <h2 className="h-section mb-4">Deine Woche</h2>
+            <WeekStrip events={events} now={now} onPickDay={p.onOpenDay} />
+          </section>
+        )}
+
+        {hasSide && (
+          <div className={`flex flex-col gap-5 lg:gap-6 ${p.prefs.plan ? 'lg:col-span-4' : 'lg:col-span-12'}`}>
+            {notes.length > 0 && (
+              <section className="rounded-2xl bg-surface2 p-5">
+                <h2 className="h-section mb-2">Notizen für heute</h2>
+                <div className="space-y-2">
+                  {notes.map((n) => (
+                    <button key={n.id} type="button" onClick={() => p.onOpen(n)} className={`${catClass(n.category)} block w-full rounded-md border-l-[3px] border-cat bg-surface px-3 py-2.5 text-left transition-colors hover:bg-canvas`}>
+                      <span className="block truncate text-sm font-medium">{n.title}</span>
+                      {n.description && <span className="mt-0.5 line-clamp-2 block text-xs text-muted">{n.description}</span>}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+            {p.prefs.training && training && (
+              <button type="button" onClick={p.onGoTraining} className="cat-training flex items-center gap-4 rounded-2xl bg-cat/10 p-5 text-left transition-colors hover:bg-cat/15">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cat text-surface">
+                  <Icon name={sportIcon(training.sport)} size={22} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm text-muted">Nächstes Training</span>
+                  <span className="block truncate font-semibold">{training.title}</span>
+                  <span className="tnum block text-sm text-muted">
+                    {formatEventTime(training, true).split(' · ')[0]}
+                    {training.plannedMinutes ? `, ${formatDuration(training.plannedMinutes)}` : ''}
+                  </span>
+                </span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-function QuickCapture({
-  onQuickNote,
-  onQuickTask,
-  onCreate,
-  onCreateNote,
-}: {
-  onQuickNote: (t: string) => Promise<void>
-  onQuickTask: (t: string) => Promise<void>
-  onCreate: () => void
-  onCreateNote: () => void
-}) {
+/** Nächste Prüfung: farbig hervorgehoben, mit Countdown und Lernfortschritt. */
+function ExamSpotlight({ exam, tasks, now, onOpen, more, onAll }: { exam: Exam; tasks: Task[]; now: Date; onOpen: () => void; more: number; onAll: () => void }) {
+  const days = daysUntil(exam, now)
+  const done = tasks.filter((t) => t.status === 'done').length
+  const progress = tasks.length > 0 ? done / tasks.length : exam.prepStatus === 'ready' ? 1 : 0
+  return (
+    <section className="relative overflow-hidden rounded-2xl bg-exam p-6 text-white">
+      <span className="pointer-events-none absolute -bottom-10 -right-8 h-40 w-40 rounded-full bg-white/10" aria-hidden="true" />
+      <button type="button" onClick={onOpen} className="relative block w-full text-left">
+        <span className="text-sm text-white/75">Nächste Prüfung</span>
+        <span className="mt-2 flex items-end justify-between gap-4">
+          <span className="min-w-0">
+            <span className="h-display block truncate text-2xl leading-tight">{exam.title}</span>
+            <span className="tnum mt-1 block text-sm text-white/80">
+              {exam.start.toLocaleDateString('de-CH', { weekday: 'short', day: 'numeric', month: 'short' })}, {formatTime(exam.start)}
+            </span>
+          </span>
+          <span className="shrink-0 text-right">
+            <span className="h-display tnum block text-[44px] leading-none">{days}</span>
+            <span className="block text-xs text-white/80">{days === 1 ? 'Tag' : 'Tage'}</span>
+          </span>
+        </span>
+        <span className="mt-5 block h-2 overflow-hidden rounded-full bg-white/20" aria-hidden="true">
+          <span className="anim-grow block h-full rounded-full bg-white" style={{ width: `${Math.max(progress * 100, 3)}%` }} />
+        </span>
+        <span className="mt-2 flex justify-between text-xs text-white/85">
+          <span>{PREP_LABEL[exam.prepStatus]}</span>
+          <span className="tnum">{tasks.length > 0 ? `${done} von ${tasks.length} Lernaufgaben` : 'Noch keine Lernaufgaben'}</span>
+        </span>
+      </button>
+      {more > 0 && (
+        <button type="button" onClick={onAll} className="relative mt-4 text-sm font-semibold text-white underline-offset-4 hover:underline">
+          {more} weitere Prüfung{more > 1 ? 'en' : ''}
+        </button>
+      )}
+    </section>
+  )
+}
+
+function QuickAdd({ onTask, onNote }: { onTask: (t: string) => Promise<void>; onNote: (t: string) => Promise<void> }) {
   const [text, setText] = useState('')
-  const [kind, setKind] = useState<'task' | 'note'>('task')
+  const [asNote, setAsNote] = useState(false)
   const [state, setState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle')
   const [msg, setMsg] = useState('')
-
   const submit = async (ev: FormEvent) => {
     ev.preventDefault()
     const t = text.trim()
     if (!t) return
     setState('busy')
     try {
-      await (kind === 'task' ? onQuickTask(t) : onQuickNote(t))
+      await (asNote ? onNote(t) : onTask(t))
       setText('')
       setState('done')
-      setMsg(kind === 'task' ? 'Aufgabe für heute angelegt.' : 'Notiz für heute gespeichert.')
+      setMsg(asNote ? 'Notiz für heute gespeichert.' : 'Aufgabe für heute angelegt.')
     } catch (err) {
       setState('error')
       setMsg(err instanceof Error ? err.message : 'Speichern fehlgeschlagen.')
     }
   }
-
   return (
-    <section className="rounded-lg bg-surface2 p-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">Schnell festhalten</h2>
-        <Segmented
-          label="Art"
-          size="sm"
-          value={kind}
-          onChange={setKind}
-          options={[
-            { value: 'task', label: 'Aufgabe' },
-            { value: 'note', label: 'Notiz' },
-          ]}
-        />
-      </div>
-      <form onSubmit={submit} className="flex gap-2">
+    <form onSubmit={submit} className="mt-3">
+      <div className="flex items-center gap-1 rounded-full border border-line bg-canvas pl-1.5 pr-1 focus-within:border-accent">
+        <button
+          type="button"
+          onClick={() => setAsNote((v) => !v)}
+          className="flex h-9 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold text-muted transition-colors hover:bg-surface2 hover:text-ink"
+          aria-label={asNote ? 'Als Notiz speichern, umschalten zu Aufgabe' : 'Als Aufgabe speichern, umschalten zu Notiz'}
+        >
+          <Icon name={asNote ? 'note' : 'tasks'} size={15} /> {asNote ? 'Notiz' : 'Aufgabe'}
+        </button>
         <label htmlFor="quick" className="sr-only">
-          {kind === 'task' ? 'Aufgabe für heute' : 'Notiz für heute'}
+          Für heute festhalten
         </label>
         <input
           id="quick"
-          className="field bg-surface"
-          placeholder={kind === 'task' ? 'Aufgabe für heute …' : 'Notiz für heute …'}
+          className="min-h-11 min-w-0 flex-1 bg-transparent px-1 text-sm outline-none placeholder:text-muted/70 focus-visible:ring-0 focus-visible:ring-offset-0"
+          placeholder={asNote ? 'Notiz für heute …' : 'Aufgabe für heute …'}
           value={text}
           maxLength={200}
           onChange={(e) => {
@@ -444,23 +436,15 @@ function QuickCapture({
             if (state !== 'busy') setState('idle')
           }}
         />
-        <button type="submit" className="btn-primary h-11 w-11 shrink-0 px-0" disabled={state === 'busy' || !text.trim()} aria-label="Speichern">
-          <Icon name="arrowRight" size={18} />
-        </button>
-      </form>
-      {state === 'done' || state === 'error' ? (
-        <p className={`mt-2 text-xs ${state === 'error' ? 'text-danger' : 'text-muted'}`} role="status">
-          {msg}
-        </p>
-      ) : null}
-      <div className="mt-3 flex gap-2">
-        <button type="button" className="btn-outline min-h-9 flex-1 bg-surface px-2 text-xs" onClick={onCreate}>
-          <Icon name="calendar" size={14} /> Termin
-        </button>
-        <button type="button" className="btn-outline min-h-9 flex-1 bg-surface px-2 text-xs" onClick={onCreateNote}>
-          <Icon name="note" size={14} /> Notiz mit Text
+        <button type="submit" className="btn-primary h-9 min-h-9 w-9 shrink-0 px-0" disabled={state === 'busy' || !text.trim()} aria-label="Speichern">
+          <Icon name="plus" size={17} />
         </button>
       </div>
-    </section>
+      {(state === 'done' || state === 'error') && (
+        <p className={`mt-2 px-2 text-xs ${state === 'error' ? 'text-danger' : 'text-muted'}`} role="status">
+          {msg}
+        </p>
+      )}
+    </form>
   )
 }

@@ -4,35 +4,54 @@
 
 /* Farben als RGB-Tripel, damit Tailwind Transparenz (z. B. bg-accent/10) berechnen kann. */
 :root {
-  --bg: 246 246 248;
+  /* Flächen: heller Salbei statt Grau, damit die App nicht steril wirkt */
+  --bg: 239 243 240;
   --surface: 255 255 255;
-  --surface2: 240 240 244;
-  --line: 226 226 232;
-  --ink: 22 22 30;
-  --muted: 104 104 120;
-  --accent: 79 70 229;
+  --surface2: 228 235 231;
+  --line: 214 223 218;
+  --ink: 17 33 31;
+  --muted: 92 111 106;
+  /* Interaktion: Aare-Petrol */
+  --accent: 15 92 85;
   --accent-ink: 255 255 255;
-  --danger: 220 38 38;
+  --danger: 209 47 47;
+  --deep: 15 61 58;
+  --deep-ink: 236 245 242;
+  --deep-muted: 152 189 182;
+  --sun: 245 184 61;
+  --sun-ink: 43 30 4;
+  /* Prüfungen: kräftiges Violett, in beiden Modi dunkel genug für weisse Schrift */
+  --exam: 109 40 217;
+  /* Hohe Priorität */
+  --warn: 217 119 6;
+  /* Kategorien */
   --training: 37 99 235;
   --work: 100 116 139;
-  --study: 5 150 105;
-  --private: 217 119 6;
+  --study: 124 58 237;
+  --private: 219 79 134;
   color-scheme: light;
 }
 :root.dark {
-  --bg: 14 14 18;
-  --surface: 22 22 28;
-  --surface2: 32 32 40;
-  --line: 46 46 58;
-  --ink: 236 236 244;
-  --muted: 148 148 168;
-  --accent: 129 140 248;
-  --accent-ink: 14 14 18;
+  --bg: 11 20 19;
+  --surface: 18 30 29;
+  --surface2: 27 42 40;
+  --line: 40 58 55;
+  --ink: 230 240 237;
+  --muted: 140 163 158;
+  --accent: 108 213 196;
+  --accent-ink: 8 24 22;
   --danger: 248 113 113;
-  --training: 96 165 250;
+  --deep: 16 50 47;
+  --deep-ink: 230 242 238;
+  --deep-muted: 137 180 172;
+  --sun: 246 196 83;
+  --sun-ink: 43 30 4;
+  --exam: 109 40 217;
+  --warn: 245 158 11;
+  --training: 110 168 254;
   --work: 148 163 184;
-  --study: 52 211 153;
-  --private: 251 146 60;
+  --study: 183 156 255;
+  --private: 245 138 180;
   color-scheme: dark;
 }
 
@@ -50,7 +69,6 @@
   body {
     @apply bg-canvas font-sans text-ink antialiased;
     -webkit-tap-highlight-color: transparent;
-    font-feature-settings: 'cv11', 'ss01';
   }
   button {
     @apply cursor-pointer;
@@ -65,10 +83,13 @@
     font-variant-numeric: tabular-nums;
   }
   .btn {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium transition duration-150 disabled:cursor-not-allowed disabled:opacity-40;
   }
   .btn-primary {
-    @apply btn bg-accent text-accentink hover:bg-accent/90;
+    @apply btn bg-accent text-accentink hover:bg-accent/90 active:scale-[0.98];
+  }
+  .btn-sun {
+    @apply btn bg-sun font-semibold text-sunink hover:brightness-105 active:scale-[0.98];
   }
   .btn-ghost {
     @apply btn text-ink hover:bg-surface2;
@@ -82,8 +103,21 @@
   .label {
     @apply mb-1 block text-xs font-medium text-muted;
   }
+  /* Kleine Abschnitts-Beschriftung, normale Schreibweise */
   .eyebrow {
-    @apply text-xs font-medium uppercase tracking-wider text-muted;
+    @apply text-[13px] font-semibold text-muted;
+  }
+  .h-display {
+    @apply font-display font-semibold tracking-[-0.02em];
+  }
+  .h-section {
+    @apply font-display text-lg font-semibold tracking-[-0.01em];
+  }
+  .panel {
+    @apply rounded-xl bg-surface;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
 }
 
@@ -91,6 +125,17 @@
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: none; }
 }
+@keyframes pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+.anim-pop { animation: pop 260ms ease-out; }
+@keyframes grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.anim-grow { transform-origin: left; animation: grow 600ms cubic-bezier(.2,.7,.2,1); }
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -99,6 +144,6 @@
 .anim-fade { animation: fade-in 150ms ease-out; }
 
 @media (prefers-reduced-motion: reduce) {
-  .anim-sheet, .anim-fade { animation: none; }
+  .anim-sheet, .anim-fade, .anim-pop, .anim-grow { animation: none; }
   * { transition-duration: 0.01ms !important; }
 }

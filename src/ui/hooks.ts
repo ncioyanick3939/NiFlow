@@ -181,13 +181,13 @@ export { VIEW_KEY }
 
 export type DashSection = 'free' | 'tasks' | 'exams' | 'days' | 'plan' | 'training' | 'quick'
 export const DASH_LABEL: Record<DashSection, string> = {
-  free: 'Freie Zeit zwischen Terminen',
+  free: 'Freie Zeit im Tagesfluss',
   tasks: 'Aufgaben für heute',
   exams: 'Anstehende Prüfungen',
   days: 'Nächste Tage',
-  plan: 'Diese Woche geplant',
+  plan: 'Deine Woche',
   training: 'Training',
-  quick: 'Schnell festhalten',
+  quick: 'Schnelles Festhalten bei den Aufgaben',
 }
 const DASH_KEY = 'niflow-dashboard'
 const DASH_DEFAULT: Record<DashSection, boolean> = { free: true, tasks: true, exams: true, days: true, plan: true, training: true, quick: true }

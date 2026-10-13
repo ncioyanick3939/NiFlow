@@ -2,7 +2,7 @@
 // - Seite (HTML): zuerst Netz, sonst die zuletzt gespeicherte Version
 // - Dateien mit Hash im Namen (JS/CSS) und Icons: aus dem Speicher, sonst Netz
 // - Daten (Supabase, Google, Intervals) werden NIE zwischengespeichert
-const CACHE = 'niflow-v1'
+const CACHE = 'niflow-v2'
 
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (event) => {
