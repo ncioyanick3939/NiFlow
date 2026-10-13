@@ -4,7 +4,8 @@ import type { CalendarEvent, Category } from '../domain/types'
 import AgendaView from './calendar/AgendaView'
 import Icon from './icons'
 import type { IconName } from './icons'
-import { CategoryDot, catClass } from './kit'
+import { catClass } from './kit'
+import Page from './Page'
 import PlanBars from './PlanBars'
 
 export interface ActivityTemplate {
@@ -35,6 +36,8 @@ interface Props {
   onTemplate: (t: ActivityTemplate) => void
 }
 
+const WEEKDAY = new Intl.DateTimeFormat('de-CH', { weekday: 'long' })
+
 /** Eigene Aktivitäten: Vorlagen, regelmässige Serien, Wochenplanung und die nächsten zwei Wochen. */
 export default function ActivitiesPage({ events, now, readOnly, onOpen, onTemplate }: Props) {
   // Eigene Termine (im Demo-Modus die Beispieltermine)
@@ -49,26 +52,26 @@ export default function ActivitiesPage({ events, now, readOnly, onOpen, onTempla
   }
   const upcoming = own.filter((e) => e.start >= startOfDay(now) && e.start < addDays(startOfDay(now), 14))
 
-  return (
-    <div className="mx-auto w-full max-w-[1200px] px-5 pb-28 pt-6 md:px-8 md:pb-12 md:pt-8 lg:px-10">
-      <h1 className="mb-6 h-display text-[28px] leading-tight md:text-[34px]">Aktivitäten</h1>
+  const seriesList = [...series.values()].sort((a, b) => ((a.start.getDay() + 6) % 7) - ((b.start.getDay() + 6) % 7) || a.start.getHours() - b.start.getHours())
 
+  return (
+    <Page title="Aktivitäten" sub={`${upcoming.length} in den nächsten zwei Wochen, ${series.size} regelmässig`}>
       {!readOnly && (
-        <section className="mb-8">
-          <h2 className="eyebrow mb-2">Neu aus Vorlage</h2>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <section className="mb-8" aria-labelledby="tpl-h">
+          <h2 id="tpl-h" className="h-section mb-3">Schnell anlegen</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {TEMPLATES.map((t) => (
               <button
                 key={t.label}
                 type="button"
                 onClick={() => onTemplate(t)}
-                className={`${catClass(t.category)} flex items-center gap-3 rounded-xl bg-surface px-3 py-3 text-left transition-colors hover:border-cat hover:bg-cat/[0.06]`}
+                className={`${catClass(t.category)} group flex items-center gap-3 rounded-xl bg-cat/[0.09] px-3.5 py-3.5 text-left transition-colors hover:bg-cat/[0.16]`}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cat/15 text-cat">
-                  <Icon name={t.icon} size={17} />
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cat text-surface transition-transform group-hover:scale-105">
+                  <Icon name={t.icon} size={18} />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-sm font-medium">{t.label}</span>
+                  <span className="block truncate font-medium">{t.label}</span>
                   <span className="tnum block text-xs text-muted">{t.minutes < 60 ? `${t.minutes} min` : `${t.minutes / 60} h`}</span>
                 </span>
               </button>
@@ -77,50 +80,46 @@ export default function ActivitiesPage({ events, now, readOnly, onOpen, onTempla
         </section>
       )}
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr),20rem]">
-        <section className="min-w-0">
+      <div className="grid gap-6 lg:grid-cols-12">
+        <section className="min-w-0 lg:col-span-8">
           <h2 className="h-section mb-3">Nächste zwei Wochen</h2>
           <AgendaView from={now} days={14} events={upcoming} now={now} onOpen={onOpen} />
         </section>
 
-        <aside className="space-y-8">
-          <section>
-            <h2 className="h-section mb-3">Diese Woche geplant</h2>
-            <PlanBars events={events} now={now} />
-          </section>
-
-          <section>
-            <h2 className="h-section mb-2">Regelmässig</h2>
-            {series.size === 0 ? (
-              <p className="text-sm text-muted">Noch keine wiederkehrenden Aktivitäten. Im Formular unter «Wiederholen» legst du eine Serie an.</p>
+        <aside className="min-w-0 space-y-6 lg:col-span-4">
+          <section className="rounded-2xl bg-deep p-5 text-deepink">
+            <h2 className="h-section mb-1 text-deepink">Regelmässig</h2>
+            {seriesList.length === 0 ? (
+              <p className="text-sm text-deepmuted">Noch keine Serien. Im Formular unter «Wiederholen» legst du eine an.</p>
             ) : (
-              <ul className="space-y-1">
-                {[...series.values()]
-                  .sort((a, b) => a.start.getDay() - b.start.getDay() || a.start.getHours() - b.start.getHours())
-                  .map((e) => (
-                    <li key={e.ref!.id}>
-                      <button type="button" onClick={() => onOpen(e)} className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-surface2">
-                        <Icon name="repeat" size={15} className="shrink-0 text-muted" />
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-center gap-2 truncate text-sm font-medium">
-                            <CategoryDot category={e.category} /> {e.title}
-                          </span>
-                          <span className="tnum block text-xs text-muted">
-                            {RECURRENCE_LABEL[e.recurrence!]}
-                            {e.recurrence === 'weekly' || e.recurrence === 'biweekly'
-                              ? ` · ${new Intl.DateTimeFormat('de-CH', { weekday: 'long' }).format(e.start)}`
-                              : ''}
-                            {e.allDay ? '' : ` · ${formatTime(e.start)}`}
-                          </span>
+              <ul className="-mx-2 mt-2">
+                {seriesList.map((e) => (
+                  <li key={e.ref!.id}>
+                    <button type="button" onClick={() => onOpen(e)} className={`${catClass(e.category)} flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-deepink/10`}>
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cat/25 text-deepink">
+                        <Icon name="repeat" size={15} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{e.title}</span>
+                        <span className="tnum block text-xs text-deepmuted">
+                          {RECURRENCE_LABEL[e.recurrence!]}
+                          {e.recurrence === 'weekly' || e.recurrence === 'biweekly' ? `, ${WEEKDAY.format(e.start)}` : ''}
+                          {e.allDay ? '' : `, ${formatTime(e.start)}`}
                         </span>
-                      </button>
-                    </li>
-                  ))}
+                      </span>
+                    </button>
+                  </li>
+                ))}
               </ul>
             )}
           </section>
+
+          <section className="rounded-2xl bg-surface p-5">
+            <h2 className="h-section mb-3">Diese Woche geplant</h2>
+            <PlanBars events={events} now={now} />
+          </section>
         </aside>
       </div>
-    </div>
+    </Page>
   )
 }

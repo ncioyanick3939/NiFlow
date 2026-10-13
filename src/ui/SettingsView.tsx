@@ -10,6 +10,7 @@ import type { DashSection } from './hooks'
 import type { SourceState } from '../sources/types'
 import Icon from './icons'
 import { Segmented } from './kit'
+import Page from './Page'
 import type { ThemeChoice } from './theme'
 
 interface Props {
@@ -78,8 +79,8 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
   }
 
   return (
-    <div className="mx-auto w-full max-w-[880px] px-5 pb-28 pt-6 md:px-8 md:pb-12 md:pt-8 lg:px-10">
-      <h1 className="mb-8 h-display text-[28px] leading-tight md:text-[34px]">Einstellungen</h1>
+    <Page title="Einstellungen" sub={email ? `Angemeldet als ${email}` : demo ? 'Demo-Modus' : undefined} width="narrow">
+      <div className="space-y-4">
 
       <Group title="Konto">
         {email ? (
@@ -245,15 +246,16 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
           )}
         </Group>
       )}
-    </div>
+      </div>
+    </Page>
   )
 }
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="mb-8 grid gap-3 border-t border-line pt-5 md:grid-cols-[11rem,1fr] md:gap-8">
-      <h2 className="text-sm font-semibold">{title}</h2>
-      <div>{children}</div>
+    <section className="grid gap-3 rounded-2xl bg-surface p-5 md:grid-cols-[10rem,1fr] md:gap-8 md:p-6">
+      <h2 className="h-section">{title}</h2>
+      <div className="min-w-0">{children}</div>
     </section>
   )
 }

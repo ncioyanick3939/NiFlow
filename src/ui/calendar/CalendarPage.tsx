@@ -24,6 +24,8 @@ interface Props {
   onOpen: (e: CalendarEvent) => void
   onCreate: (date: Date, time?: Date) => void
   onCreateNote: (date: Date) => void
+  /** Eigenen Termin per Ziehen verschoben oder verlängert */
+  onMove?: (e: CalendarEvent, start: Date, end: Date | null) => void
 }
 
 const fmtMonth = new Intl.DateTimeFormat('de-CH', { month: 'long', year: 'numeric' })
@@ -35,7 +37,7 @@ const fmtWd = new Intl.DateTimeFormat('de-CH', { weekday: 'short' })
  * Kalender über die ganze Breite. Eine Toolbar für Zeitraum, Navigation und Ansicht.
  * Rechts eine einklappbare Tagesleiste mit Notizen, Aufgaben und den nächsten Terminen.
  */
-export default function CalendarPage({ initialDate, events, now, loading, readOnly, onOpen, onCreate, onCreateNote }: Props) {
+export default function CalendarPage({ initialDate, events, now, loading, readOnly, onOpen, onCreate, onCreateNote, onMove }: Props) {
   const [stored, setView] = useStoredState<CalView>('niflow-calendar-view', 'week', VIEWS)
   const [forced, setForced] = useState<CalView | null>(initialDate ? 'day' : null)
   const view = forced ?? stored
@@ -152,18 +154,18 @@ export default function CalendarPage({ initialDate, events, now, loading, readOn
 
           {view === 'week' &&
             (wide ? (
-              <TimeGrid days={week} events={events} now={now} onOpen={onOpen} onCreateAt={createAt} onPickDay={(d) => { setAnchor(d); setForced('day') }} />
+              <TimeGrid days={week} events={events} now={now} onOpen={onOpen} onCreateAt={createAt} onMove={readOnly ? undefined : onMove} onPickDay={(d) => { setAnchor(d); setForced('day') }} />
             ) : (
               <>
                 {strip}
-                <TimeGrid days={[anchor]} events={events} now={now} onOpen={onOpen} onCreateAt={createAt} />
+                <TimeGrid days={[anchor]} events={events} now={now} onOpen={onOpen} onCreateAt={createAt} onMove={readOnly ? undefined : onMove} />
               </>
             ))}
 
           {view === 'day' && (
             <>
               {strip}
-              <TimeGrid days={[anchor]} events={events} now={now} onOpen={onOpen} onCreateAt={createAt} />
+              <TimeGrid days={[anchor]} events={events} now={now} onOpen={onOpen} onCreateAt={createAt} onMove={readOnly ? undefined : onMove} />
             </>
           )}
 
@@ -172,7 +174,7 @@ export default function CalendarPage({ initialDate, events, now, loading, readOn
           )}
 
           {!readOnly && (view === 'week' || view === 'day') && (
-            <p className="mt-3 hidden text-xs text-muted md:block">Klick in eine freie Stelle im Raster legt dort einen Termin an.</p>
+            <p className="mt-3 hidden text-xs text-muted md:block">Klick in eine freie Stelle legt einen Termin an. Eigene Termine verschiebst du durch Ziehen, die Länge änderst du am unteren Rand.</p>
           )}
         </div>
 

@@ -26,6 +26,7 @@ import { occurrenceDays, toRRule } from '../src/domain/recurrence'
 import { rowToEvents } from '../src/domain/entries'
 import { remindersBetween } from '../src/domain/reminders'
 import { normalize, recentNotes, search } from '../src/domain/search'
+import { moveBy, resizeBy } from '../src/domain/move'
 import { mapGoogleEvent } from '../src/sources/googleCalendar'
 
 let failed = 0
@@ -320,6 +321,21 @@ const grp = groupTasks(sortTasks([tNoDate, tYesterday, tToday, tSunday, tNextWee
 check('Gruppen in fester Reihenfolge', grp.map((g) => g.key).join() === 'overdue,today,tomorrow,week,later,none', grp.map((g) => g.key).join())
 check('Gruppen: andere Sortierung ohne Gruppen', groupTasks([tToday, tYesterday], 'all', 'priority', tNow).length === 1)
 check('Gruppen: leere Liste', groupTasks([], 'all', 'due', tNow).length === 0)
+
+// Verschieben und Länge ändern
+const mvS = new Date(2026, 9, 14, 10, 0)
+const mvE = new Date(2026, 9, 14, 11, 30)
+const mv1 = moveBy(mvS, mvE, 37, 0)
+check('Verschieben rastet auf 15 min ein, Dauer bleibt', mv1.start.getHours() === 10 && mv1.start.getMinutes() === 30 && mv1.end!.getTime() - mv1.start.getTime() === 90 * 60000)
+const mv2 = moveBy(mvS, mvE, 0, 1)
+check('Verschieben auf den nächsten Tag', mv2.start.getDate() === 15 && mv2.start.getHours() === 10)
+const mv3 = moveBy(mvS, mvE, 20 * 60, 0)
+check('Verschieben bleibt im Tag (Ende spätestens 24:00)', mv3.start.getHours() === 22 && mv3.start.getMinutes() === 30 && mv3.end!.getDate() === 15 && mv3.end!.getHours() === 0)
+const mvDst = moveBy(new Date(2026, 9, 24, 9, 0), new Date(2026, 9, 24, 10, 0), 0, 1)
+check('Verschieben über die Zeitumstellung behält 09:00', mvDst.start.getDate() === 25 && mvDst.start.getHours() === 9 && mvDst.end!.getHours() === 10)
+check('Länge ändern: mindestens 15 min', resizeBy(mvS, mvE, -500).getTime() - mvS.getTime() === 15 * 60000)
+check('Länge ändern: rastet ein', resizeBy(mvS, mvE, 22).getMinutes() === 45)
+check('Ohne Ende: Ende bleibt unbekannt', moveBy(mvS, null, 60, 0).end === null)
 
 console.log(failed === 0 ? '\nAlle Prüfungen bestanden.' : `\n${failed} Prüfung(en) fehlgeschlagen.`)
 process.exit(failed === 0 ? 0 : 1)

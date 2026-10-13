@@ -63,7 +63,7 @@ export default function App() {
   const [section, setSection] = useState<Section>(sectionFromHash)
   const [sheet, setSheet] = useState<SheetState>(null)
   const [calendarJump, setCalendarJump] = useState<{ date: Date; n: number } | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ msg: string; action?: { label: string; run: () => void } } | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const readOnly = !connected
   const [push, setPush] = useState<PushStatus | null>(null)
@@ -110,10 +110,10 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
-  const showToast = useCallback((msg: string) => {
-    setToast(msg)
+  const showToast = useCallback((msg: string, action?: { label: string; run: () => void }) => {
+    setToast({ msg, action })
     clearTimeout(toastTimer.current)
-    toastTimer.current = setTimeout(() => setToast(null), 4000)
+    toastTimer.current = setTimeout(() => setToast(null), action ? 7000 : 4000)
   }, [])
 
   useReminders(events, planner.tasks, connected, (r) => showToast(`${r.title} · ${r.body}`))
@@ -190,6 +190,33 @@ export default function App() {
     setSheet(null)
     if (e.googleEventId) await pushToGoogle({ action: 'delete', google_event_id: e.googleEventId })
     await reload(['own'])
+  }
+  /** Termin im Kalender gezogen: speichern, Google nachführen, Rückgängig anbieten. */
+  const dragEntry = async (e: CalendarEvent, start: Date, end: Date | null) => {
+    const before = eventToInput(e)
+    const after: EntryInput = { ...before, date: toDateInput(start), startTime: toTimeInput(start), endTime: end ? (end.getDate() !== start.getDate() ? '23:59' : toTimeInput(end)) : '' }
+    try {
+      await updateEntry(e.externalId, after)
+      await pushToGoogle({ action: 'upsert', entry_id: e.externalId })
+      await reload(['own'])
+      showToast(`«${e.title}» auf ${start.toLocaleDateString('de-CH', { weekday: 'short', day: 'numeric', month: 'short' })}, ${toTimeInput(start)} verschoben.`, {
+        label: 'Rückgängig',
+        run: () => {
+          setToast(null)
+          void (async () => {
+            try {
+              await updateEntry(e.externalId, before)
+              await pushToGoogle({ action: 'upsert', entry_id: e.externalId })
+              await reload(['own'])
+            } catch (err) {
+              showToast(err instanceof Error ? err.message : 'Rückgängig fehlgeschlagen.')
+            }
+          })()
+        },
+      })
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Verschieben fehlgeschlagen.')
+    }
   }
   const skipEntry = async (e: CalendarEvent) => {
     await skipOccurrence(e.externalId, e.exdates ?? [], e.ref?.occurrence ?? toDateInput(e.start))
@@ -411,6 +438,7 @@ export default function App() {
             onOpen={openEvent}
             onCreate={(d, t) => create(d, t)}
             onCreateNote={(d) => createNote(d)}
+            onMove={(e, start, end) => void dragEntry(e, start, end)}
           />
         )}
         {section === 'tasks' && (
@@ -484,8 +512,13 @@ export default function App() {
       )}
 
       {toast && (
-        <div role="status" className="anim-sheet fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 z-[60] -translate-x-1/2 rounded-md bg-ink px-4 py-2.5 text-sm text-canvas shadow-sheet md:bottom-6">
-          {toast}
+        <div role="status" className="anim-sheet fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-4 rounded-full bg-deep py-2.5 pl-5 pr-2.5 text-sm text-deepink shadow-float md:bottom-6">
+          <span className="min-w-0">{toast.msg}</span>
+          {toast.action && (
+            <button type="button" onClick={toast.action.run} className="shrink-0 rounded-full bg-sun px-3 py-1 text-sm font-semibold text-sunink">
+              {toast.action.label}
+            </button>
+          )}
         </div>
       )}
 
