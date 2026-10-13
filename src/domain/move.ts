@@ -38,3 +38,20 @@ export function resizeBy(start: Date, end: Date, dMin: number): Date {
   const e = Math.max(s + SNAP_MIN, Math.min(snap(sameDayEnd + dMin), 24 * 60))
   return at(day, e)
 }
+
+/**
+ * Neuen Termin aufziehen: zwei Punkte im Raster (Minuten seit Mitternacht, in beliebiger Reihenfolge).
+ * Ergebnis auf 15 Minuten gerundet, mindestens 15 Minuten lang, innerhalb des Tages.
+ */
+export function rangeFrom(day: Date, aMin: number, bMin: number): { start: Date; end: Date } {
+  const lo = Math.max(0, Math.floor(Math.min(aMin, bMin) / SNAP_MIN) * SNAP_MIN)
+  const hi = Math.min(24 * 60, Math.max(lo + SNAP_MIN, Math.round(Math.max(aMin, bMin) / SNAP_MIN) * SNAP_MIN))
+  const s = Math.min(lo, 24 * 60 - SNAP_MIN)
+  return { start: at(day, s), end: at(day, hi) }
+}
+
+/** Auf einen anderen Tag legen (Monatsansicht): Uhrzeit und Dauer bleiben exakt, auch über die Zeitumstellung. */
+export function shiftDays(start: Date, end: Date | null, dDays: number): { start: Date; end: Date | null } {
+  const move = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + dDays, d.getHours(), d.getMinutes())
+  return { start: move(start), end: end ? move(end) : null }
+}

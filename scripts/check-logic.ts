@@ -26,7 +26,7 @@ import { occurrenceDays, toRRule } from '../src/domain/recurrence'
 import { rowToEvents } from '../src/domain/entries'
 import { remindersBetween } from '../src/domain/reminders'
 import { normalize, recentNotes, search } from '../src/domain/search'
-import { moveBy, resizeBy } from '../src/domain/move'
+import { moveBy, rangeFrom, resizeBy, shiftDays } from '../src/domain/move'
 import { mapGoogleEvent } from '../src/sources/googleCalendar'
 
 let failed = 0
@@ -336,6 +336,13 @@ check('Verschieben über die Zeitumstellung behält 09:00', mvDst.start.getDate(
 check('Länge ändern: mindestens 15 min', resizeBy(mvS, mvE, -500).getTime() - mvS.getTime() === 15 * 60000)
 check('Länge ändern: rastet ein', resizeBy(mvS, mvE, 22).getMinutes() === 45)
 check('Ohne Ende: Ende bleibt unbekannt', moveBy(mvS, null, 60, 0).end === null)
+const rg = rangeFrom(mvS, 14 * 60 + 40, 13 * 60 + 5)
+check('Aufziehen: Richtung egal, auf 15 min gerundet', rg.start.getHours() === 13 && rg.start.getMinutes() === 0 && rg.end.getHours() === 14 && rg.end.getMinutes() === 45)
+const rg2 = rangeFrom(mvS, 23 * 60 + 58, 23 * 60 + 58)
+check('Aufziehen am Tagesende: mindestens 15 min, endet um 24:00', rg2.start.getHours() === 23 && rg2.start.getMinutes() === 45 && rg2.end.getDate() === 15 && rg2.end.getHours() === 0)
+const sh = shiftDays(new Date(2026, 9, 24, 9, 10), new Date(2026, 9, 24, 10, 5), 1)
+check('Monat: anderer Tag, Uhrzeit exakt (auch über die Zeitumstellung)', sh.start.getDate() === 25 && sh.start.getHours() === 9 && sh.start.getMinutes() === 10 && sh.end!.getMinutes() === 5)
+check('Monat: über das Monatsende', shiftDays(new Date(2026, 9, 30, 8, 0), null, 3).start.getMonth() === 10)
 
 console.log(failed === 0 ? '\nAlle Prüfungen bestanden.' : `\n${failed} Prüfung(en) fehlgeschlagen.`)
 process.exit(failed === 0 ? 0 : 1)

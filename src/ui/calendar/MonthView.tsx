@@ -1,4 +1,6 @@
-import { addDays, formatTime, isSameDay, startOfWeek } from '../../domain/dateUtils'
+import { useState } from 'react'
+import { addDays, formatTime, isSameDay, startOfDay, startOfWeek } from '../../domain/dateUtils'
+import { shiftDays } from '../../domain/move'
 import { eventsForDay } from '../../domain/schedule'
 import type { CalendarEvent } from '../../domain/types'
 import Icon from '../icons'
@@ -14,9 +16,27 @@ interface Props {
   now: Date
   onOpen: (e: CalendarEvent) => void
   onPickDay: (d: Date) => void
+  /** Eigenen Eintrag auf einen anderen Tag gezogen. Fehlt = nicht ziehbar. */
+  onMove?: (e: CalendarEvent, start: Date, end: Date | null) => void
 }
 
-export default function MonthView({ selected, month, events, now, onOpen, onPickDay }: Props) {
+/** Im Monat ziehbar: eigene einzelne Termine und Notizen (keine Serien, keine Importe). */
+const canMoveDay = (e: CalendarEvent) =>
+  e.source === 'own' && e.ref?.type === 'entry' && (!e.recurrence || e.recurrence === 'none') && (e.kind === 'event' || e.kind === 'note')
+
+export default function MonthView({ selected, month, events, now, onOpen, onPickDay, onMove }: Props) {
+  const [dragging, setDragging] = useState<CalendarEvent | null>(null)
+  const [over, setOver] = useState<number | null>(null)
+  const drop = (d: Date) => {
+    const e = dragging
+    setDragging(null)
+    setOver(null)
+    if (!e || !onMove) return
+    const dDays = Math.round((startOfDay(d).getTime() - startOfDay(e.start).getTime()) / 86400000)
+    if (dDays === 0) return
+    const r = shiftDays(e.start, e.end, dDays)
+    onMove(e, r.start, r.end)
+  }
   const first = new Date(month.getFullYear(), month.getMonth(), 1)
   const start = startOfWeek(first)
   const days = Array.from({ length: 42 }, (_, i) => addDays(start, i))
@@ -45,6 +65,19 @@ export default function MonthView({ selected, month, events, now, onOpen, onPick
               role="button"
               tabIndex={0}
               onClick={() => onPickDay(d)}
+              onDragOver={(ev) => {
+                if (!dragging) return
+                ev.preventDefault()
+                ev.dataTransfer.dropEffect = 'move'
+                if (over !== d.getTime()) setOver(d.getTime())
+              }}
+              onDragLeave={(ev) => {
+                if (!ev.currentTarget.contains(ev.relatedTarget as Node | null) && over === d.getTime()) setOver(null)
+              }}
+              onDrop={(ev) => {
+                ev.preventDefault()
+                drop(d)
+              }}
               onKeyDown={(ev) => {
                 if (ev.key === 'Enter' || ev.key === ' ') {
                   ev.preventDefault()
@@ -54,7 +87,9 @@ export default function MonthView({ selected, month, events, now, onOpen, onPick
               aria-label={`${d.getDate()}. ${all.length} Einträge, Tag öffnen`}
               className={`relative min-h-[4.5rem] cursor-pointer border-line/60 p-1 transition-colors hover:bg-surface2/70 md:min-h-[8rem] md:p-2 ${i % 7 !== 0 ? 'border-l' : ''} ${
                 i >= 7 ? 'border-t' : ''
-              } ${inMonth ? '' : 'bg-canvas/60'} ${isSel ? 'bg-accent/[0.06] shadow-[inset_0_0_0_2px_rgb(var(--accent))]' : ''}`}
+              } ${inMonth ? '' : 'bg-canvas/60'} ${isSel ? 'bg-accent/[0.06] shadow-[inset_0_0_0_2px_rgb(var(--accent))]' : ''} ${
+                over === d.getTime() ? 'bg-sun/15 shadow-[inset_0_0_0_2px_rgb(var(--sun))]' : ''
+              }`}
             >
               <span
                 className={`tnum mb-1 flex h-7 w-7 items-center justify-center rounded-full text-[13px] font-semibold ${
@@ -75,11 +110,21 @@ export default function MonthView({ selected, month, events, now, onOpen, onPick
                   <button
                     key={e.id}
                     type="button"
+                    draggable={!!onMove && canMoveDay(e)}
+                    onDragStart={(ev) => {
+                      ev.dataTransfer.effectAllowed = 'move'
+                      ev.dataTransfer.setData('text/plain', e.title)
+                      setDragging(e)
+                    }}
+                    onDragEnd={() => {
+                      setDragging(null)
+                      setOver(null)
+                    }}
                     onClick={(ev) => {
                       ev.stopPropagation()
                       onOpen(e)
                     }}
-                    className={`${catClass(e.category)} flex w-full items-center gap-1.5 truncate rounded-md px-1.5 py-[3px] text-left text-[11px] transition-colors ${
+                    className={`${catClass(e.category)} flex w-full items-center gap-1.5 truncate rounded-md px-1.5 py-[3px] text-left text-[11px] transition-colors ${onMove && canMoveDay(e) ? 'cursor-grab active:cursor-grabbing' : ''} ${dragging?.id === e.id ? 'opacity-40' : ''} ${
                       e.kind === 'exam' ? 'bg-exam font-semibold text-white' : e.allDay && e.kind !== 'note' && e.kind !== 'task' ? 'bg-cat/15 font-medium hover:bg-cat/25' : 'hover:bg-cat/10'
                     }`}
                   >

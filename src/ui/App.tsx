@@ -156,13 +156,13 @@ export default function App() {
 
   const create = useCallback(
     (date: Date, time?: Date, extra: Partial<EntryInput> = {}) => {
-      const input = { ...emptyInput('event', date, now), ...extra }
+      const input = { ...emptyInput('event', date, now) }
       if (time) {
         input.startTime = toTimeInput(time)
         const end = new Date(time.getTime() + 60 * 60000)
         input.endTime = end.getDate() === time.getDate() ? toTimeInput(end) : '23:59'
       }
-      setSheet({ kind: 'form', input })
+      setSheet({ kind: 'form', input: { ...input, ...extra } })
     },
     [now],
   )
@@ -194,19 +194,21 @@ export default function App() {
   /** Termin im Kalender gezogen: speichern, Google nachführen, Rückgängig anbieten. */
   const dragEntry = async (e: CalendarEvent, start: Date, end: Date | null) => {
     const before = eventToInput(e)
-    const after: EntryInput = { ...before, date: toDateInput(start), startTime: toTimeInput(start), endTime: end ? (end.getDate() !== start.getDate() ? '23:59' : toTimeInput(end)) : '' }
+    const after: EntryInput = e.allDay
+      ? { ...before, date: toDateInput(start) }
+      : { ...before, date: toDateInput(start), startTime: toTimeInput(start), endTime: end ? (end.getDate() !== start.getDate() ? '23:59' : toTimeInput(end)) : '' }
     try {
       await updateEntry(e.externalId, after)
-      await pushToGoogle({ action: 'upsert', entry_id: e.externalId })
+      if (e.kind !== 'note') await pushToGoogle({ action: 'upsert', entry_id: e.externalId })
       await reload(['own'])
-      showToast(`«${e.title}» auf ${start.toLocaleDateString('de-CH', { weekday: 'short', day: 'numeric', month: 'short' })}, ${toTimeInput(start)} verschoben.`, {
+      showToast(`«${e.title}» auf ${start.toLocaleDateString('de-CH', { weekday: 'short', day: 'numeric', month: 'short' })}${e.allDay ? '' : `, ${toTimeInput(start)}`} verschoben.`, {
         label: 'Rückgängig',
         run: () => {
           setToast(null)
           void (async () => {
             try {
               await updateEntry(e.externalId, before)
-              await pushToGoogle({ action: 'upsert', entry_id: e.externalId })
+              if (e.kind !== 'note') await pushToGoogle({ action: 'upsert', entry_id: e.externalId })
               await reload(['own'])
             } catch (err) {
               showToast(err instanceof Error ? err.message : 'Rückgängig fehlgeschlagen.')
@@ -436,7 +438,7 @@ export default function App() {
             loading={loading}
             readOnly={readOnly}
             onOpen={openEvent}
-            onCreate={(d, t) => create(d, t)}
+            onCreate={(d, t, e) => create(d, t, t && e ? { endTime: e.getDate() !== t.getDate() ? '23:59' : toTimeInput(e) } : {})}
             onCreateNote={(d) => createNote(d)}
             onMove={(e, start, end) => void dragEntry(e, start, end)}
           />

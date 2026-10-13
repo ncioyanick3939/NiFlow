@@ -22,7 +22,7 @@ interface Props {
   /** Demo-Modus: keine Erstell-Aktionen. */
   readOnly: boolean
   onOpen: (e: CalendarEvent) => void
-  onCreate: (date: Date, time?: Date) => void
+  onCreate: (date: Date, time?: Date, end?: Date) => void
   onCreateNote: (date: Date) => void
   /** Eigenen Termin per Ziehen verschoben oder verlängert */
   onMove?: (e: CalendarEvent, start: Date, end: Date | null) => void
@@ -68,7 +68,7 @@ export default function CalendarPage({ initialDate, events, now, loading, readOn
     setAnchor(startOfDay(d))
     if (!(view === 'month' && rail)) setForced('day')
   }
-  const createAt = readOnly ? undefined : (at: Date) => onCreate(startOfDay(at), at)
+  const createAt = readOnly ? undefined : (at: Date, end?: Date) => onCreate(startOfDay(at), at, end)
 
   const strip = (
     <div className="mb-3 grid grid-cols-7 gap-1 rounded-xl bg-surface p-1.5">
@@ -150,7 +150,7 @@ export default function CalendarPage({ initialDate, events, now, loading, readOn
 
       <div className={`grid flex-1 gap-5 ${rail ? 'grid-cols-[minmax(0,1fr),300px]' : 'grid-cols-1'}`}>
         <div className="min-w-0">
-          {view === 'month' && <MonthView selected={rail ? anchor : undefined} month={anchor} events={events} now={now} onOpen={onOpen} onPickDay={pickDay} />}
+          {view === 'month' && <MonthView selected={rail ? anchor : undefined} month={anchor} events={events} now={now} onOpen={onOpen} onPickDay={pickDay} onMove={readOnly ? undefined : onMove} />}
 
           {view === 'week' &&
             (wide ? (
@@ -174,7 +174,10 @@ export default function CalendarPage({ initialDate, events, now, loading, readOn
           )}
 
           {!readOnly && (view === 'week' || view === 'day') && (
-            <p className="mt-3 hidden text-xs text-muted md:block">Klick in eine freie Stelle legt einen Termin an. Eigene Termine verschiebst du durch Ziehen, die Länge änderst du am unteren Rand.</p>
+            <p className="mt-3 hidden text-xs text-muted md:block">Ziehen über freie Zeit legt einen Termin in dieser Länge an, ein Klick einen einstündigen. Eigene Termine verschiebst du durch Ziehen, die Länge änderst du am unteren Rand.</p>
+          )}
+          {!readOnly && view === 'month' && (
+            <p className="mt-3 hidden text-xs text-muted md:block">Eigene Termine und Notizen ziehst du auf einen anderen Tag. Uhrzeit und Dauer bleiben gleich.</p>
           )}
         </div>
 

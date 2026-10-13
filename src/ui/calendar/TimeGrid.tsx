@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MouseEvent, PointerEvent } from 'react'
-import { moveBy, resizeBy } from '../../domain/move'
+import { moveBy, rangeFrom, resizeBy } from '../../domain/move'
 import { addDays, formatTime, formatWeekdayShort, isSameDay, startOfDay } from '../../domain/dateUtils'
 import { eventsForDay, findOverlaps } from '../../domain/schedule'
 import type { CalendarEvent } from '../../domain/types'
@@ -17,8 +17,8 @@ interface Props {
   events: CalendarEvent[]
   now: Date
   onOpen: (e: CalendarEvent) => void
-  /** Klick auf eine freie Stelle: neuer Termin zu dieser Zeit. Fehlt im Demo-Modus. */
-  onCreateAt?: (at: Date) => void
+  /** Klick (oder Aufziehen) auf freier Stelle: neuer Termin. Fehlt im Demo-Modus. */
+  onCreateAt?: (at: Date, end?: Date) => void
   onPickDay?: (d: Date) => void
   /** Ziehen mit Maus oder Stift: neue Zeiten für einen eigenen Termin. Fehlt = nicht verschiebbar. */
   onMove?: (e: CalendarEvent, start: Date, end: Date | null) => void
@@ -57,8 +57,36 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
     el.scrollTop = hour * HOUR_PX
   }, [firstKey, days.length])
 
+  // Aufziehen auf freier Fläche (Maus oder Stift): Zeitraum markieren, beim Loslassen anlegen
+  const [sel, setSel] = useState<{ dayIndex: number; a: number; b: number; y: number; moved: boolean } | null>(null)
+  const swallowCreate = useRef(false)
+  const minuteAt = (ev: PointerEvent<HTMLDivElement>) => ((ev.clientY - ev.currentTarget.getBoundingClientRect().top) / HOUR_PX) * 60
+  const selDown = (ev: PointerEvent<HTMLDivElement>, dayIndex: number) => {
+    if (!onCreateAt || ev.pointerType === 'touch' || ev.button !== 0 || ev.target !== ev.currentTarget) return
+    ev.currentTarget.setPointerCapture(ev.pointerId)
+    const m = minuteAt(ev)
+    setSel({ dayIndex, a: m, b: m, y: ev.clientY, moved: false })
+  }
+  const selMove = (ev: PointerEvent<HTMLDivElement>, dayIndex: number) => {
+    if (!sel || sel.dayIndex !== dayIndex) return
+    const moved = sel.moved || Math.abs(ev.clientY - sel.y) > 6
+    if (moved) setSel({ ...sel, b: minuteAt(ev), moved })
+  }
+  const selUp = (day: Date) => {
+    if (sel?.moved && onCreateAt) {
+      const r = rangeFrom(day, sel.a, sel.b)
+      swallowCreate.current = true
+      onCreateAt(r.start, r.end)
+    }
+    setSel(null)
+  }
+
   const createAt = (day: Date, ev: MouseEvent<HTMLDivElement>) => {
     if (!onCreateAt) return
+    if (swallowCreate.current) {
+      swallowCreate.current = false
+      return
+    }
     const rect = ev.currentTarget.getBoundingClientRect()
     const minutes = Math.floor(((ev.clientY - rect.top) / HOUR_PX) * 2) * 30
     const clamped = Math.min(Math.max(minutes, 0), 23 * 60)
@@ -170,7 +198,23 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
                 className={`relative border-l border-line/60 ${onCreateAt ? 'cursor-cell' : ''} ${today && multi ? 'bg-sun/[0.05]' : ''}`}
                 style={{ backgroundImage: 'linear-gradient(to bottom, rgb(var(--line) / 0.7) 1px, transparent 1px)', backgroundSize: `100% ${HOUR_PX}px` }}
                 onClick={(ev) => createAt(date, ev)}
+                onPointerDown={(ev) => selDown(ev, dayIndex)}
+                onPointerMove={(ev) => selMove(ev, dayIndex)}
+                onPointerUp={() => selUp(date)}
+                onPointerCancel={() => setSel(null)}
               >
+                {sel?.moved && sel.dayIndex === dayIndex && (() => {
+                  const r = rangeFrom(date, sel.a, sel.b)
+                  const top = ((r.start.getHours() * 60 + r.start.getMinutes()) / 1440) * DAY_PX
+                  const h = ((r.end.getTime() - r.start.getTime()) / 86400000) * DAY_PX
+                  return (
+                    <div className="pointer-events-none absolute inset-x-0.5 z-20 rounded-[9px] border-2 border-accent bg-accent/15 px-2 pt-1" style={{ top: top + 1, height: h - 2 }} aria-hidden="true">
+                      <span className="tnum text-[11px] font-semibold text-ink">
+                        {formatTime(r.start)}–{formatTime(r.end)}
+                      </span>
+                    </div>
+                  )
+                })()}
                 {blocks.map((b) => {
                   const e = b.event
                   const dragging = drag?.id === e.id && drag.moved ? drag : null
