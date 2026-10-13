@@ -11,7 +11,7 @@ const TICKS = [6, 9, 12, 15, 18, 21]
 
 /**
  * Der Tag als Fluss: Zeitleiste 06–22 Uhr mit den heutigen Terminen, freien Lernfenstern
- * und einer Markierung für jetzt. Gedacht für den dunklen Tagesbereich.
+ * und einer Markierung für jetzt. Schmale Leiste über dem Tagesplan.
  */
 export default function DayRiver({
   timed,
@@ -35,11 +35,11 @@ export default function DayRiver({
 
   return (
     <div>
-      <div className="relative h-14 rounded-md bg-deepink/[0.07]">
+      <div className="relative h-9 border-y border-line">
         {TICKS.slice(1).map((h) => (
           <span
             key={h}
-            className="absolute inset-y-0 w-px bg-deepink/10"
+            className="absolute inset-y-0 w-px bg-line"
             style={{ left: `${((h - START) / (END - START)) * 100}%` }}
             aria-hidden="true"
           />
@@ -49,7 +49,7 @@ export default function DayRiver({
           .map((f) => (
             <span
               key={f.start.getTime()}
-              className="absolute inset-y-1.5 rounded-sm border border-dashed border-sun/60"
+              className="absolute inset-y-1.5 border border-dashed border-muted/60"
               style={{
                 left: `${pct(f.study!.start.getTime())}%`,
                 width: `${pct(f.study!.end.getTime()) - pct(f.study!.start.getTime())}%`,
@@ -62,24 +62,25 @@ export default function DayRiver({
           <button
             key={b.event.id}
             type="button"
+            tabIndex={-1}
             onClick={() => onOpen(b.event)}
             title={`${formatTime(b.event.start)} ${b.event.title}`}
-            className={`${evClass(b.event)} absolute rounded-[6px] bg-cat transition-[filter] hover:brightness-110 ${
-              (b.event.end ?? b.event.start) < now ? 'opacity-45' : ''
+            className={`${evClass(b.event)} absolute bg-cat transition-[filter] duration-150 hover:brightness-110 ${
+              (b.event.end ?? b.event.start) < now ? 'opacity-35' : ''
             }`}
             style={{
               left: `${b.left * 100}%`,
               width: `max(${b.width * 100}%, 6px)`,
-              top: `calc(${(b.lane / b.lanes) * 100}% + 4px)`,
-              height: `calc(${100 / b.lanes}% - 8px)`,
+              top: `calc(${(b.lane / b.lanes) * 100}% + 5px)`,
+              height: `calc(${100 / b.lanes}% - 10px)`,
             }}
           >
             <span className="sr-only">{b.event.title}</span>
           </button>
         ))}
         {showNow && (
-          <span className="pointer-events-none absolute -inset-y-1.5 z-10 w-0.5 rounded-full bg-sun" style={{ left: `${nowPct}%` }} aria-hidden="true">
-            <span className="absolute -left-[5px] -top-1 h-3 w-3 rounded-full bg-sun ring-4 ring-deep" />
+          <span className="pointer-events-none absolute -inset-y-1 z-10 w-px bg-accent" style={{ left: `${nowPct}%` }} aria-hidden="true">
+            <span className="absolute -left-[3px] -top-[3px] h-[7px] w-[7px] bg-accent" />
           </span>
         )}
       </div>
@@ -87,7 +88,7 @@ export default function DayRiver({
         {TICKS.map((h, i) => (
           <span
             key={h}
-            className={`tnum absolute text-[11px] text-deepmuted ${i === 0 ? '' : '-translate-x-1/2'}`}
+            className={`tnum absolute text-[11px] text-muted ${i === 0 ? '' : '-translate-x-1/2'}`}
             style={{ left: `${((h - START) / (END - START)) * 100}%` }}
           >
             {String(h).padStart(2, '0')}

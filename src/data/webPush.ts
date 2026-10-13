@@ -99,7 +99,26 @@ export async function disablePush(): Promise<void> {
   markLocal(false)
 }
 
-export async function testPush(): Promise<{ sent: number; failed: number }> {
+/** Verständlicher Grund, warum ein Test-Push nicht ankam. */
+export function pushReasonText(reason: string | undefined): string {
+  switch (reason) {
+    case 'invalid_vapid_keys':
+      return 'Die Push-Schlüssel auf dem Server sind ungültig. In Supabase bei VAPID_PRIVATE_KEY und VAPID_PUBLIC_KEY nur den Wert nach dem «=» eintragen, dann hier aus- und wieder einschalten.'
+    case 'VapidPkHashMismatch':
+    case 'BadJwtToken':
+      return 'Die Schlüssel auf dem Server passen nicht zu diesem Gerät, oder VAPID_SUBJECT ist falsch (muss mit «mailto:» beginnen). Bitte hier aus- und wieder einschalten.'
+    case 'gone':
+      return 'Dieses Gerät ist beim Push-Dienst nicht mehr angemeldet. Bitte aus- und wieder einschalten.'
+    case 'invalid_subscription_keys':
+      return 'Das Gerät hat ungültige Push-Daten geliefert. Bitte aus- und wieder einschalten.'
+    case 'TooManyRequests':
+      return 'Zu viele Versuche. Bitte in ein paar Minuten nochmals testen.'
+    default:
+      return `Der Push-Dienst hat den Test abgelehnt (${reason ?? 'unbekannt'}). Bitte aus- und wieder einschalten.`
+  }
+}
+
+export async function testPush(): Promise<{ sent: number; failed: number; reasons?: string[] }> {
   const sub = await currentSubscription()
   return call({ action: 'test', ...(sub ? { endpoint: sub.endpoint } : {}) })
 }

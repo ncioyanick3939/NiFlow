@@ -31,18 +31,19 @@ export default function WeekStrip({ events, now, onPickDay }: { events: Calendar
               key={d.date.getTime()}
               type="button"
               onClick={() => onPickDay(d.date)}
-              className={`group flex min-w-0 flex-col items-center gap-2 rounded-lg px-0.5 pb-2 pt-3 transition-colors hover:bg-surface2 ${today ? 'bg-surface2' : ''}`}
+              className={`group flex min-w-0 flex-col items-center gap-2 border-t-2 px-0.5 pb-2 pt-3 transition-colors duration-150 hover:bg-surface2/60 ${today ? 'border-accent' : 'border-transparent'}`}
               aria-label={`${SHORT[i]} ${d.date.getDate()}: ${d.busy > 0 ? formatDuration(d.busy) : 'nichts'} geplant`}
             >
-              <span className="flex h-24 w-full max-w-[30px] flex-col-reverse overflow-hidden rounded-md bg-surface2 group-hover:bg-line/60 sm:h-28">
+              <span className="flex h-24 w-full max-w-[28px] flex-col-reverse overflow-hidden bg-surface2 group-hover:bg-line/60 sm:h-28">
                 {CATEGORIES.map((c) =>
                   d.per[c] > 0 ? <span key={c} className={`${catClass(c)} block w-full bg-cat`} style={{ height: `${(d.per[c] / max) * 100}%` }} /> : null,
                 )}
               </span>
               <span className={`text-xs font-semibold ${today ? 'text-accent' : 'text-muted'}`}>{SHORT[i]}</span>
-              <span className={`tnum truncate text-[11px] ${d.heavy ? 'font-semibold text-danger' : 'text-muted'}`}>
+              <span className={`tnum truncate text-[11px] ${d.heavy ? 'font-semibold text-ink' : 'text-muted'}`} title={d.heavy ? 'Viel verplant' : undefined}>
                 {d.busy > 0 ? `${Math.round(d.busy / 6) / 10} h` : '–'}
               </span>
+              {d.heavy && <span className="-mt-1.5 text-[10px] text-muted">voll</span>}
             </button>
           )
         })}
@@ -50,7 +51,7 @@ export default function WeekStrip({ events, now, onPickDay }: { events: Calendar
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
         {CATEGORIES.map((c) => (
           <span key={c} className={`${catClass(c)} inline-flex items-center gap-1.5`}>
-            <span className="h-2 w-2 rounded-full bg-cat" aria-hidden="true" />
+            <span className="h-2 w-2 bg-cat" aria-hidden="true" />
             {CATEGORY_LABEL[c]}
           </span>
         ))}

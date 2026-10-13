@@ -81,12 +81,12 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
 
   return (
     <Page title="Einstellungen" sub={email ? `Angemeldet als ${email}` : demo ? 'Demo-Modus' : undefined} width="narrow">
-      <div className="space-y-4">
+      <div className="border-b border-line">
 
       <Group title="Konto">
         {email ? (
           <div className="flex flex-wrap items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent">{email[0]?.toUpperCase()}</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-sm bg-ink text-sm font-semibold text-canvas">{email[0]?.toUpperCase()}</span>
             <div className="mr-auto min-w-0">
               <p className="truncate text-sm font-medium">{email}</p>
               <p className="text-xs text-muted">Angemeldet mit Google</p>
@@ -129,7 +129,7 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
         <div className="grid gap-1 sm:grid-cols-2">
           {(Object.keys(DASH_LABEL) as DashSection[]).map((k) => (
             <label key={k} className="flex min-h-10 cursor-pointer items-center gap-3 text-sm">
-              <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={dash[k]} onChange={() => onDash(k)} />
+              <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--ink))]" checked={dash[k]} onChange={() => onDash(k)} />
               {DASH_LABEL[k]}
             </label>
           ))}
@@ -244,7 +244,7 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="grid grid-cols-[minmax(0,1fr)] gap-3 rounded-2xl bg-surface p-5 md:grid-cols-[10rem,minmax(0,1fr)] md:gap-8 md:p-6">
+    <section className="grid grid-cols-[minmax(0,1fr)] gap-3 border-t border-line py-6 md:grid-cols-[11rem,minmax(0,1fr)] md:gap-10">
       <h2 className="h-section">{title}</h2>
       <div className="min-w-0">{children}</div>
     </section>

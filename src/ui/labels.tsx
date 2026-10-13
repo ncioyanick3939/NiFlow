@@ -76,7 +76,7 @@ export function CategoryChips({
 }) {
   const { labels, byId } = useLabelsCtx()
   const current = labelId ? byId.get(labelId) : undefined
-  const chip = `inline-flex items-center gap-2 rounded-full border px-3 transition-colors ${small ? 'min-h-9 text-xs' : 'min-h-10 text-sm'}`
+  const chip = `inline-flex items-center gap-2 rounded border px-3 transition-colors ${small ? 'min-h-9 text-xs' : 'min-h-10 text-sm'}`
   const on = 'border-cat bg-cat/10 font-medium text-ink'
   const off = 'border-line text-muted hover:text-ink'
   return (
@@ -87,7 +87,7 @@ export function CategoryChips({
           const active = !current && category === c
           return (
             <button key={c} type="button" onClick={() => onChange(c, null)} aria-pressed={active} className={`cat-${c} ${chip} ${active ? on : off}`}>
-              <span className="h-2 w-2 rounded-full bg-cat" aria-hidden="true" />
+              <span className="h-2 w-2 bg-cat" aria-hidden="true" />
               {CATEGORY_LABEL[c]}
             </button>
           )

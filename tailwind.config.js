@@ -16,11 +16,11 @@ export default {
         accent: v('accent'),
         accentink: v('accent-ink'),
         danger: v('danger'),
-        // Aare: tiefes Petrol für Struktur (Seitenleiste, Tagesbereich)
+        // Tinte: invertierte Flächen
         deep: v('deep'),
         deepink: v('deep-ink'),
         deepmuted: v('deep-muted'),
-        // Safran: nur für "jetzt" und "als Nächstes"
+        // Signalrot (gleich wie accent)
         sun: v('sun'),
         sunink: v('sun-ink'),
         cat: v('c'),
@@ -28,22 +28,24 @@ export default {
         warn: v('warn'),
       },
       fontFamily: {
-        sans: ['Figtree', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
-        display: ['"Bricolage Grotesque"', 'Figtree', 'system-ui', 'sans-serif'],
+        sans: ['"Instrument Sans"', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        display: ['"Instrument Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       borderRadius: {
-        // Rundung nach Hierarchie: kleine Elemente wenig, grosse Bereiche viel
-        DEFAULT: '10px',
-        sm: '8px',
-        md: '12px',
-        lg: '18px',
-        xl: '24px',
-        '2xl': '30px',
+        // Swiss Editorial: höchstens 6 px. Kreise (rounded-full) nur für Punkte und Häkchen.
+        DEFAULT: '4px',
+        sm: '3px',
+        md: '4px',
+        lg: '5px',
+        xl: '6px',
+        '2xl': '6px',
       },
       boxShadow: {
-        sheet: '0 24px 60px -18px rgb(var(--deep) / 0.45)',
-        pop: '0 2px 8px -2px rgb(var(--deep) / 0.18)',
-        float: '0 10px 30px -10px rgb(var(--deep) / 0.5)',
+        // Schatten nur für schwebende Ebenen (Blätter, Hinweise, gezogene Termine)
+        sheet: '0 16px 40px -16px rgb(0 0 0 / 0.28)',
+        pop: 'none',
+        float: '0 6px 18px -8px rgb(0 0 0 / 0.35)',
       },
     },
   },

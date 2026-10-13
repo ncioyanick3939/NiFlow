@@ -61,14 +61,14 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
   return (
     <Page title="Training" sub="Aus Intervals.icu, nur lesend">
       {state?.status === 'error' && (
-        <p className="mb-6 flex items-start gap-3 rounded-lg bg-danger/[0.08] px-4 py-3 text-sm" role="alert">
+        <p className="mb-6 flex items-start gap-3 border-l-2 border-danger bg-surface px-4 py-3 text-sm" role="alert">
           <Icon name="alert" size={16} className="mt-0.5 shrink-0 text-danger" />
           {state.error}
         </p>
       )}
 
       {!state ? (
-        <div className="rounded-2xl bg-surface">
+        <div className="rounded border border-line bg-surface">
           <EmptyState
             icon="activity"
             title={demo ? 'Im Demo-Modus nicht verfügbar' : 'Intervals.icu ist noch nicht verbunden'}
@@ -79,50 +79,50 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
       ) : (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-12">
           {/* Woche */}
-          <section className="rounded-2xl bg-deep p-6 text-deepink md:p-8 lg:col-span-12">
+          <section className="rule lg:col-span-12" aria-label="Diese Woche">
             <div className="flex flex-wrap items-end gap-x-10 gap-y-4">
               <div>
-                <p className="text-sm text-deepmuted">Diese Woche, KW {isoWeek(now)}</p>
-                <p className="h-display mt-1 text-[28px] leading-tight">
-                  {doneMin > 0 ? formatDuration(doneMin) : '0 h'} <span className="text-deepmuted">von {plannedMin + doneMin > 0 ? formatDuration(plannedMin + doneMin) : '0 h'}</span>
+                <p className="text-sm text-muted">Diese Woche, <span className="tnum">KW {isoWeek(now)}</span></p>
+                <p className="tnum mt-1 text-[30px] font-medium leading-tight">
+                  {doneMin > 0 ? formatDuration(doneMin) : '0 h'} <span className="text-muted">von {plannedMin + doneMin > 0 ? formatDuration(plannedMin + doneMin) : '0 h'}</span>
                 </p>
               </div>
               <dl className="flex gap-8 text-sm">
                 <div>
-                  <dt className="text-deepmuted">Geplant</dt>
-                  <dd className="h-display tnum text-xl">{planned.length}</dd>
+                  <dt className="text-muted">Geplant</dt>
+                  <dd className="tnum text-xl font-medium">{planned.length}</dd>
                 </div>
                 <div>
-                  <dt className="text-deepmuted">Absolviert</dt>
-                  <dd className="h-display tnum text-xl text-sun">{done.length}</dd>
+                  <dt className="text-muted">Absolviert</dt>
+                  <dd className="tnum text-xl font-medium">{done.length}</dd>
                 </div>
                 <div>
-                  <dt className="text-deepmuted">Belastung</dt>
-                  <dd className="h-display tnum text-xl">{load > 0 ? Math.round(load) : '–'}</dd>
+                  <dt className="text-muted">Belastung</dt>
+                  <dd className="tnum text-xl font-medium">{load > 0 ? Math.round(load) : '–'}</dd>
                 </div>
               </dl>
             </div>
-            <div className="mt-6 grid grid-cols-7 gap-2 sm:gap-4" aria-label="Geplant und absolviert pro Tag">
+            <div className="mt-6 grid grid-cols-7 gap-2 border-b border-line sm:gap-4" aria-label="Geplant und absolviert pro Tag">
               {perDay.map((x, i) => (
                 <div key={i} className="flex flex-col items-center gap-2">
                   <div className="flex h-24 w-full max-w-[44px] items-end justify-center gap-1">
-                    <span className="w-1/2 rounded-t-md border border-b-0 border-dashed border-deepink/40" style={{ height: `${(x.p / dayMax) * 100}%` }} title={`Geplant ${formatDuration(x.p)}`} />
-                    <span className="w-1/2 rounded-t-md bg-sun" style={{ height: `${(x.c / dayMax) * 100}%` }} title={`Absolviert ${formatDuration(x.c)}`} />
+                    <span className="w-1/2 border border-b-0 border-dashed border-muted" style={{ height: `${(x.p / dayMax) * 100}%` }} title={`Geplant ${formatDuration(x.p)}`} />
+                    <span className="cat-training w-1/2 bg-cat" style={{ height: `${(x.c / dayMax) * 100}%` }} title={`Absolviert ${formatDuration(x.c)}`} />
                   </div>
-                  <span className={`text-xs font-semibold ${isSameDay(x.d, now) ? 'text-sun' : 'text-deepmuted'}`}>{SHORT[i]}</span>
+                  <span className={`pb-2 text-xs font-medium ${isSameDay(x.d, now) ? 'text-accent' : 'text-muted'}`}>{SHORT[i]}</span>
                 </div>
               ))}
             </div>
-            <div className="mt-4 flex gap-5 text-xs text-deepmuted">
-              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm border border-dashed border-deepink/50" /> Geplant</span>
-              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-sun" /> Absolviert</span>
+            <div className="mt-3 flex gap-5 text-xs text-muted">
+              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 border border-dashed border-muted" /> Geplant</span>
+              <span className="inline-flex items-center gap-2"><span className="cat-training h-2.5 w-2.5 bg-cat" /> Absolviert</span>
             </div>
           </section>
 
           {/* Einheiten nach Wochen */}
           <section className="min-w-0 space-y-6 lg:col-span-8">
             {items.length === 0 ? (
-              <div className="rounded-2xl bg-surface">
+              <div className="rounded border border-line bg-surface">
                 <EmptyState icon="activity" title="Keine Trainings" text="In Intervals.icu sind für diesen Zeitraum keine Einheiten eingetragen." />
               </div>
             ) : (
@@ -131,15 +131,15 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
                   key === thisWeek.getTime() ? 'Diese Woche' : key === addDays(thisWeek, 7).getTime() ? 'Nächste Woche' : key === addDays(thisWeek, -7).getTime() ? 'Letzte Woche' : `KW ${isoWeek(new Date(key))}`
                 return (
                   <div key={key}>
-                    <h2 className="h-section mb-2">{label}</h2>
-                    <ul className="divide-y divide-line/60 rounded-xl bg-surface">
+                    <h2 className="h-section mb-1">{label}</h2>
+                    <ul className="divide-y divide-line border-y border-line">
                       {list.map((e) => {
                         const min = minutesOf(e)
                         const missed = !e.completed && startOfDay(e.start) < startOfDay(now)
                         return (
                           <li key={e.id}>
-                            <button type="button" onClick={() => onOpen(e)} className={`cat-training flex w-full items-center gap-4 px-4 py-3 text-left transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-surface2/60 ${missed ? 'opacity-55' : ''}`}>
-                              <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${e.completed ? 'bg-cat text-surface' : 'border-2 border-dashed border-cat/50 text-cat'}`}>
+                            <button type="button" onClick={() => onOpen(e)} className={`cat-training flex min-h-14 w-full items-center gap-4 py-3 text-left transition-colors duration-150 hover:bg-surface2/50 ${missed ? 'opacity-55' : ''}`}>
+                              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-sm ${e.completed ? 'bg-cat text-surface' : 'border border-dashed border-cat/60 text-cat'}`}>
                                 <Icon name={sportIcon(e.sport)} size={20} />
                               </span>
                               <span className="min-w-0 flex-1">
@@ -151,7 +151,7 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
                                 </span>
                               </span>
                               <span className="flex shrink-0 flex-col items-end gap-0.5">
-                                <span className="h-display tnum text-base">{min ? formatDuration(min) : '–'}</span>
+                                <span className="tnum text-[15px]">{min ? formatDuration(min) : '–'}</span>
                                 {e.completed ? (
                                   <span className="tnum text-xs text-muted">
                                     {e.distanceKm ? `${e.distanceKm.toFixed(1)} km` : ''}
@@ -159,7 +159,7 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
                                     {e.load ? `Last ${Math.round(e.load)}` : ''}
                                   </span>
                                 ) : (
-                                  e.intensity === 'high' && <span className="chip bg-danger/10 text-danger">Intensiv</span>
+                                  e.intensity === 'high' && <span className="text-xs font-medium text-ink">Intensiv</span>
                                 )}
                               </span>
                             </button>
@@ -175,14 +175,14 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
 
           <aside className="space-y-6 lg:col-span-4">
             {next && (
-              <button type="button" onClick={() => onOpen(next)} className="cat-training block w-full rounded-2xl bg-cat/10 p-5 text-left transition-colors hover:bg-cat/15">
+              <button type="button" onClick={() => onOpen(next)} className="cat-training rule block w-full text-left">
                 <span className="text-sm text-muted">Nächste Einheit</span>
                 <span className="mt-2 flex items-center gap-4">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cat text-surface">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-cat text-surface">
                     <Icon name={sportIcon(next.sport)} size={22} />
                   </span>
                   <span className="min-w-0">
-                    <span className="h-display block truncate text-lg">{next.title}</span>
+                    <span className="block truncate text-[17px] font-semibold">{next.title}</span>
                     <span className="tnum block text-sm text-muted">
                       {fmtDay.format(next.start).replace(/\./g, '')}
                       {next.allDay ? '' : `, ${formatTime(next.start)}`}
@@ -193,7 +193,7 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
               </button>
             )}
             {bySport.size > 0 && (
-              <section className="rounded-2xl bg-surface p-5">
+              <section className="rule">
                 <h2 className="h-section mb-3">Geplant nach Sportart</h2>
                 <ul className="space-y-2.5">
                   {[...bySport.entries()].map(([k, m]) => (

@@ -374,13 +374,13 @@ export default function App() {
       />
       <main className="min-w-0 flex-1 overflow-x-clip">
         {demo && !connected && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-sun/25 px-5 py-2.5 text-sm md:px-8 lg:px-10">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line bg-surface px-5 py-2.5 text-sm md:px-8 lg:px-10">
             <span className="font-semibold">Demo</span>
             <span className="mr-auto text-muted">Erfundene Beispieldaten. Zum Speichern eigener Einträge anmelden.</span>
-            <button type="button" className="font-medium text-accent hover:underline" onClick={() => void connectGoogle()}>
+            <button type="button" className="min-h-11 font-medium text-accent hover:underline md:min-h-0" onClick={() => void connectGoogle()}>
               Anmelden
             </button>
-            <button type="button" className="text-muted hover:text-ink" onClick={() => setDemo(false)}>
+            <button type="button" className="min-h-11 text-muted hover:text-ink md:min-h-0" onClick={() => setDemo(false)}>
               Beenden
             </button>
           </div>
@@ -520,7 +520,7 @@ export default function App() {
         <button
           type="button"
           onClick={fab}
-          className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-sun text-sunink shadow-float transition-transform active:scale-95 md:hidden"
+          className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 flex h-14 w-14 items-center justify-center rounded bg-accent text-accentink shadow-float transition-transform duration-150 active:scale-95 md:hidden"
           aria-label={section === 'tasks' ? 'Neue Aufgabe' : section === 'exams' ? 'Neue Prüfung' : 'Neu erstellen'}
         >
           <Icon name="plus" size={24} />
@@ -528,10 +528,10 @@ export default function App() {
       )}
 
       {toast && (
-        <div role="status" className="anim-sheet fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-4 rounded-full bg-deep py-2.5 pl-5 pr-2.5 text-sm text-deepink shadow-float md:bottom-6">
+        <div role="status" className="anim-sheet fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-4 rounded bg-deep py-2.5 pl-4 pr-2 text-sm text-deepink shadow-float md:bottom-6">
           <span className="min-w-0">{toast.msg}</span>
           {toast.action && (
-            <button type="button" onClick={toast.action.run} className="shrink-0 rounded-full bg-sun px-3 py-1 text-sm font-semibold text-sunink">
+            <button type="button" onClick={toast.action.run} className="min-h-9 shrink-0 rounded-sm bg-accent px-3 text-sm font-semibold text-accentink">
               {toast.action.label}
             </button>
           )}
@@ -606,7 +606,7 @@ export default function App() {
           <ExamForm key={sheet.editId ?? 'new'} initial={sheet.input} editing={!!sheet.editId} onSave={(v) => saveExam(v, sheet.editId)} onCancel={close} />
         )}
         {sheet?.kind === 'create' && (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 border-l border-t border-line">
             {(
               [
                 { icon: 'calendar', label: 'Termin', text: 'Mit Uhrzeit im Kalender', go: () => create(startOfDay(now)) },
@@ -615,9 +615,9 @@ export default function App() {
                 { icon: 'exam', label: 'Prüfung', text: 'Mit Lernaufgaben planen', go: () => createExamSheet() },
               ] as { icon: IconName; label: string; text: string; go: () => void }[]
             ).map((o) => (
-              <button key={o.label} type="button" onClick={o.go} className="flex flex-col items-start gap-3 rounded-xl bg-surface2 p-4 text-left transition-colors hover:bg-sun/20">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-deep text-sun">
-                  <Icon name={o.icon} size={18} />
+              <button key={o.label} type="button" onClick={o.go} className="flex flex-col items-start gap-3 border-b border-r border-line p-4 text-left transition-colors duration-150 hover:bg-surface2">
+                <span className="text-accent">
+                  <Icon name={o.icon} size={20} />
                 </span>
                 <span>
                   <span className="block text-sm font-semibold">{o.label}</span>

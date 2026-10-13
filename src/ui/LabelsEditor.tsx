@@ -56,7 +56,7 @@ export default function LabelsEditor({ readOnly, onChanged }: { readOnly: boolea
       </p>
 
       {labels.length > 0 && (
-        <ul className="divide-y divide-line/70 rounded-xl border border-line/70">
+        <ul className="divide-y divide-line border-y border-line">
           {labels.map((l) =>
             editing === l.id && edit ? (
               <li key={l.id} className="p-3">
@@ -108,7 +108,7 @@ export default function LabelsEditor({ readOnly, onChanged }: { readOnly: boolea
                     <span className="flex items-center">
                       <button
                         type="button"
-                        className="flex h-10 w-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface2 hover:text-ink"
+                        className="flex h-11 w-11 items-center justify-center rounded text-muted transition-colors hover:bg-surface2 hover:text-ink"
                         aria-label={`${l.name} bearbeiten`}
                         onClick={() => {
                           setEditing(l.id)
@@ -118,7 +118,7 @@ export default function LabelsEditor({ readOnly, onChanged }: { readOnly: boolea
                       >
                         <Icon name="pencil" size={16} />
                       </button>
-                      <button type="button" className="flex h-10 w-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface2 hover:text-ink" aria-label={`${l.name} löschen`} onClick={() => setConfirm(l.id)}>
+                      <button type="button" className="flex h-11 w-11 items-center justify-center rounded text-muted transition-colors hover:bg-surface2 hover:text-ink" aria-label={`${l.name} löschen`} onClick={() => setConfirm(l.id)}>
                         <Icon name="trash" size={16} />
                       </button>
                     </span>
@@ -133,7 +133,7 @@ export default function LabelsEditor({ readOnly, onChanged }: { readOnly: boolea
         <p className="text-xs text-muted">Im Demo-Modus nur zum Ansehen. Nach dem Anmelden legst du hier eigene an.</p>
       ) : (
         <form
-          className="rounded-xl bg-surface2/60 p-4"
+          className="rounded border border-line p-4"
           onSubmit={async (ev) => {
             ev.preventDefault()
             const name = draft.name
@@ -184,11 +184,11 @@ function LabelFields({ value, onChange, idPrefix }: { value: Draft; onChange: (d
               type="button"
               aria-pressed={value.category === c}
               onClick={() => onChange({ ...value, category: c })}
-              className={`cat-${c} inline-flex min-h-9 items-center gap-2 rounded-full border px-3 text-xs transition-colors ${
+              className={`cat-${c} inline-flex min-h-9 items-center gap-2 rounded border px-3 text-xs transition-colors ${
                 value.category === c ? 'border-cat bg-cat/10 font-medium' : 'border-line text-muted hover:text-ink'
               }`}
             >
-              <span className="h-2 w-2 rounded-full bg-cat" aria-hidden="true" />
+              <span className="h-2 w-2 bg-cat" aria-hidden="true" />
               {CATEGORY_LABEL[c]}
             </button>
           ))}
@@ -205,7 +205,7 @@ function LabelFields({ value, onChange, idPrefix }: { value: Draft; onChange: (d
               aria-label={LABEL_COLOR_NAME[c]}
               title={LABEL_COLOR_NAME[c]}
               onClick={() => onChange({ ...value, color: c })}
-              className={`col-${c} flex h-9 w-9 items-center justify-center rounded-full bg-cat text-white transition-transform hover:scale-110 ${
+              className={`col-${c} flex h-10 w-10 items-center justify-center rounded-sm bg-cat text-white transition-transform duration-150 hover:scale-105 ${
                 value.color === c ? 'ring-2 ring-ink ring-offset-2 ring-offset-surface' : ''
               }`}
             >

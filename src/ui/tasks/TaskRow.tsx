@@ -4,7 +4,7 @@ import { formatDue, isOverdue } from '../../domain/tasks'
 import type { Task } from '../../domain/tasks'
 import { formatDuration } from '../../domain/dateUtils'
 import Icon from '../icons'
-import { CategoryDot, PriorityTag } from '../kit'
+import { CATEGORY_LABEL, CategoryDot, PriorityTag } from '../kit'
 
 interface Props {
   task: Task
@@ -19,11 +19,11 @@ interface Props {
 const RING: Record<Task['priority'], string> = {
   urgent: 'border-danger',
   high: 'border-warn',
-  medium: 'border-muted/60',
-  low: 'border-line',
+  medium: 'border-muted',
+  low: 'border-muted/50',
 }
 
-/** Eine Aufgabe mit Abhak-Kreis. Der Kreis zeigt die Priorität als Farbe. */
+/** Eine Aufgabe mit Abhak-Kästchen. Rahmenfarbe zeigt die Priorität, hohe Prioritäten zusätzlich als Text. */
 export default function TaskRow({ task: t, now, exam, readOnly, onToggle, onOpen, compact }: Props) {
   const done = t.status === 'done'
   const overdue = isOverdue(t, now)
@@ -31,7 +31,7 @@ export default function TaskRow({ task: t, now, exam, readOnly, onToggle, onOpen
   const { byId } = useLabelsCtx()
   const label = t.labelId ? byId.get(t.labelId) : undefined
   return (
-    <div className="group flex items-start gap-1 rounded-lg transition-colors hover:bg-surface2/70">
+    <div className="group flex items-start gap-1 transition-colors duration-150 hover:bg-surface2/50">
       <button
         type="button"
         onClick={() => onToggle(t)}
@@ -42,8 +42,8 @@ export default function TaskRow({ task: t, now, exam, readOnly, onToggle, onOpen
       >
         <span
           key={done ? 'done' : 'open'}
-          className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${
-            done ? 'anim-pop border-accent bg-accent text-accentink' : `${RING[t.priority]} group-hover:border-accent group-hover:bg-accent/10`
+          className={`flex h-[18px] w-[18px] items-center justify-center rounded-sm border-[1.5px] transition-colors duration-150 ${
+            done ? 'anim-pop border-ink bg-ink text-canvas' : `${RING[t.priority]} group-hover:border-ink`
           }`}
         >
           {done && <Icon name="check" size={12} />}
@@ -52,25 +52,30 @@ export default function TaskRow({ task: t, now, exam, readOnly, onToggle, onOpen
       <button type="button" onClick={() => onOpen(t)} className="min-w-0 flex-1 py-2.5 pr-2 text-left">
         <span className={`line-clamp-2 block break-words text-[15px] leading-snug ${done ? 'text-muted line-through' : 'font-medium'}`}>{t.title}</span>
         {!compact || due || exam ? (
-          <span className="tnum mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted">
-            {due ? <span className={overdue ? 'font-semibold text-danger' : ''}>{overdue ? `Überfällig · ${due}` : due}</span> : !compact && !done && <span>Ohne Datum</span>}
-            {t.status === 'in_progress' && <span className="font-medium text-accent">In Bearbeitung</span>}
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted">
+            {due ? <span className={`tnum ${overdue ? 'font-medium text-danger' : ''}`}>{overdue ? `Überfällig · ${due}` : due}</span> : !compact && !done && <span>Ohne Datum</span>}
+            {t.status === 'in_progress' && <span className="font-medium text-ink">In Bearbeitung</span>}
             {!done && <PriorityTag p={t.priority} />}
             {exam && (
               <span className="inline-flex items-center gap-1">
                 <Icon name="exam" size={12} /> {exam.subject || exam.title}
               </span>
             )}
-            {t.estimateMinutes && <span>≈ {formatDuration(t.estimateMinutes)}</span>}
+            {t.estimateMinutes && <span className="tnum">≈ {formatDuration(t.estimateMinutes)}</span>}
             {label ? (
               <span className={`${colorClass(t.category, label)} inline-flex items-center gap-1.5 font-medium text-ink`}>
-                <span className="h-2 w-2 rotate-45 rounded-[2px] bg-cat" aria-hidden="true" />
+                <span className="h-2 w-2 rotate-45 bg-cat" aria-hidden="true" />
                 {label.name}
               </span>
             ) : (
-              !compact && <CategoryDot category={t.category} />
+              !compact && (
+                <span className="inline-flex items-center gap-1.5">
+                  <CategoryDot category={t.category} />
+                  {CATEGORY_LABEL[t.category]}
+                </span>
+              )
             )}
-            {done && t.completedAt && <span>erledigt {t.completedAt.toLocaleDateString('de-CH')}</span>}
+            {done && t.completedAt && <span>erledigt <span className="tnum">{t.completedAt.toLocaleDateString('de-CH')}</span></span>}
           </span>
         ) : null}
       </button>

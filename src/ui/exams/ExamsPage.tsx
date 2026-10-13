@@ -24,7 +24,6 @@ interface Props {
 }
 
 const fmtDate = new Intl.DateTimeFormat('de-CH', { weekday: 'long', day: 'numeric', month: 'long' })
-const fmtMonth = new Intl.DateTimeFormat('de-CH', { month: 'short' })
 
 function urgency(days: number): 'now' | 'soon' | 'later' | 'past' {
   if (days < 0) return 'past'
@@ -62,12 +61,12 @@ export default function ExamsPage({ exams, tasks, sessions, now, loading, error,
         )}
       </header>
 
-      {error && <p className="mb-4 rounded-lg bg-danger/[0.08] px-4 py-3 text-sm" role="alert">{error}</p>}
+      {error && <p className="mb-4 border-l-2 border-danger bg-surface px-4 py-3 text-sm" role="alert">{error}</p>}
 
       {loading && exams.length === 0 ? (
         <p className="py-8 text-sm text-muted">Lädt Prüfungen …</p>
       ) : !first ? (
-        <div className="rounded-2xl bg-surface">
+        <div className="rounded border border-line bg-surface">
           <EmptyState
             icon="exam"
             title="Keine anstehenden Prüfungen"
@@ -83,95 +82,106 @@ export default function ExamsPage({ exams, tasks, sessions, now, loading, error,
             const days = daysUntil(first, now)
             const openTasks = sortTasks(s.mine.filter((t) => t.status !== 'done'), 'due').slice(0, 4)
             return (
-              <section className="relative overflow-hidden rounded-2xl bg-exam text-white lg:col-span-12">
-                <span className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full bg-white/[0.08]" aria-hidden="true" />
-                <div className="relative grid grid-cols-[minmax(0,1fr)] gap-6 p-6 md:grid-cols-[minmax(0,1fr),minmax(0,1fr)] md:p-8">
-                  <button type="button" onClick={() => onOpen(first)} className="text-left">
-                    <span className="text-sm text-white/75">Als Nächstes</span>
-                    <span className="h-display mt-1 block break-words text-[30px] leading-tight md:text-[38px]">{first.title}</span>
-                    <span className="mt-2 block text-[15px] text-white/85">
-                      {first.subject && first.subject !== first.title ? `${first.subject}, ` : ''}
+              <section className="rule grid grid-cols-[minmax(0,1fr)] gap-x-10 gap-y-6 lg:col-span-12 lg:grid-cols-[minmax(0,1fr),minmax(0,1fr)]" aria-label="Nächste Prüfung">
+                <button type="button" onClick={() => onOpen(first)} className="group min-w-0 text-left">
+                  <span className="text-sm text-muted">Als Nächstes</span>
+                  <span className="mt-2 flex items-start justify-between gap-6">
+                    <span className="min-w-0">
+                      <span className="h-display block break-words text-[30px] leading-[1.08] group-hover:underline group-hover:decoration-1 group-hover:underline-offset-4 md:text-[38px]">{first.title}</span>
+                      {first.subject && first.subject !== first.title && <span className="mt-1 block text-[15px] text-muted">{first.subject}</span>}
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className={`tnum block text-[56px] font-medium leading-[0.9] md:text-[72px] ${days <= 3 ? 'text-accent' : ''}`}>{days}</span>
+                      <span className="block text-[13px] text-muted">{days === 0 ? 'heute' : days === 1 ? 'Tag' : 'Tage'}</span>
+                    </span>
+                  </span>
+                  <dl className="mt-5 grid grid-cols-[6rem,minmax(0,1fr)] gap-y-1.5 border-t border-line pt-3 text-sm">
+                    <dt className="text-muted">Datum</dt>
+                    <dd className="tnum capitalize">
                       {fmtDate.format(first.start)}, {formatTime(first.start)}
                       {first.end ? `–${formatTime(first.end)}` : ''}
-                    </span>
-                    {(first.location || first.format) && <span className="mt-0.5 block text-sm text-white/70">{[first.location, first.format].filter(Boolean).join(', ')}</span>}
-                    <span className="mt-6 flex items-end gap-6">
-                      <span>
-                        <span className="h-display tnum block text-[64px] leading-[0.9]">{days}</span>
-                        <span className="text-sm text-white/80">{days === 1 ? 'Tag' : 'Tage'} bis zur Prüfung</span>
-                      </span>
-                      <span className="mb-1 flex-1">
-                        <span className="mb-1.5 flex justify-between text-xs text-white/85">
-                          <span>{PREP_LABEL[first.prepStatus]}</span>
-                          <span className="tnum">{s.mine.length ? `${s.done}/${s.mine.length}` : ''}</span>
-                        </span>
-                        <span className="block h-2.5 overflow-hidden rounded-full bg-white/20">
-                          <span className="anim-grow block h-full rounded-full bg-white" style={{ width: `${Math.max(s.progress * 100, 3)}%` }} />
-                        </span>
-                      </span>
-                    </span>
-                  </button>
-
-                  <div className="rounded-xl bg-surface p-3 text-ink">
-                    <div className="flex items-center justify-between px-2 pb-1 pt-1">
-                      <h2 className="text-sm font-semibold">Offene Lernaufgaben</h2>
-                      <span className="tnum text-xs text-muted">{s.planned > 0 ? `${s.planned} Lerntermin${s.planned > 1 ? 'e' : ''} geplant` : 'Kein Lerntermin geplant'}</span>
-                    </div>
-                    {openTasks.length === 0 ? (
-                      <p className="px-2 py-3 text-sm text-muted">{s.mine.length ? 'Alle Lernaufgaben erledigt.' : 'Noch keine Lernaufgaben. Im Detail kannst du dir einen Lernplan vorschlagen lassen.'}</p>
-                    ) : (
-                      <div className="divide-y divide-line/60">
-                        {openTasks.map((t) => (
-                          <TaskRow key={t.id} task={t} now={now} readOnly={readOnly} onToggle={onToggleTask} onOpen={onOpenTask} compact />
-                        ))}
-                      </div>
+                    </dd>
+                    {first.location && (
+                      <>
+                        <dt className="text-muted">Ort</dt>
+                        <dd>{first.location}</dd>
+                      </>
                     )}
-                    <button type="button" className="mt-1 w-full rounded-lg px-2 py-2.5 text-left text-sm font-semibold text-accent transition-colors hover:bg-surface2" onClick={() => onOpen(first)}>
-                      Lernplan und Details öffnen
-                    </button>
+                    {first.format && (
+                      <>
+                        <dt className="text-muted">Format</dt>
+                        <dd>{first.format}</dd>
+                      </>
+                    )}
+                    <dt className="text-muted">Stand</dt>
+                    <dd>
+                      {PREP_LABEL[first.prepStatus]}
+                      {days <= 3 && <span className="ml-2 font-medium text-accent">Bald</span>}
+                    </dd>
+                  </dl>
+                  <span className="mt-4 block h-[2px] bg-line" aria-hidden="true">
+                    <span className="anim-grow block h-full bg-ink" style={{ width: `${Math.max(s.progress * 100, 2)}%` }} />
+                  </span>
+                  <span className="tnum mt-1.5 block text-xs text-muted">{s.mine.length ? `${s.done} von ${s.mine.length} Lernaufgaben erledigt` : 'Noch keine Lernaufgaben'}</span>
+                </button>
+
+                <div className="min-w-0 lg:border-l lg:border-line lg:pl-10">
+                  <div className="flex items-baseline justify-between gap-3 border-b border-line pb-2">
+                    <h2 className="h-section">Offene Lernaufgaben</h2>
+                    <span className="tnum text-xs text-muted">{s.planned > 0 ? `${s.planned} Lerntermin${s.planned > 1 ? 'e' : ''} geplant` : 'Kein Lerntermin geplant'}</span>
                   </div>
+                  {openTasks.length === 0 ? (
+                    <p className="py-3 text-sm text-muted">{s.mine.length ? 'Alle Lernaufgaben erledigt.' : 'Noch keine Lernaufgaben. Im Detail kannst du dir einen Lernplan vorschlagen lassen.'}</p>
+                  ) : (
+                    <div className="divide-y divide-line">
+                      {openTasks.map((t) => (
+                        <TaskRow key={t.id} task={t} now={now} readOnly={readOnly} onToggle={onToggleTask} onOpen={onOpenTask} compact />
+                      ))}
+                    </div>
+                  )}
+                  <button type="button" className="mt-2 min-h-11 text-sm font-medium text-ink underline decoration-line underline-offset-4 hover:decoration-ink" onClick={() => onOpen(first)}>
+                    Lernplan und Details öffnen
+                  </button>
                 </div>
               </section>
             )
           })()}
 
-          {/* Zeitstrahl der weiteren Prüfungen */}
+          {/* Weitere Prüfungen als Fahrplan: Datum, Titel, Stand, Countdown */}
           {rest.length > 0 && (
-            <section className="lg:col-span-12">
-              <h2 className="h-section mb-3">Danach</h2>
-              <ol className="relative space-y-2 before:absolute before:bottom-6 before:left-[27px] before:top-6 before:w-0.5 before:rounded-full before:bg-line">
+            <section className="rule lg:col-span-12">
+              <h2 className="h-section mb-1">Danach</h2>
+              <ol className="divide-y divide-line border-b border-line">
                 {rest.map((x) => {
                   const s = stats(x)
                   const days = daysUntil(x, now)
                   const u = urgency(days)
                   return (
-                    <li key={x.id} className="relative">
-                      <button type="button" onClick={() => onOpen(x)} className="flex w-full items-center gap-4 rounded-xl bg-surface p-3 pr-4 text-left transition-colors hover:bg-surface2/60 md:gap-5">
-                        <span
-                          className={`relative z-10 flex h-[54px] w-[54px] shrink-0 flex-col items-center justify-center rounded-full ${
-                            u === 'now' ? 'bg-danger text-white' : u === 'soon' ? 'bg-sun text-sunink' : 'cat-study bg-cat/15 text-ink'
-                          }`}
-                        >
-                          <span className="h-display tnum text-lg leading-none">{x.start.getDate()}</span>
-                          <span className="text-[10px] font-medium">{fmtMonth.format(x.start).replace('.', '')}</span>
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-semibold">{x.title}</span>
-                          <span className="block truncate text-sm text-muted">
-                            {x.subject && x.subject !== x.title ? `${x.subject}, ` : ''}
-                            {formatTime(x.start)} Uhr
+                    <li key={x.id}>
+                      <button type="button" onClick={() => onOpen(x)} className="grid w-full grid-cols-[4.25rem,minmax(0,1fr)] gap-4 py-3 text-left transition-colors duration-150 hover:bg-surface2/50 sm:grid-cols-[4.25rem,minmax(0,1fr),8rem]">
+                        <span className="tnum text-[13px] leading-5">
+                          <span className="block text-ink">
+                            {String(x.start.getDate()).padStart(2, '0')}.{String(x.start.getMonth() + 1).padStart(2, '0')}.
                           </span>
-                          <span className="mt-1.5 flex items-center gap-3">
-                            <span className="h-1.5 w-28 overflow-hidden rounded-full bg-surface2" aria-hidden="true">
-                              <span className="cat-study block h-full rounded-full bg-cat" style={{ width: `${Math.max(s.progress * 100, 4)}%` }} />
-                            </span>
-                            <span className="text-xs text-muted">
-                              {PREP_LABEL[x.prepStatus]}
-                              {s.open > 0 ? `, ${s.open} offen` : ''}
-                            </span>
-                          </span>
+                          <span className="block text-muted">{formatTime(x.start)}</span>
                         </span>
-                        <span className={`tnum hidden shrink-0 text-sm font-semibold sm:block ${u === 'now' ? 'text-danger' : 'text-muted'}`}>{countdownLabel(days)}</span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-[15px] font-medium">{x.title}</span>
+                          <span className="mt-0.5 block truncate text-[13px] text-muted">
+                            {x.subject && x.subject !== x.title ? `${x.subject} · ` : ''}
+                            {PREP_LABEL[x.prepStatus]}
+                            {s.open > 0 ? `, ${s.open} offen` : ''}
+                          </span>
+                          <span className="mt-2 block h-[2px] w-32 bg-line" aria-hidden="true">
+                            <span className="block h-full bg-ink" style={{ width: `${Math.max(s.progress * 100, 3)}%` }} />
+                          </span>
+                          <span className={`tnum mt-1.5 block text-[13px] sm:hidden ${u === 'now' ? 'font-medium text-accent' : 'text-muted'}`}>{countdownLabel(days)}</span>
+                        </span>
+                        <span className={`tnum hidden text-right text-[13px] sm:block ${u === 'now' ? 'font-medium text-accent' : u === 'soon' ? 'text-ink' : 'text-muted'}`}>
+                          {countdownLabel(days)}
+                          {u === 'now' && <span className="block text-xs font-normal">Bald</span>}
+                          {u === 'soon' && <span className="block text-xs text-muted">Diese Woche</span>}
+                        </span>
                       </button>
                     </li>
                   )
@@ -184,11 +194,11 @@ export default function ExamsPage({ exams, tasks, sessions, now, loading, error,
 
       {past.length > 0 && (
         <details className="mt-10">
-          <summary className="cursor-pointer text-sm font-semibold text-muted hover:text-ink">Vergangene Prüfungen ({past.length})</summary>
-          <ul className="mt-3 space-y-1">
+          <summary className="min-h-11 cursor-pointer border-t border-line pt-3 text-sm font-medium text-muted hover:text-ink">Vergangene Prüfungen ({past.length})</summary>
+          <ul className="mt-1 divide-y divide-line">
             {past.map((x) => (
               <li key={x.id}>
-                <button type="button" onClick={() => onOpen(x)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-muted transition-colors hover:bg-surface">
+                <button type="button" onClick={() => onOpen(x)} className="flex min-h-11 w-full items-center gap-3 py-2 text-left text-sm text-muted transition-colors hover:bg-surface2/50">
                   <Icon name="exam" size={16} />
                   <span className="flex-1 truncate">{x.title}</span>
                   <span className="tnum">{x.start.toLocaleDateString('de-CH')}</span>

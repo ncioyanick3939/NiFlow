@@ -71,7 +71,7 @@ export default function CalendarPage({ initialDate, events, now, loading, readOn
   const createAt = readOnly ? undefined : (at: Date, end?: Date) => onCreate(startOfDay(at), at, end)
 
   const strip = (
-    <div className="mb-3 grid grid-cols-7 gap-1 rounded-xl bg-surface p-1.5">
+    <div className="mb-3 grid grid-cols-7 border-y border-line">
       {week.map((d) => {
         const sel = isSameDay(d, anchor)
         const today = isSameDay(d, now)
@@ -83,11 +83,12 @@ export default function CalendarPage({ initialDate, events, now, loading, readOn
             type="button"
             onClick={() => setAnchor(d)}
             aria-pressed={sel}
-            className={`flex min-h-[3.75rem] flex-col items-center justify-center rounded-lg transition-colors ${sel ? 'bg-deep text-deepink' : 'hover:bg-surface2'}`}
+            className={`relative flex min-h-[3.75rem] flex-col items-center justify-center transition-colors duration-150 ${sel ? 'bg-deep text-deepink' : 'hover:bg-surface2'}`}
           >
             <span className={`text-[11px] font-medium ${sel ? 'text-deepmuted' : today ? 'text-ink' : 'text-muted'}`}>{fmtWd.format(d).replace('.', '')}</span>
-            <span className={`h-display tnum text-lg leading-tight ${today && !sel ? 'text-accent' : ''}`}>{d.getDate()}</span>
-            <span className={`mt-0.5 h-1 w-1 rounded-full ${count > 0 ? (sel ? 'bg-sun' : 'bg-muted') : 'bg-transparent'}`} aria-hidden="true" />
+            <span className={`tnum text-[17px] font-medium leading-tight ${today && !sel ? 'text-accent' : ''}`}>{d.getDate()}</span>
+            <span className={`mt-1 h-[3px] w-3 ${count > 0 ? (sel ? 'bg-deepink/60' : 'bg-muted/60') : 'bg-transparent'}`} aria-hidden="true" />
+            {today && <span className="absolute inset-x-0 top-0 h-[2px] bg-accent" aria-hidden="true" />}
           </button>
         )
       })}
@@ -99,18 +100,18 @@ export default function CalendarPage({ initialDate, events, now, loading, readOn
       {/* Toolbar: alles in einer Zeile (auf dem Handy umbrechend) */}
       <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-3">
         <div className="flex items-center gap-1">
-          <button type="button" className="btn-outline min-h-10 px-4" onClick={() => setAnchor(startOfDay(now))}>
+          <button type="button" className="btn-outline min-h-11 px-4" onClick={() => setAnchor(startOfDay(now))}>
             Heute
           </button>
-          <button type="button" className="btn-ghost h-10 min-h-10 w-10 px-0" onClick={() => shift(-1)} aria-label="Zurück">
+          <button type="button" className="btn-ghost h-11 min-h-11 w-11 px-0" onClick={() => shift(-1)} aria-label="Zurück">
             <Icon name="chevronLeft" size={20} />
           </button>
-          <button type="button" className="btn-ghost h-10 min-h-10 w-10 px-0" onClick={() => shift(1)} aria-label="Weiter">
+          <button type="button" className="btn-ghost h-11 min-h-11 w-11 px-0" onClick={() => shift(1)} aria-label="Weiter">
             <Icon name="chevronRight" size={20} />
           </button>
         </div>
         <div className="mr-auto flex min-w-0 items-baseline gap-3">
-          <h1 className="h-display truncate text-[24px] capitalize leading-tight md:text-[28px]">{title}</h1>
+          <h1 className="h-display truncate text-[22px] capitalize leading-tight md:text-[28px]">{title}</h1>
           {(view === 'week' || view === 'day') && <span className="tnum hidden shrink-0 text-sm text-muted sm:inline">KW {isoWeek(anchor)}</span>}
         </div>
         <Segmented
@@ -130,7 +131,7 @@ export default function CalendarPage({ initialDate, events, now, loading, readOn
         {xl && (
           <button
             type="button"
-            className={`btn-ghost h-10 min-h-10 w-10 px-0 ${rail ? 'bg-surface2' : ''}`}
+            className={`btn-ghost h-11 min-h-11 w-11 px-0 ${rail ? 'bg-surface2' : ''}`}
             onClick={() => setRailPref(rail ? 'closed' : 'open')}
             aria-pressed={rail}
             aria-label={rail ? 'Tagesleiste ausblenden' : 'Tagesleiste einblenden'}
@@ -219,7 +220,7 @@ function DayRail({
   const isToday = isSameDay(day, now)
 
   return (
-    <aside className="space-y-5 self-start rounded-xl bg-surface p-5" aria-label="Tagesleiste">
+    <aside className="space-y-5 self-start rounded border border-line bg-surface p-5" aria-label="Tagesleiste">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm text-muted">{isToday ? 'Heute' : fmtWd.format(day).replace('.', '')}</p>

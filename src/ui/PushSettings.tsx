@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { currentSubscription, disablePush, enablePush, needsHomeScreen, pushSupported, testPush } from '../data/webPush'
+import { currentSubscription, disablePush, enablePush, needsHomeScreen, pushReasonText, pushSupported, testPush } from '../data/webPush'
 import Icon from './icons'
 import { useNotifyPermission } from './reminders'
 
@@ -38,9 +38,9 @@ export default function PushSettings() {
     <div className="space-y-4">
       <p className="text-sm text-muted">Erinnerungen stellst du bei Terminen und Aufgaben ein, zum Beispiel «15 Minuten vorher».</p>
 
-      <div className="rounded-xl border border-line/70 p-4">
+      <div className="rounded border border-line p-4">
         <div className="flex flex-wrap items-center gap-3">
-          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${on ? 'bg-accent text-surface' : 'bg-surface2 text-muted'}`}>
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded ${on ? 'bg-ink text-canvas' : 'bg-surface2 text-muted'}`}>
             <Icon name="bell" size={18} />
           </span>
           <div className="mr-auto min-w-0">
@@ -57,7 +57,8 @@ export default function PushSettings() {
                   onClick={() =>
                     void run(async () => {
                       const r = await testPush()
-                      return r.sent > 0 ? 'Test verschickt. Er sollte in wenigen Sekunden erscheinen.' : 'Der Push-Dienst hat den Test abgelehnt. Bitte aus- und wieder einschalten.'
+                      if (r.sent > 0) return 'Test verschickt. Er sollte in wenigen Sekunden erscheinen.'
+                      throw new Error(pushReasonText(r.reasons?.[0]))
                     })
                   }
                 >

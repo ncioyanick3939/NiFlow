@@ -4,54 +4,54 @@
 
 /* Farben als RGB-Tripel, damit Tailwind Transparenz (z. B. bg-accent/10) berechnen kann. */
 :root {
-  /* Flächen: heller Salbei statt Grau, damit die App nicht steril wirkt */
-  --bg: 239 243 240;
-  --surface: 255 255 255;
-  --surface2: 228 235 231;
-  --line: 214 223 218;
-  --ink: 17 33 31;
-  --muted: 92 111 106;
-  /* Interaktion: Aare-Petrol */
-  --accent: 15 92 85;
+  /* «Swiss Editorial»: Papier, Tinte, Signalrot. Alles als RGB-Tripel (für bg-accent/10 usw.) */
+  --bg: 244 241 234;        /* #F4F1EA Seitenhintergrund */
+  --surface: 250 249 245;   /* #FAF9F5 helle Flächen */
+  --surface2: 236 232 223;  /* Hover, ruhige Flächen */
+  --line: 216 212 203;      /* #D8D4CB 1-px-Linien */
+  --ink: 27 27 24;          /* #1B1B18 Text */
+  --muted: 119 118 111;     /* #77766F sekundärer Text */
+  --accent: 228 65 43;      /* #E4412B Signalrot: aktiv, jetzt, Hauptaktion */
   --accent-ink: 255 255 255;
-  --danger: 209 47 47;
-  --deep: 15 61 58;
-  --deep-ink: 236 245 242;
-  --deep-muted: 152 189 182;
-  --sun: 245 184 61;
-  --sun-ink: 43 30 4;
-  /* Prüfungen: kräftiges Violett, in beiden Modi dunkel genug für weisse Schrift */
-  --exam: 109 40 217;
-  /* Hohe Priorität */
-  --warn: 217 119 6;
-  /* Kategorien */
-  --training: 37 99 235;
-  --work: 100 116 139;
-  --study: 124 58 237;
-  --private: 219 79 134;
+  --danger: 196 50 30;      /* Fehler und Überfälliges: Rot, dazu immer ein Wort */
+  /* "deep" = Tinte: invertierte Flächen (aktive Auswahl, Prüfung) */
+  --deep: 27 27 24;
+  --deep-ink: 244 241 234;
+  --deep-muted: 170 167 157;
+  /* Früher Safran, jetzt ebenfalls Signalrot: es gibt nur eine Hervorhebungsfarbe */
+  --sun: 228 65 43;
+  --sun-ink: 255 255 255;
+  --exam: 27 27 24;
+  --warn: 176 112 24;       /* hohe Priorität: gedecktes Ocker */
+  /* Kategorien: gedeckt */
+  --training: 47 74 109;    /* Dunkelblau */
+  --work: 107 106 100;      /* Grau */
+  --study: 94 107 46;       /* Oliv */
+  --private: 180 88 58;     /* Terrakotta */
   color-scheme: light;
 }
 :root.dark {
-  --bg: 11 20 19;
-  --surface: 18 30 29;
-  --surface2: 27 42 40;
-  --line: 40 58 55;
-  --ink: 230 240 237;
-  --muted: 140 163 158;
-  --accent: 108 213 196;
-  --accent-ink: 8 24 22;
-  --danger: 248 113 113;
-  --deep: 16 50 47;
-  --deep-ink: 230 242 238;
-  --deep-muted: 137 180 172;
-  --sun: 246 196 83;
-  --sun-ink: 43 30 4;
-  --exam: 109 40 217;
-  --warn: 245 158 11;
-  --training: 110 168 254;
-  --work: 148 163 184;
-  --study: 183 156 255;
-  --private: 245 138 180;
+  /* Anthrazit statt Schwarz */
+  --bg: 30 30 28;
+  --surface: 38 38 36;
+  --surface2: 48 47 44;
+  --line: 62 61 57;
+  --ink: 236 233 226;
+  --muted: 160 157 148;
+  --accent: 240 88 64;
+  --accent-ink: 255 255 255;
+  --danger: 245 110 90;
+  --deep: 236 233 226;
+  --deep-ink: 30 30 28;
+  --deep-muted: 100 98 92;
+  --sun: 240 88 64;
+  --sun-ink: 255 255 255;
+  --exam: 82 80 74;
+  --warn: 222 164 74;
+  --training: 128 160 204;
+  --work: 166 164 156;
+  --study: 168 182 106;
+  --private: 222 140 108;
   color-scheme: dark;
 }
 
@@ -60,31 +60,31 @@
 .cat-study { --c: var(--study); }
 .cat-private { --c: var(--private); }
 
-/* Eigene Kategorien: Farbe überschreibt die des Grundbereichs */
-.col-teal { --c: 13 148 136; }
-.col-sky { --c: 2 132 199; }
-.col-indigo { --c: 79 70 229; }
-.col-violet { --c: 147 51 234; }
-.col-pink { --c: 219 39 119; }
-.col-red { --c: 220 38 38; }
-.col-orange { --c: 234 88 12; }
-.col-amber { --c: 180 120 4; }
-.col-lime { --c: 77 124 15; }
-.col-green { --c: 22 163 74; }
-.col-slate { --c: 71 85 105; }
-.col-brown { --c: 146 96 60; }
-:root.dark .col-teal { --c: 45 212 191; }
-:root.dark .col-sky { --c: 56 189 248; }
-:root.dark .col-indigo { --c: 129 140 248; }
-:root.dark .col-violet { --c: 192 132 252; }
-:root.dark .col-pink { --c: 244 114 182; }
-:root.dark .col-red { --c: 248 113 113; }
-:root.dark .col-orange { --c: 251 146 60; }
-:root.dark .col-amber { --c: 251 191 36; }
-:root.dark .col-lime { --c: 163 230 53; }
-:root.dark .col-green { --c: 74 222 128; }
-:root.dark .col-slate { --c: 148 163 184; }
-:root.dark .col-brown { --c: 214 167 125; }
+/* Eigene Kategorien: gedämpfte Farben, überschreiben die des Grundbereichs */
+.col-teal { --c: 38 112 104; }
+.col-sky { --c: 46 104 148; }
+.col-indigo { --c: 72 74 140; }
+.col-violet { --c: 110 72 130; }
+.col-pink { --c: 160 66 104; }
+.col-red { --c: 176 52 40; }
+.col-orange { --c: 184 98 36; }
+.col-amber { --c: 150 112 20; }
+.col-lime { --c: 92 116 32; }
+.col-green { --c: 52 112 64; }
+.col-slate { --c: 84 92 102; }
+.col-brown { --c: 120 86 60; }
+:root.dark .col-teal { --c: 110 190 178; }
+:root.dark .col-sky { --c: 120 170 214; }
+:root.dark .col-indigo { --c: 150 152 214; }
+:root.dark .col-violet { --c: 184 150 204; }
+:root.dark .col-pink { --c: 222 140 172; }
+:root.dark .col-red { --c: 236 120 104; }
+:root.dark .col-orange { --c: 230 156 100; }
+:root.dark .col-amber { --c: 216 180 90; }
+:root.dark .col-lime { --c: 170 196 100; }
+:root.dark .col-green { --c: 124 190 136; }
+:root.dark .col-slate { --c: 160 168 178; }
+:root.dark .col-brown { --c: 198 160 128; }
 
 @layer base {
   html,
@@ -94,6 +94,11 @@
   }
   body {
     @apply bg-canvas font-sans text-ink antialiased;
+    font-feature-settings: 'ss01', 'cv11';
+    /* iPhone: nicht unter Statusleiste, Notch oder Home-Balken zeichnen (Home-Bildschirm-App) */
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
     -webkit-tap-highlight-color: transparent;
   }
   button {
@@ -105,23 +110,27 @@
 }
 
 @layer components {
+  /* Zeiten, Daten, Dauern, Zahlen: Monospace mit festen Ziffernbreiten, damit alles untereinander steht */
   .tnum {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     font-variant-numeric: tabular-nums;
+    font-size: 0.92em;
+    letter-spacing: -0.02em;
   }
   .btn {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium transition duration-150 disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded px-4 text-sm font-medium transition duration-150 disabled:cursor-not-allowed disabled:opacity-40;
   }
   .btn-primary {
-    @apply btn bg-accent text-accentink hover:bg-accent/90 active:scale-[0.98];
+    @apply btn bg-accent text-accentink hover:bg-accent/90;
   }
   .btn-sun {
-    @apply btn bg-sun font-semibold text-sunink hover:brightness-105 active:scale-[0.98];
+    @apply btn bg-sun font-semibold text-sunink hover:brightness-105;
   }
   .btn-ghost {
     @apply btn text-ink hover:bg-surface2;
   }
   .btn-outline {
-    @apply btn border border-line bg-surface text-ink hover:bg-surface2;
+    @apply btn border border-line bg-transparent text-ink hover:bg-surface2;
   }
   .field {
     @apply min-h-11 w-full rounded-md border border-line bg-surface px-3 text-base text-ink md:text-sm placeholder:text-muted/70 transition-colors duration-150 hover:border-muted/50;
@@ -131,42 +140,47 @@
   }
   /* Kleine Abschnitts-Beschriftung, normale Schreibweise */
   .eyebrow {
-    @apply text-[13px] font-semibold text-muted;
+    @apply text-[13px] font-medium text-muted;
   }
   .h-display {
-    @apply font-display font-semibold tracking-[-0.02em];
+    @apply font-display font-semibold tracking-[-0.025em];
   }
+  /* Abschnittstitel: klein, mit Linie darüber (Fahrplan-Stil) */
   .h-section {
-    @apply font-display text-lg font-semibold tracking-[-0.01em];
+    @apply font-display text-[15px] font-semibold tracking-[-0.005em];
   }
   .panel {
-    @apply rounded-xl bg-surface;
+    @apply rounded bg-surface;
   }
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-xs font-medium;
+  }
+  /* Abschnitt mit 1-px-Linie oben statt Karte */
+  .rule {
+    @apply border-t border-line pt-4;
   }
 }
 
 @keyframes sheet-in {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
 }
 @keyframes pop {
   0% { transform: scale(1); }
-  40% { transform: scale(1.25); }
+  40% { transform: scale(1.12); }
   100% { transform: scale(1); }
 }
-.anim-pop { animation: pop 260ms ease-out; }
+.anim-pop { animation: pop 180ms ease-out; }
 @keyframes grow {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
 }
-.anim-grow { transform-origin: left; animation: grow 600ms cubic-bezier(.2,.7,.2,1); }
+.anim-grow { transform-origin: left; animation: grow 300ms cubic-bezier(.2,.7,.2,1); }
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-.anim-sheet { animation: sheet-in 180ms ease-out; }
+.anim-sheet { animation: sheet-in 160ms ease-out; }
 .anim-fade { animation: fade-in 150ms ease-out; }
 
 @media (prefers-reduced-motion: reduce) {

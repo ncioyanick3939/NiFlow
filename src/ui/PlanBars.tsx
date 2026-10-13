@@ -14,8 +14,8 @@ export default function PlanBars({ events, now, compact = false }: { events: Cal
         {CATEGORIES.map((c) => (
           <li key={c} className={`${catClass(c)} grid grid-cols-[5.5rem,1fr,3.5rem] items-center gap-3 text-sm`}>
             <span className="text-muted">{CATEGORY_LABEL[c]}</span>
-            <span className="h-2 overflow-hidden rounded-full bg-surface2">
-              <span className="block h-full rounded-full bg-cat transition-[width]" style={{ width: `${(totals[c] / max) * 100}%` }} />
+            <span className="h-1.5 overflow-hidden bg-surface2">
+              <span className="block h-full bg-cat transition-[width]" style={{ width: `${(totals[c] / max) * 100}%` }} />
             </span>
             <span className="tnum text-right text-xs">{totals[c] > 0 ? formatDuration(totals[c]) : '–'}</span>
           </li>

@@ -60,15 +60,15 @@ export default function ActivitiesPage({ events, now, readOnly, onOpen, onTempla
       {!readOnly && (
         <section className="mb-8" aria-labelledby="tpl-h">
           <h2 id="tpl-h" className="h-section mb-3">Schnell anlegen</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 border-l border-t border-line sm:grid-cols-4">
             {TEMPLATES.map((t) => (
               <button
                 key={t.label}
                 type="button"
                 onClick={() => onTemplate(t)}
-                className={`${catClass(t.category)} group flex items-center gap-3 rounded-xl bg-cat/[0.09] px-3.5 py-3.5 text-left transition-colors hover:bg-cat/[0.16]`}
+                className={`${catClass(t.category)} group flex min-h-16 items-center gap-3 border-b border-r border-line px-3.5 py-3 text-left transition-colors duration-150 hover:bg-surface2/60`}
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cat text-surface transition-transform group-hover:scale-105">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-cat/15 text-cat">
                   <Icon name={t.icon} size={18} />
                 </span>
                 <span className="min-w-0">
@@ -88,21 +88,21 @@ export default function ActivitiesPage({ events, now, readOnly, onOpen, onTempla
         </section>
 
         <aside className="min-w-0 space-y-6 lg:col-span-4">
-          <section className="rounded-2xl bg-deep p-5 text-deepink">
-            <h2 className="h-section mb-1 text-deepink">Regelmässig</h2>
+          <section className="rule">
+            <h2 className="h-section mb-1">Regelmässig</h2>
             {seriesList.length === 0 ? (
-              <p className="text-sm text-deepmuted">Noch keine Serien. Im Formular unter «Wiederholen» legst du eine an.</p>
+              <p className="text-sm text-muted">Noch keine Serien. Im Formular unter «Wiederholen» legst du eine an.</p>
             ) : (
-              <ul className="-mx-2 mt-2">
+              <ul className="divide-y divide-line">
                 {seriesList.map((e) => (
                   <li key={e.ref!.id}>
-                    <button type="button" onClick={() => onOpen(e)} className={`${evClass(e)} flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-deepink/10`}>
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cat/25 text-deepink">
+                    <button type="button" onClick={() => onOpen(e)} className={`${evClass(e)} flex min-h-12 w-full items-center gap-3 py-2 text-left transition-colors duration-150 hover:bg-surface2/50`}>
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center text-cat">
                         <Icon name="repeat" size={15} />
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{e.title}</span>
-                        <span className="tnum block text-xs text-deepmuted">
+                        <span className="tnum block text-xs text-muted">
                           {RECURRENCE_LABEL[e.recurrence!]}
                           {e.recurrence === 'weekly' || e.recurrence === 'biweekly' ? `, ${WEEKDAY.format(e.start)}` : ''}
                           {e.allDay ? '' : `, ${formatTime(e.start)}`}
@@ -115,7 +115,7 @@ export default function ActivitiesPage({ events, now, readOnly, onOpen, onTempla
             )}
           </section>
 
-          <section className="rounded-2xl bg-surface p-5">
+          <section className="rule">
             <h2 className="h-section mb-3">Diese Woche geplant</h2>
             <PlanBars events={events} now={now} />
           </section>

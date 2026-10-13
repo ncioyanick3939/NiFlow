@@ -44,7 +44,7 @@ export default function MonthView({ selected, month, events, now, onOpen, onPick
   const visible = days[35].getMonth() !== month.getMonth() ? days.slice(0, 35) : days
 
   return (
-    <div className="overflow-hidden rounded-xl bg-surface">
+    <div className="overflow-hidden rounded border border-line bg-surface">
       <div className="grid grid-cols-7 border-b border-line/70">
         {WEEKDAYS.map((w) => (
           <div key={w} className="py-2.5 text-center text-xs font-medium text-muted">
@@ -92,8 +92,8 @@ export default function MonthView({ selected, month, events, now, onOpen, onPick
               }`}
             >
               <span
-                className={`tnum mb-1 flex h-7 w-7 items-center justify-center rounded-full text-[13px] font-semibold ${
-                  today ? 'bg-sun text-sunink' : inMonth ? '' : 'text-muted/50'
+                className={`tnum mb-1 flex h-7 w-7 items-center justify-center rounded-sm text-[13px] font-medium ${
+                  today ? 'bg-accent text-accentink' : inMonth ? '' : 'text-muted/50'
                 }`}
               >
                 {d.getDate()}
@@ -101,7 +101,7 @@ export default function MonthView({ selected, month, events, now, onOpen, onPick
               {/* Handy: nur Punkte */}
               <div className="flex flex-wrap gap-1 px-1 md:hidden">
                 {all.slice(0, 5).map((e) => (
-                  <span key={e.id} className={`${evClass(e)} h-1.5 w-1.5 rounded-full ${e.kind === 'note' ? 'border border-cat' : 'bg-cat'}`} aria-hidden="true" />
+                  <span key={e.id} className={`${evClass(e)} h-1.5 w-1.5 ${e.kind === 'note' ? 'border border-cat' : 'bg-cat'}`} aria-hidden="true" />
                 ))}
               </div>
               {/* Desktop: Einträge */}
@@ -131,7 +131,7 @@ export default function MonthView({ selected, month, events, now, onOpen, onPick
                     {e.kind === 'note' || e.kind === 'task' ? (
                       <Icon name={e.kind === 'note' ? 'note' : e.done ? 'checkCircle' : 'circle'} size={11} className="shrink-0 text-muted" />
                     ) : (
-                      !e.allDay && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-cat" aria-hidden="true" />
+                      !e.allDay && <span className="h-1.5 w-1.5 shrink-0 bg-cat" aria-hidden="true" />
                     )}
                     {!e.allDay && <span className={`tnum shrink-0 ${e.kind === 'exam' ? 'text-white/80' : 'text-muted'}`}>{formatTime(e.start)}</span>}
                     <span className={`truncate ${e.done && e.kind === 'task' ? 'text-muted line-through' : ''}`}>{e.title}</span>

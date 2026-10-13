@@ -94,7 +94,7 @@ export default function ExamDetail(p: Props) {
           <h4 className="mb-2 text-sm font-semibold">Lernstoff</h4>
           <ul className="flex flex-wrap gap-1.5">
             {topics.map((t) => (
-              <li key={t} className="rounded-full bg-surface2 px-3 py-1 text-xs">{t}</li>
+              <li key={t} className="rounded bg-surface2 px-3 py-1 text-xs">{t}</li>
             ))}
           </ul>
         </section>
@@ -106,8 +106,8 @@ export default function ExamDetail(p: Props) {
           {own.length > 0 && <span className="tnum text-xs text-muted">{done} von {own.length} erledigt</span>}
         </div>
         {own.length > 0 && (
-          <div className="mb-2 h-1 overflow-hidden rounded-full bg-surface2">
-            <div className="h-full rounded-full bg-accent transition-[width]" style={{ width: `${(done / own.length) * 100}%` }} />
+          <div className="mb-2 h-[2px] overflow-hidden bg-line">
+            <div className="h-full bg-ink transition-[width]" style={{ width: `${(done / own.length) * 100}%` }} />
           </div>
         )}
         {own.map((t) => (
@@ -123,7 +123,7 @@ export default function ExamDetail(p: Props) {
               {plan.map((s, i) => (
                 <li key={s.title}>
                   <label className="flex min-h-10 cursor-pointer items-center gap-3 text-sm">
-                    <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={s.on} onChange={() => setPlan(plan.map((q, j) => (j === i ? { ...q, on: !q.on } : q)))} />
+                    <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--ink))]" checked={s.on} onChange={() => setPlan(plan.map((q, j) => (j === i ? { ...q, on: !q.on } : q)))} />
                     <span className="flex-1">{s.title}</span>
                     <span className="tnum text-xs text-muted">{new Date(s.dueDate + 'T12:00').toLocaleDateString('de-CH', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
                   </label>

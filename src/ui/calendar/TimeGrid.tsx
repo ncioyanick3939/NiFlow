@@ -129,7 +129,7 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
   }
 
   return (
-    <div className="overflow-hidden rounded-xl bg-surface">
+    <div className="overflow-hidden rounded border border-line bg-surface">
       {multi && (
         <div className="grid border-b border-line/70" style={{ gridTemplateColumns: cols }}>
           <div />
@@ -144,7 +144,7 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
                 aria-label={`${formatWeekdayShort(d)} ${d.getDate()}. öffnen`}
               >
                 <span className={`text-xs font-medium ${today ? 'text-ink' : 'text-muted'}`}>{formatWeekdayShort(d)}</span>
-                <span className={`h-display tnum flex h-9 w-9 items-center justify-center rounded-full text-lg ${today ? 'bg-sun text-sunink' : ''}`}>
+                <span className={`tnum flex h-8 min-w-8 items-center justify-center rounded-sm px-1 text-[16px] font-medium ${today ? 'bg-accent text-accentink' : ''}`}>
                   {d.getDate()}
                 </span>
               </button>
@@ -163,7 +163,7 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
                   key={e.id}
                   type="button"
                   onClick={() => onOpen(e)}
-                  className={`${evClass(e)} flex w-full items-center gap-1 truncate rounded-md px-2 py-1 text-left text-[11px] font-medium transition-opacity hover:opacity-80 ${
+                  className={`${evClass(e)} flex min-h-10 w-full items-center gap-1 truncate rounded-sm px-2 py-1 text-left text-[12px] font-medium transition-opacity hover:opacity-80 md:min-h-0 md:text-[11px] ${
                     e.kind === 'note' ? 'bg-surface2 text-ink' : e.kind === 'task' ? 'border border-cat/50 text-ink' : 'bg-cat/15 text-ink'
                   }`}
                 >
@@ -195,7 +195,7 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
               <div
                 key={date.getTime()}
                 data-col
-                className={`relative border-l border-line/60 ${onCreateAt ? 'cursor-cell' : ''} ${today && multi ? 'bg-sun/[0.05]' : ''}`}
+                className={`relative border-l border-line/60 ${onCreateAt ? 'cursor-cell' : ''} ${today && multi ? 'bg-accent/[0.035]' : ''}`}
                 style={{ backgroundImage: 'linear-gradient(to bottom, rgb(var(--line) / 0.7) 1px, transparent 1px)', backgroundSize: `100% ${HOUR_PX}px` }}
                 onClick={(ev) => createAt(date, ev)}
                 onPointerDown={(ev) => selDown(ev, dayIndex)}
@@ -208,7 +208,7 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
                   const top = ((r.start.getHours() * 60 + r.start.getMinutes()) / 1440) * DAY_PX
                   const h = ((r.end.getTime() - r.start.getTime()) / 86400000) * DAY_PX
                   return (
-                    <div className="pointer-events-none absolute inset-x-0.5 z-20 rounded-[9px] border-2 border-accent bg-accent/15 px-2 pt-1" style={{ top: top + 1, height: h - 2 }} aria-hidden="true">
+                    <div className="pointer-events-none absolute inset-x-0.5 z-20 rounded-sm border-2 border-accent bg-accent/15 px-2 pt-1" style={{ top: top + 1, height: h - 2 }} aria-hidden="true">
                       <span className="tnum text-[11px] font-semibold text-ink">
                         {formatTime(r.start)}–{formatTime(r.end)}
                       </span>
@@ -250,9 +250,9 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
                       onPointerMove={moveDrag}
                       onPointerUp={() => endDrag(e)}
                       onPointerCancel={() => setDrag(null)}
-                      className={`${evClass(e)} absolute flex flex-col justify-start overflow-hidden rounded-[9px] px-2 text-left transition-[filter,transform] hover:brightness-95 active:scale-[0.99] dark:hover:brightness-125 ${
+                      className={`${evClass(e)} absolute flex flex-col justify-start overflow-hidden rounded-sm px-2 text-left transition-[filter,transform] hover:brightness-95 active:scale-[0.99] dark:hover:brightness-125 ${
                         e.kind === 'exam' ? '' : 'text-ink'
-                      } ${overlaps.has(e.id) ? 'ring-2 ring-danger/50' : ''} ${e.kind !== 'exam' && e.kind !== 'task' && !e.examId ? 'border-l-[3px] border-cat' : ''} ${
+                      } ${overlaps.has(e.id) ? 'ring-1 ring-inset ring-danger/70' : ''} ${e.kind !== 'exam' && e.kind !== 'task' && !e.examId ? 'border-l-[3px] border-cat' : ''} ${
                         draggable ? 'cursor-grab' : ''
                       } ${dragging ? 'z-20 cursor-grabbing opacity-90 shadow-float transition-none' : ''}`}
                       style={{
@@ -277,6 +277,14 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
                           {(p ? p.end : e.end) ? `–${formatTime((p ? p.end : e.end)!)}` : ''}
                         </span>
                       )}
+                      {overlaps.has(e.id) && (
+                        <>
+                          {/* Konflikt: rote Ecke, bei genug Platz zusätzlich als Wort */}
+                          <span className="absolute right-0 top-0 h-2 w-2 bg-danger [clip-path:polygon(0_0,100%_0,100%_100%)]" aria-hidden="true" />
+                          {height >= 56 && <span className="mt-0.5 block text-[10px] font-semibold text-danger">Konflikt</span>}
+                          <span className="sr-only">, überschneidet sich mit einem anderen Termin</span>
+                        </>
+                      )}
                       {draggable && e.end && (
                         <span
                           className="absolute inset-x-0 bottom-0 h-2 cursor-ns-resize"
@@ -289,8 +297,8 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
                 })}
                 {today && (
                   <div className="pointer-events-none absolute inset-x-0 z-10 flex items-center" style={{ top: nowTop }} aria-hidden="true">
-                    <span className="-ml-1.5 h-3 w-3 rounded-full bg-sun ring-2 ring-surface" />
-                    <span className="h-0.5 flex-1 bg-sun" />
+                    <span className="-ml-[3px] h-[7px] w-[7px] bg-accent" />
+                    <span className="h-px flex-1 bg-accent" />
                   </div>
                 )}
               </div>

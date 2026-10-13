@@ -2,9 +2,16 @@
 
 Persönliches Planungssystem für Studium, Training und Alltag (mobile-first Web-App).
 
-## Stand (Runde 5: Redesign «Aare»)
+## Stand (Runde 7: Redesign «Swiss Editorial»)
 
-- Neues Design mit hellem und dunklem Modus (Einstellungen → Darstellung)
+- Design «Swiss Editorial»: Papier `#F4F1EA`, Tinte `#1B1B18`, Signalrot `#E4412B` nur für aktiv/jetzt/Hauptaktion,
+  1-px-Linien statt Karten, Rundungen höchstens 6 px, Instrument Sans + JetBrains Mono (Zeiten, Daten, Zahlen),
+  Schriften lokal mitgeliefert (kein Abruf bei Google), dunkler Modus in Anthrazit, «Bewegung reduzieren» respektiert
+- Alle Tokens zentral: `src/index.css` (Farben als CSS-Variablen) und `tailwind.config.js` (Rundungen, Schatten, Schriften)
+- Kalender per Ziehen: verschieben, Länge ändern, über freie Zeit aufziehen, im Monat auf andere Tage ziehen (Maus/Stift)
+- Eigene Kategorien (Name, Farbe, Grundbereich)
+- Erinnerungen auch bei geschlossener App (Web Push, auf dem iPhone über den Home-Bildschirm)
+- Heller und dunkler Modus (Einstellungen → Darstellung)
 - Übersicht: Als Nächstes, Heute mit freier Zeit, Schnellerfassung, Nächste Tage, Training
 - Kalender: Monat, Woche, Tag, Agenda; Termine und Notizen erstellen, bearbeiten, verschieben, löschen
 - Eigene Einträge werden in Supabase gespeichert (Tabelle `entries`, nur für dich sichtbar)
@@ -13,7 +20,7 @@ Persönliches Planungssystem für Studium, Training und Alltag (mobile-first Web
   Kategorie, Zeitaufwand, Prüfung; sortieren und filtern; mit Datum auch im Kalender; als Termin einplanen
 - Prüfungen: Countdown, Vorbereitungsstand, Lernstoff, Lernaufgaben (mit bestätigtem Lernplan-Vorschlag), Lerntermine
 - Wiederkehrende Termine (täglich, werktags, wöchentlich, alle 2 Wochen, monatlich), einzelne Vorkommen auslassen
-- Erinnerungen für Termine und Aufgaben (Browser-Benachrichtigung, solange NiFlow geöffnet ist)
+- Erinnerungen für Termine und Aufgaben (in der App und per Push)
 - Intervals.icu: geplante und absolvierte Trainings (Dauer, Distanz, Belastung)
 - Google Kalender schreiben: eigene Termine landen in einem eigenen Kalender «NiFlow» (nur NiFlow → Google)
 - Suche (Strg+K) über Notizen, Termine, Aufgaben und Prüfungen; letzte Notizen auf einen Blick
@@ -22,7 +29,7 @@ Persönliches Planungssystem für Studium, Training und Alltag (mobile-first Web
 - Als App installierbar (PWA: Manifest, Icons, Service Worker)
 - Ohne Anmeldung: Demo mit klar gekennzeichneten, erfundenen Daten
 
-Grenzen: keine Push-Erinnerungen bei geschlossener App; Änderungen in Google am Kalender «NiFlow»
+Grenzen: Push braucht die VAPID-Schlüssel in Supabase und NiFlow muss ab und zu geöffnet werden (Erinnerungen für 14 Tage im Voraus); Änderungen in Google am Kalender «NiFlow»
 werden beim nächsten Abgleich überschrieben; von Strava importierte Aktivitäten gibt Intervals.icu
 über die API teilweise nicht heraus.
 

@@ -111,7 +111,7 @@ export default function EntryForm({ initial, editing, onSave, onCancel, examName
         {!isNote && (
           <div className="flex items-end">
             <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
-              <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={v.allDay} onChange={(e) => set('allDay', e.target.checked)} />
+              <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--ink))]" checked={v.allDay} onChange={(e) => set('allDay', e.target.checked)} />
               Ganztägig
             </label>
           </div>
@@ -185,7 +185,7 @@ export default function EntryForm({ initial, editing, onSave, onCancel, examName
                 type="button"
                 onClick={() => set('priority', p)}
                 aria-pressed={v.priority === p}
-                className={`min-h-10 rounded-full border px-3 text-sm transition-colors ${
+                className={`min-h-10 rounded border px-3 text-sm transition-colors ${
                   v.priority === p ? 'border-accent bg-accent/10 font-medium text-ink' : 'border-line text-muted hover:text-ink'
                 }`}
               >

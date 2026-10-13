@@ -32,6 +32,14 @@ export function b64urlDecode(text: string): Uint8Array {
   return out
 }
 
+function b64urlDecodeSafe(text: string): Uint8Array | null {
+  try {
+    return b64urlDecode(text)
+  } catch {
+    return null
+  }
+}
+
 function concat(...parts: Uint8Array[]): Uint8Array {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0))
   let o = 0
@@ -113,8 +121,21 @@ interface Sub {
   user_id?: string
 }
 
-/** Schickt eine Nachricht. Ergebnis: ok, gone (Abo abgelaufen) oder Fehler. */
-async function sendPush(sub: Sub, message: unknown, vapid: { pub: string; priv: string; subject: string }, ttl = 3600): Promise<'ok' | 'gone' | 'error'> {
+/**
+ * Geheimnisse tolerant lesen: mitkopierter Name ("VAPID_PRIVATE_KEY=…"), Anführungszeichen,
+ * Leerzeichen und Zeilenumbrüche werden entfernt, Standard-Base64 wird zu base64url.
+ */
+export function cleanSecret(raw: string | undefined, name: string): string {
+  let v = (raw ?? '').trim()
+  if (v.toUpperCase().startsWith(name.toUpperCase() + '=')) v = v.slice(name.length + 1)
+  v = v.trim().replace(/^["'`]+|["'`]+$/g, '').replace(/\s+/g, '')
+  return v.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+export type PushResult = { result: 'ok' | 'gone' | 'error'; reason: string }
+
+/** Schickt eine Nachricht. Ergebnis mit Grund (für die Anzeige in der App). */
+async function sendPush(sub: Sub, message: unknown, vapid: { pub: string; priv: string; subject: string }, ttl = 3600): Promise<PushResult> {
   try {
     const body = await encryptPayload(enc.encode(JSON.stringify(message)), sub.p256dh, sub.auth)
     const res = await fetch(sub.endpoint, {
@@ -128,15 +149,18 @@ async function sendPush(sub: Sub, message: unknown, vapid: { pub: string; priv: 
       },
       body,
     })
-    if (res.status === 404 || res.status === 410) return 'gone'
+    if (res.status === 404 || res.status === 410) return { result: 'gone', reason: 'gone' }
     if (!res.ok) {
-      console.error('push failed', res.status, (await res.text()).slice(0, 200))
-      return 'error'
+      const text = (await res.text()).slice(0, 200)
+      console.error('push failed', res.status, text)
+      const m = /(BadJwtToken|VapidPkHashMismatch|BadWebPushTopic|ExpiredProviderToken|BadAuthorizationHeader|TooManyRequests|PayloadTooLarge)/.exec(text)
+      return { result: 'error', reason: m ? m[1] : `status_${res.status}` }
     }
-    return 'ok'
+    return { result: 'ok', reason: 'ok' }
   } catch (err) {
     console.error('push error', String(err))
-    return 'error'
+    const msg = String(err)
+    return { result: 'error', reason: msg.includes('invalid_vapid_keys') ? 'invalid_vapid_keys' : msg.includes('invalid_subscription_keys') ? 'invalid_subscription_keys' : 'send_failed' }
   }
 }
 
@@ -157,7 +181,11 @@ async function handle(req: Request): Promise<Response> {
   const supabaseUrl = env('SUPABASE_URL')
   const serviceKey = env('SUPABASE_SERVICE_ROLE_KEY')
   if (!supabaseUrl || !serviceKey) return json({ error: 'server_not_configured' }, 500)
-  const vapid = { pub: env('VAPID_PUBLIC_KEY') ?? '', priv: env('VAPID_PRIVATE_KEY') ?? '', subject: env('VAPID_SUBJECT') ?? '' }
+  const vapid = {
+    pub: cleanSecret(env('VAPID_PUBLIC_KEY'), 'VAPID_PUBLIC_KEY'),
+    priv: cleanSecret(env('VAPID_PRIVATE_KEY'), 'VAPID_PRIVATE_KEY'),
+    subject: (env('VAPID_SUBJECT') ?? '').trim().replace(/^VAPID_SUBJECT=/i, '').replace(/^["'`]+|["'`]+$/g, '').replace(/^mailto:\s+/i, 'mailto:'),
+  }
   const configured = !!(vapid.pub && vapid.priv && vapid.subject.startsWith('mailto:'))
 
   const db = (path: string, init: RequestInit = {}) =>
@@ -204,7 +232,7 @@ async function handle(req: Request): Promise<Response> {
     const okEndpoints = new Set<string>()
     for (const d of due) {
       for (const s of subs.filter((x) => x.user_id === d.user_id && !gone.has(x.endpoint))) {
-        const r = await sendPush(s, { title: d.title, body: d.body, tag: d.key }, vapid)
+        const r = (await sendPush(s, { title: d.title, body: d.body, tag: d.key }, vapid)).result
         if (r === 'ok') {
           sent++
           okEndpoints.add(s.endpoint)
@@ -232,7 +260,8 @@ async function handle(req: Request): Promise<Response> {
     const r = await db(`push_subscriptions?user_id=eq.${uid}&select=endpoint`)
     if (!r.ok) return json({ error: 'storage_failed' }, 500)
     const list = (await r.json()) as { endpoint: string }[]
-    return json({ configured, devices: list.length, endpoints: list.map((x) => x.endpoint) })
+    const keysValid = b64urlDecodeSafe(vapid.pub)?.length === 65 && b64urlDecodeSafe(vapid.priv)?.length === 32
+    return json({ configured, keysValid, devices: list.length, endpoints: list.map((x) => x.endpoint) })
   }
 
   if (action === 'subscribe') {
@@ -269,15 +298,17 @@ async function handle(req: Request): Promise<Response> {
     if (subs.length === 0) return json({ error: 'no_device' }, 404)
     let sent = 0
     let failed = 0
+    const reasons: string[] = []
     for (const s of subs) {
       const res = await sendPush(s, { title: 'NiFlow', body: 'So sehen deine Erinnerungen aus.', tag: 'niflow-test' }, vapid, 300)
-      if (res === 'ok') sent++
+      if (res.result === 'ok') sent++
       else {
         failed++
-        if (res === 'gone') await db(`push_subscriptions?endpoint=eq.${encodeURIComponent(s.endpoint)}`, { method: 'DELETE' })
+        reasons.push(res.reason)
+        if (res.result === 'gone') await db(`push_subscriptions?endpoint=eq.${encodeURIComponent(s.endpoint)}`, { method: 'DELETE' })
       }
     }
-    return json({ sent, failed })
+    return json({ sent, failed, reasons })
   }
 
   return json({ error: 'unknown_action' }, 400)
