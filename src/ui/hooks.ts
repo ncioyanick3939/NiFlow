@@ -178,3 +178,39 @@ export function useStoredState<T extends string>(key: string, initial: T, allowe
 }
 
 export { VIEW_KEY }
+
+export type DashSection = 'free' | 'tasks' | 'exams' | 'days' | 'plan' | 'training' | 'quick'
+export const DASH_LABEL: Record<DashSection, string> = {
+  free: 'Freie Zeit zwischen Terminen',
+  tasks: 'Aufgaben für heute',
+  exams: 'Anstehende Prüfungen',
+  days: 'Nächste Tage',
+  plan: 'Diese Woche geplant',
+  training: 'Training',
+  quick: 'Schnell festhalten',
+}
+const DASH_KEY = 'niflow-dashboard'
+const DASH_DEFAULT: Record<DashSection, boolean> = { free: true, tasks: true, exams: true, days: true, plan: true, training: true, quick: true }
+
+/** Welche Bereiche die Übersicht zeigt. Wird pro Browser gespeichert. */
+export function useDashboardPrefs() {
+  const [prefs, setPrefs] = useState<Record<DashSection, boolean>>(() => {
+    try {
+      return { ...DASH_DEFAULT, ...(JSON.parse(localStorage.getItem(DASH_KEY) ?? '{}') as Partial<Record<DashSection, boolean>>) }
+    } catch {
+      return DASH_DEFAULT
+    }
+  })
+  const toggle = useCallback((k: DashSection) => {
+    setPrefs((p) => {
+      const next = { ...p, [k]: !p[k] }
+      try {
+        localStorage.setItem(DASH_KEY, JSON.stringify(next))
+      } catch {
+        // ignorieren
+      }
+      return next
+    })
+  }, [])
+  return { prefs, toggle }
+}

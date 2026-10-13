@@ -25,6 +25,7 @@ import type { ExamRow } from '../src/domain/exams'
 import { occurrenceDays, toRRule } from '../src/domain/recurrence'
 import { rowToEvents } from '../src/domain/entries'
 import { remindersBetween } from '../src/domain/reminders'
+import { normalize, recentNotes, search } from '../src/domain/search'
 import { mapGoogleEvent } from '../src/sources/googleCalendar'
 
 let failed = 0
@@ -302,6 +303,17 @@ const act = mapIntervalsActivity({ id: 'i123', name: 'Morning Run', type: 'Run',
 check('Aktivität: Zeit, Dauer, Distanz, Belastung', !!act && act.completed === true && act.start.getHours() === 6 && act.plannedMinutes === 45 && Math.abs(act.distanceKm! - 8.42) < 0.001 && act.load === 54.6 && act.id === 'intervals:act:i123')
 check('Aktivität ohne Startzeit (z. B. Strava-Sperre) wird übersprungen', mapIntervalsActivity({ id: 'x' }) === null)
 check('Aktivität belegt Zeit (zählt für freie Zeit)', busyMinutes([act!], new Date(2026, 9, 12)) === 45)
+
+// Suche
+check('Suche: Umlaute und Gross/klein egal', normalize('PRÜFUNG Größe') === 'prufung grosse')
+const sNote = rowToEvent({ ...inputToRow({ ...emptyInput('note', new Date(2026, 9, 14)), title: 'Lernnotizen Statistik', body: 'Hypothesentests wiederholen' }), id: 'n9' } as EntryRow)
+const sEx = rowToExam({ ...examToRow({ ...emptyExam(new Date(2026, 9, 20)), title: 'Modulprüfung', subject: 'Statistik 1', topics: 'Verteilungen' }), id: 'e9' } as ExamRow)
+const sRes = search('statistik', { events: [sNote, ...ser], tasks: [mk({ title: 'Statistik Übung' })], exams: [sEx] }, tNow)
+check('Suche findet Notiz, Aufgabe, Prüfung', sRes.notes.length === 1 && sRes.tasks.length === 1 && sRes.exams.length === 1 && sRes.events.length === 0)
+check('Suche im Notiztext und mehrere Wörter', search('hypothesen wiederholen', { events: [sNote], tasks: [], exams: [] }, tNow).notes.length === 1 && search('hypothesen mathe', { events: [sNote], tasks: [], exams: [] }, tNow).notes.length === 0)
+check('Suche: Serie erscheint nur einmal', search('schwimmen', { events: ser, tasks: [], exams: [] }, new Date(2026, 9, 25)).events.length === 1)
+check('Suche: Lernstoff einer Prüfung', search('verteilungen', { events: [], tasks: [], exams: [sEx] }, tNow).exams.length === 1)
+check('Leere Suche liefert nichts, letzte Notizen schon', search('  ', { events: [sNote], tasks: [], exams: [] }, tNow).notes.length === 0 && recentNotes([sNote]).length === 1)
 
 console.log(failed === 0 ? '\nAlle Prüfungen bestanden.' : `\n${failed} Prüfung(en) fehlgeschlagen.`)
 process.exit(failed === 0 ? 0 : 1)

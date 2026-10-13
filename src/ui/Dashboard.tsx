@@ -10,6 +10,8 @@ import type { Task } from '../domain/tasks'
 import Icon, { sportIcon } from './icons'
 import { CATEGORY_LABEL, EmptyState, EventRow, Segmented, catClass, formatEventTime } from './kit'
 import TaskRow from './tasks/TaskRow'
+import PlanBars from './PlanBars'
+import type { DashSection } from './hooks'
 
 interface Props {
   events: CalendarEvent[]
@@ -31,6 +33,8 @@ interface Props {
   onGoTasks: () => void
   onGoExams: () => void
   onQuickTask: (title: string) => Promise<void>
+  prefs: Record<DashSection, boolean>
+  onSearch: () => void
 }
 
 function greeting(now: Date): string {
@@ -65,7 +69,7 @@ export default function Dashboard(p: Props) {
   const urgent = events
     .filter((e) => deadlineUrgency(e, now) !== null)
     .sort((a, b) => a.start.getTime() - b.start.getTime())
-  const free = findFreeSlots(day, today, now)
+  const free = p.prefs.free ? findFreeSlots(day, today, now) : []
   const rows: Row[] = [
     ...day.timed.map((e): Row => ({ kind: 'event', e, t: e.start.getTime() })),
     ...free.map((f): Row => ({ kind: 'free', ...f, t: f.start.getTime() })),
@@ -82,7 +86,8 @@ export default function Dashboard(p: Props) {
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-28 pt-6 md:px-8 md:pb-10 md:pt-10">
-      <header className="mb-6">
+      <header className="mb-6 flex items-start gap-3">
+        <div className="min-w-0 flex-1">
         <p className="tnum text-sm text-muted">
           <span className="capitalize">{formatWeekday(now)}</span>, {formatDateLong(now)} · KW {isoWeek(now)}
         </p>
@@ -90,6 +95,10 @@ export default function Dashboard(p: Props) {
           {greeting(now)}
           {p.firstName ? `, ${p.firstName}` : ''}
         </h1>
+        </div>
+        <button type="button" onClick={p.onSearch} className="btn-outline h-11 w-11 shrink-0 px-0 md:hidden" aria-label="Suchen">
+          <Icon name="search" size={18} />
+        </button>
       </header>
 
       {(urgent.length > 0 || overlaps.size > 0 || isHeavyDay(busy)) && (
@@ -203,6 +212,7 @@ export default function Dashboard(p: Props) {
           </section>
 
           {/* Aufgaben */}
+          {p.prefs.tasks && (
           <section>
             <div className="mb-1 flex items-baseline justify-between">
               <h2 className="text-base font-semibold">
@@ -238,11 +248,13 @@ export default function Dashboard(p: Props) {
               </button>
             )}
           </section>
+          )}
         </div>
 
         <aside className="space-y-8">
-          {!p.readOnly && <QuickCapture onQuickNote={p.onQuickNote} onQuickTask={p.onQuickTask} onCreate={() => p.onCreate(today)} onCreateNote={() => p.onCreateNote(today)} />}
+          {!p.readOnly && p.prefs.quick && <QuickCapture onQuickNote={p.onQuickNote} onQuickTask={p.onQuickTask} onCreate={() => p.onCreate(today)} onCreateNote={() => p.onCreateNote(today)} />}
 
+          {p.prefs.exams && (
           <section>
             <div className="mb-2 flex items-baseline justify-between">
               <h2 className="text-base font-semibold">Prüfungen</h2>
@@ -278,6 +290,7 @@ export default function Dashboard(p: Props) {
               </ul>
             )}
           </section>
+          )}
 
           {notes.length > 0 && (
             <section>
@@ -298,6 +311,14 @@ export default function Dashboard(p: Props) {
             </section>
           )}
 
+          {p.prefs.plan && (
+            <section>
+              <h2 className="mb-3 text-base font-semibold">Diese Woche geplant</h2>
+              <PlanBars events={events} now={now} compact />
+            </section>
+          )}
+
+          {p.prefs.days && (
           <section>
             <h2 className="mb-2 text-base font-semibold">Nächste Tage</h2>
             <ol className="divide-y divide-line">
@@ -326,8 +347,9 @@ export default function Dashboard(p: Props) {
               ))}
             </ol>
           </section>
+          )}
 
-          {training.length > 0 && (
+          {p.prefs.training && training.length > 0 && (
             <section>
               <div className="mb-2 flex items-baseline justify-between">
                 <h2 className="text-base font-semibold">Training</h2>

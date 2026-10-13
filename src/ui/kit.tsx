@@ -117,7 +117,11 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
     }
     document.addEventListener('keydown', onKey)
     const t = setTimeout(() => {
-      const first = panel.current?.querySelector<HTMLElement>('[data-autofocus], input, textarea, button')
+      // Zuerst das ausdrücklich markierte Feld, sonst das erste Eingabefeld, zuletzt ein Knopf
+      const first =
+        panel.current?.querySelector<HTMLElement>('[data-autofocus]') ??
+        panel.current?.querySelector<HTMLElement>('input, textarea, select') ??
+        panel.current?.querySelector<HTMLElement>('button')
       first?.focus()
     }, 30)
     return () => {

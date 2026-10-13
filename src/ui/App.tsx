@@ -19,7 +19,10 @@ import EventDetail from './EventDetail'
 import ExamDetail from './exams/ExamDetail'
 import ExamForm from './exams/ExamForm'
 import ExamsPage from './exams/ExamsPage'
-import { useAuth, useEvents, useNow, usePlanner } from './hooks'
+import { useAuth, useDashboardPrefs, useEvents, useNow, usePlanner } from './hooks'
+import ActivitiesPage from './ActivitiesPage'
+import type { ActivityTemplate } from './ActivitiesPage'
+import SearchPanel from './SearchPanel'
 import Icon from './icons'
 import type { IconName } from './icons'
 import { Segmented, Sheet } from './kit'
@@ -41,6 +44,7 @@ type SheetState =
   | { kind: 'examForm'; input: ExamInput; editId?: string }
   | { kind: 'create' }
   | { kind: 'more' }
+  | { kind: 'search' }
   | null
 
 function sectionFromHash(): Section {
@@ -63,6 +67,7 @@ export default function App() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const readOnly = !connected
   const [push, setPush] = useState<PushStatus | null>(null)
+  const dash = useDashboardPrefs()
 
   // Aufgaben mit Datum und Prüfungen erscheinen im Kalender: eine Datenquelle, immer konsistent.
   const events = useMemo(
@@ -86,6 +91,18 @@ export default function App() {
       .then(setPush)
       .catch(() => setPush(null))
   }, [connected])
+
+  // Strg+K / Cmd+K öffnet die Suche
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setSheet({ kind: 'search' })
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   useEffect(() => {
     const onHash = () => setSection(sectionFromHash())
@@ -254,6 +271,16 @@ export default function App() {
     create(day, undefined, { title: `Lernen: ${x.subject || x.title}`, category: 'study', examId: x.id })
   }
 
+  const fromTemplate = (t: ActivityTemplate) => {
+    const base = emptyInput('event', startOfDay(now), now)
+    const [h, m] = base.startTime.split(':').map(Number)
+    const endMin = Math.min(h * 60 + m + t.minutes, 23 * 60 + 59)
+    setSheet({
+      kind: 'form',
+      input: { ...base, title: t.title, category: t.category, endTime: `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}` },
+    })
+  }
+
   const openDay = (d: Date) => {
     setCalendarJump({ date: d, n: Date.now() })
     navigate('calendar')
@@ -282,6 +309,8 @@ export default function App() {
         return 'Neu erstellen'
       case 'more':
         return 'Mehr'
+      case 'search':
+        return 'Suchen'
       case 'detail':
         return sheet.event.kind === 'note' ? 'Notiz' : 'Details'
       default:
@@ -302,6 +331,7 @@ export default function App() {
           void planner.reload()
         }}
         badge={overdueCount}
+        onSearch={() => setSheet({ kind: 'search' })}
       />
       <main className="min-w-0 flex-1">
         {demo && !connected && (
@@ -364,6 +394,8 @@ export default function App() {
             onGoTasks={() => navigate('tasks')}
             onGoExams={() => navigate('exams')}
             onQuickTask={(title) => quickTask(emptyTask({ title, dueDate: toDateInput(now) }))}
+            prefs={dash.prefs}
+            onSearch={() => setSheet({ kind: 'search' })}
           />
         )}
         {section === 'calendar' && (
@@ -405,6 +437,7 @@ export default function App() {
             onCreate={createExamSheet}
           />
         )}
+        {section === 'activities' && <ActivitiesPage events={events} now={now} readOnly={readOnly} onOpen={openEvent} onTemplate={fromTemplate} />}
         {section === 'training' && (
           <TrainingPage events={events} states={states} now={now} demo={!connected} onOpen={openEvent} onGoSettings={() => navigate('settings')} />
         )}
@@ -426,6 +459,8 @@ export default function App() {
               setPush(next)
               void reload(['own'])
             }}
+            dash={dash.prefs}
+            onDash={dash.toggle}
           />
         )}
       </main>
@@ -538,10 +573,28 @@ export default function App() {
             ))}
           </div>
         )}
+        {sheet?.kind === 'search' && (
+          <SearchPanel
+            events={events}
+            tasks={planner.tasks}
+            exams={planner.exams}
+            now={now}
+            readOnly={readOnly}
+            onOpenEvent={openEvent}
+            onOpenTask={openTask}
+            onToggleTask={toggleTask}
+            onOpenExam={(x) => setSheet({ kind: 'exam', examId: x.id })}
+          />
+        )}
         {sheet?.kind === 'more' && (
           <div className="space-y-4">
             <div className="space-y-1">
-              {SECTIONS.filter((s) => s.id === 'training' || s.id === 'settings').map((s) => (
+              <button type="button" onClick={() => setSheet({ kind: 'search' })} className="flex min-h-12 w-full items-center gap-3 rounded-md px-3 text-left transition-colors hover:bg-surface2">
+                <Icon name="search" size={20} className="text-muted" />
+                <span className="flex-1 font-medium">Suchen</span>
+                <Icon name="chevronRight" size={16} className="text-muted" />
+              </button>
+              {SECTIONS.filter((s) => s.id === 'activities' || s.id === 'training' || s.id === 'settings').map((s) => (
                 <button key={s.id} type="button" onClick={() => navigate(s.id)} className="flex min-h-12 w-full items-center gap-3 rounded-md px-3 text-left transition-colors hover:bg-surface2">
                   <Icon name={s.icon} size={20} className="text-muted" />
                   <span className="flex-1 font-medium">{s.label}</span>

@@ -5,6 +5,8 @@ import { callIntervals } from '../sources/intervalsSource'
 import { callPush } from '../data/googlePush'
 import type { PushStatus } from '../data/googlePush'
 import { useNotifyPermission } from './reminders'
+import { DASH_LABEL } from './hooks'
+import type { DashSection } from './hooks'
 import type { SourceState } from '../sources/types'
 import Icon from './icons'
 import { Segmented } from './kit'
@@ -21,11 +23,13 @@ interface Props {
   onChanged: () => void
   push: PushStatus | null
   onPush: (s: PushStatus) => void
+  dash: Record<DashSection, boolean>
+  onDash: (k: DashSection) => void
 }
 
 type Message = { kind: 'ok' | 'error'; text: string } | null
 
-export default function SettingsView({ email, demo, states, theme, onTheme, onConnect, onSignOut, onChanged, push, onPush }: Props) {
+export default function SettingsView({ email, demo, states, theme, onTheme, onConnect, onSignOut, onChanged, push, onPush, dash, onDash }: Props) {
   const [key, setKey] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<Message>(null)
@@ -110,6 +114,18 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
             { value: 'dark', label: 'Dunkel' },
           ]}
         />
+      </Group>
+
+      <Group title="Übersicht">
+        <p className="mb-2 text-sm text-muted">Welche Bereiche die Übersicht zeigt. Gilt für diesen Browser.</p>
+        <div className="grid gap-1 sm:grid-cols-2">
+          {(Object.keys(DASH_LABEL) as DashSection[]).map((k) => (
+            <label key={k} className="flex min-h-10 cursor-pointer items-center gap-3 text-sm">
+              <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={dash[k]} onChange={() => onDash(k)} />
+              {DASH_LABEL[k]}
+            </label>
+          ))}
+        </div>
       </Group>
 
       {email && (

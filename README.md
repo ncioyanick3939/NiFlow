@@ -2,7 +2,7 @@
 
 Persönliches Planungssystem für Studium, Training und Alltag (mobile-first Web-App).
 
-## Stand (Runde 3)
+## Stand (Runde 4)
 
 - Neues Design mit hellem und dunklem Modus (Einstellungen → Darstellung)
 - Übersicht: Als Nächstes, Heute mit freier Zeit, Schnellerfassung, Nächste Tage, Training
@@ -16,6 +16,10 @@ Persönliches Planungssystem für Studium, Training und Alltag (mobile-first Web
 - Erinnerungen für Termine und Aufgaben (Browser-Benachrichtigung, solange NiFlow geöffnet ist)
 - Intervals.icu: geplante und absolvierte Trainings (Dauer, Distanz, Belastung)
 - Google Kalender schreiben: eigene Termine landen in einem eigenen Kalender «NiFlow» (nur NiFlow → Google)
+- Suche (Strg+K) über Notizen, Termine, Aufgaben und Prüfungen; letzte Notizen auf einen Blick
+- Aktivitäten: Vorlagen (Lernen, Vorlesung, Arbeit, Sport …), regelmässige Serien, Wochenplanung pro Kategorie
+- Übersicht anpassbar (Bereiche ein-/ausblenden)
+- Als App installierbar (PWA: Manifest, Icons, Service Worker)
 - Ohne Anmeldung: Demo mit klar gekennzeichneten, erfundenen Daten
 
 Grenzen: keine Push-Erinnerungen bei geschlossener App; Änderungen in Google am Kalender «NiFlow»

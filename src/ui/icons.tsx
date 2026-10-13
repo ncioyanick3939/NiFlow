@@ -84,6 +84,20 @@ const PATHS: Record<string, ReactElement> = {
     </>
   ),
   flag: <path d="M5 21V4M5 4h11l-2 4 2 4H5" />,
+  search: (
+    <>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M20 20l-4.2-4.2" />
+    </>
+  ),
+  layers: (
+    <>
+      <path d="M12 3l9 5-9 5-9-5z" />
+      <path d="M3 13l9 5 9-5" />
+    </>
+  ),
+  repeat: <path d="M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4" />,
+  download: <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />,
   alert: (
     <>
       <path d="M12 4l9 16H3z" />

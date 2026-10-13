@@ -3,13 +3,14 @@ import type { SourceState } from '../sources/types'
 import Icon from './icons'
 import type { IconName } from './icons'
 
-export type Section = 'dashboard' | 'calendar' | 'tasks' | 'exams' | 'training' | 'settings'
+export type Section = 'dashboard' | 'calendar' | 'tasks' | 'exams' | 'activities' | 'training' | 'settings'
 
 export const SECTIONS: { id: Section; label: string; icon: IconName; hash: string }[] = [
   { id: 'dashboard', label: 'Übersicht', icon: 'dashboard', hash: 'uebersicht' },
   { id: 'calendar', label: 'Kalender', icon: 'calendar', hash: 'kalender' },
   { id: 'tasks', label: 'Aufgaben', icon: 'tasks', hash: 'aufgaben' },
   { id: 'exams', label: 'Prüfungen', icon: 'exam', hash: 'pruefungen' },
+  { id: 'activities', label: 'Aktivitäten', icon: 'layers', hash: 'aktivitaeten' },
   { id: 'training', label: 'Training', icon: 'activity', hash: 'training' },
   { id: 'settings', label: 'Einstellungen', icon: 'settings', hash: 'einstellungen' },
 ]
@@ -34,9 +35,10 @@ interface Props {
   onReload: () => void
   /** Anzahl überfälliger Aufgaben */
   badge?: number
+  onSearch?: () => void
 }
 
-export function Sidebar({ active, onNavigate, onCreate, states, loading, onReload, badge }: Props) {
+export function Sidebar({ active, onNavigate, onCreate, states, loading, onReload, badge, onSearch }: Props) {
   const errors = states.filter((s) => s.status === 'error')
   const last = states
     .map((s) => s.lastSync)
@@ -49,11 +51,18 @@ export function Sidebar({ active, onNavigate, onCreate, states, loading, onReloa
         <Logo />
         <span className="text-[17px] font-semibold tracking-tight">NiFlow</span>
       </div>
-      {onCreate && (
-        <button type="button" className="btn-primary mb-5 w-full justify-start" onClick={onCreate}>
-          <Icon name="plus" size={16} /> Neu
-        </button>
-      )}
+      <div className="mb-5 flex gap-2">
+        {onCreate && (
+          <button type="button" className="btn-primary flex-1 justify-start" onClick={onCreate}>
+            <Icon name="plus" size={16} /> Neu
+          </button>
+        )}
+        {onSearch && (
+          <button type="button" className="btn-outline w-11 px-0" onClick={onSearch} aria-label="Suchen (Strg+K)" title="Suchen (Strg+K)">
+            <Icon name="search" size={17} />
+          </button>
+        )}
+      </div>
       <nav aria-label="Hauptnavigation" className="space-y-0.5">
         {SECTIONS.map((s) => {
           const on = s.id === active
