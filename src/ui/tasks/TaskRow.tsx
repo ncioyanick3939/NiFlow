@@ -1,4 +1,5 @@
 import type { Exam } from '../../domain/exams'
+import { colorClass, useLabelsCtx } from '../labels'
 import { formatDue, isOverdue } from '../../domain/tasks'
 import type { Task } from '../../domain/tasks'
 import { formatDuration } from '../../domain/dateUtils'
@@ -27,6 +28,8 @@ export default function TaskRow({ task: t, now, exam, readOnly, onToggle, onOpen
   const done = t.status === 'done'
   const overdue = isOverdue(t, now)
   const due = formatDue(t, now)
+  const { byId } = useLabelsCtx()
+  const label = t.labelId ? byId.get(t.labelId) : undefined
   return (
     <div className="group flex items-start gap-1 rounded-lg transition-colors hover:bg-surface2/70">
       <button
@@ -59,7 +62,14 @@ export default function TaskRow({ task: t, now, exam, readOnly, onToggle, onOpen
               </span>
             )}
             {t.estimateMinutes && <span>≈ {formatDuration(t.estimateMinutes)}</span>}
-            {!compact && <CategoryDot category={t.category} />}
+            {label ? (
+              <span className={`${colorClass(t.category, label)} inline-flex items-center gap-1.5 font-medium text-ink`}>
+                <span className="h-2 w-2 rotate-45 rounded-[2px] bg-cat" aria-hidden="true" />
+                {label.name}
+              </span>
+            ) : (
+              !compact && <CategoryDot category={t.category} />
+            )}
             {done && t.completedAt && <span>erledigt {t.completedAt.toLocaleDateString('de-CH')}</span>}
           </span>
         ) : null}

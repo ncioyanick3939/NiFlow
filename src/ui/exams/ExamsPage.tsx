@@ -76,7 +76,7 @@ export default function ExamsPage({ exams, tasks, sessions, now, loading, error,
           />
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-12">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-12">
           {/* Nächste Prüfung */}
           {(() => {
             const s = stats(first)
@@ -85,7 +85,7 @@ export default function ExamsPage({ exams, tasks, sessions, now, loading, error,
             return (
               <section className="relative overflow-hidden rounded-2xl bg-exam text-white lg:col-span-12">
                 <span className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full bg-white/[0.08]" aria-hidden="true" />
-                <div className="relative grid gap-6 p-6 md:grid-cols-[minmax(0,1fr),minmax(0,1fr)] md:p-8">
+                <div className="relative grid grid-cols-[minmax(0,1fr)] gap-6 p-6 md:grid-cols-[minmax(0,1fr),minmax(0,1fr)] md:p-8">
                   <button type="button" onClick={() => onOpen(first)} className="text-left">
                     <span className="text-sm text-white/75">Als Nächstes</span>
                     <span className="h-display mt-1 block break-words text-[30px] leading-tight md:text-[38px]">{first.title}</span>

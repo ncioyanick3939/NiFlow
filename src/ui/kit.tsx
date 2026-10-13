@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { evClass } from './labels'
 import type { ReactNode } from 'react'
 import { formatDuration, formatTime, minutesBetween } from '../domain/dateUtils'
 import { CATEGORY_LABEL, PRIORITY_LABEL } from '../domain/types'
@@ -68,7 +69,7 @@ export function EventRow({ e, onOpen, showDay = false, dim = false }: { e: Calen
     <button
       type="button"
       onClick={() => onOpen(e)}
-      className={`${catClass(e.category)} group flex w-full items-start gap-3 rounded-md px-2 py-2.5 text-left transition-colors hover:bg-surface2 ${dim ? 'opacity-55' : ''}`}
+      className={`${evClass(e)} group flex w-full items-start gap-3 rounded-md px-2 py-2.5 text-left transition-colors hover:bg-surface2 ${dim ? 'opacity-55' : ''}`}
     >
       <span className={`mt-0.5 w-[3px] self-stretch rounded-full ${e.kind === 'note' ? 'bg-cat/40' : 'bg-cat'}`} aria-hidden="true" />
       <span className="min-w-0 flex-1">

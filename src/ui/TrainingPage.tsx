@@ -77,7 +77,7 @@ export default function TrainingPage({ events, states, now, demo, onOpen, onGoSe
           />
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-12">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-12">
           {/* Woche */}
           <section className="rounded-2xl bg-deep p-6 text-deepink md:p-8 lg:col-span-12">
             <div className="flex flex-wrap items-end gap-x-10 gap-y-4">

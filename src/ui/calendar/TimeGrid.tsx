@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { evClass } from '../labels'
 import type { MouseEvent, PointerEvent } from 'react'
 import { moveBy, rangeFrom, resizeBy } from '../../domain/move'
 import { addDays, formatTime, formatWeekdayShort, isSameDay, startOfDay } from '../../domain/dateUtils'
@@ -6,7 +7,6 @@ import { eventsForDay, findOverlaps } from '../../domain/schedule'
 import type { CalendarEvent } from '../../domain/types'
 import { layoutDay } from '../../domain/weekLayout'
 import Icon from '../icons'
-import { catClass } from '../kit'
 
 const HOUR_PX = 52
 const DAY_PX = HOUR_PX * 24
@@ -163,7 +163,7 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
                   key={e.id}
                   type="button"
                   onClick={() => onOpen(e)}
-                  className={`${catClass(e.category)} flex w-full items-center gap-1 truncate rounded-md px-2 py-1 text-left text-[11px] font-medium transition-opacity hover:opacity-80 ${
+                  className={`${evClass(e)} flex w-full items-center gap-1 truncate rounded-md px-2 py-1 text-left text-[11px] font-medium transition-opacity hover:opacity-80 ${
                     e.kind === 'note' ? 'bg-surface2 text-ink' : e.kind === 'task' ? 'border border-cat/50 text-ink' : 'bg-cat/15 text-ink'
                   }`}
                 >
@@ -250,7 +250,7 @@ export default function TimeGrid({ days, events, now, onOpen, onCreateAt, onPick
                       onPointerMove={moveDrag}
                       onPointerUp={() => endDrag(e)}
                       onPointerCancel={() => setDrag(null)}
-                      className={`${catClass(e.category)} absolute flex flex-col justify-start overflow-hidden rounded-[9px] px-2 text-left transition-[filter,transform] hover:brightness-95 active:scale-[0.99] dark:hover:brightness-125 ${
+                      className={`${evClass(e)} absolute flex flex-col justify-start overflow-hidden rounded-[9px] px-2 text-left transition-[filter,transform] hover:brightness-95 active:scale-[0.99] dark:hover:brightness-125 ${
                         e.kind === 'exam' ? '' : 'text-ink'
                       } ${overlaps.has(e.id) ? 'ring-2 ring-danger/50' : ''} ${e.kind !== 'exam' && e.kind !== 'task' && !e.examId ? 'border-l-[3px] border-cat' : ''} ${
                         draggable ? 'cursor-grab' : ''

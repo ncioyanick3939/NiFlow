@@ -33,6 +33,8 @@ export interface EntryInput {
   recurrenceUntil?: string
   /** Erinnerung in Minuten vor Beginn, null = keine. */
   reminderMinutes?: number | null
+  /** Eigene Kategorie (optional). */
+  labelId?: string | null
 }
 
 /** So steht ein Eintrag in der Datenbank (Tabelle entries). */
@@ -53,6 +55,7 @@ export interface EntryRow {
   exdates?: string[]
   reminder_minutes?: number | null
   google_event_id?: string | null
+  label_id?: string | null
 }
 
 export type EntryErrors = Partial<Record<'title' | 'body' | 'date' | 'startTime' | 'endTime' | 'recurrenceUntil', string>>
@@ -142,6 +145,7 @@ export function inputToRow(input: EntryInput): Omit<EntryRow, 'id'> {
     recurrence: input.type === 'event' ? (input.recurrence ?? 'none') : 'none',
     recurrence_until: input.type === 'event' && input.recurrence && input.recurrence !== 'none' && input.recurrenceUntil ? input.recurrenceUntil : null,
     reminder_minutes: input.type === 'event' ? (input.reminderMinutes ?? null) : null,
+    label_id: input.labelId ?? null,
   }
 }
 
@@ -202,6 +206,7 @@ export function rowToEvent(row: EntryRow): CalendarEvent {
     seriesEnd: row.end_at ? new Date(row.end_at) : null,
     reminderMinutes: row.reminder_minutes ?? null,
     googleEventId: row.google_event_id ?? null,
+    labelId: row.label_id ?? null,
   }
 }
 
@@ -224,6 +229,7 @@ export function eventToInput(e: CalendarEvent): EntryInput {
     priority: e.priority ?? null,
     examId: e.examId ?? null,
     taskId: e.taskId ?? null,
+    labelId: e.labelId ?? null,
   }
 }
 

@@ -2,7 +2,8 @@
 // - Seite (HTML): zuerst Netz, sonst die zuletzt gespeicherte Version
 // - Dateien mit Hash im Namen (JS/CSS) und Icons: aus dem Speicher, sonst Netz
 // - Daten (Supabase, Google, Intervals) werden NIE zwischengespeichert
-const CACHE = 'niflow-v2'
+// - Erinnerungen per Web Push: auch wenn NiFlow geschlossen ist
+const CACHE = 'niflow-v3'
 
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (event) => {
@@ -45,4 +46,34 @@ self.addEventListener('fetch', (event) => {
       ),
     )
   }
+})
+
+// Erinnerung vom Server (verschlüsselt, der Browser entschlüsselt sie für uns)
+self.addEventListener('push', (event) => {
+  let data = {}
+  try {
+    data = event.data ? event.data.json() : {}
+  } catch {
+    data = { body: event.data ? event.data.text() : '' }
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'NiFlow', {
+      body: data.body || '',
+      tag: data.tag || undefined,
+      icon: 'icons/icon-192.png',
+      badge: 'icons/favicon-64.png',
+      data: { url: './' },
+    }),
+  )
+})
+
+// Tippen auf die Benachrichtigung: offene NiFlow-Seite nach vorne holen, sonst öffnen
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) if ('focus' in c) return c.focus()
+      return self.clients.openWindow(new URL('./', self.location.href).href)
+    }),
+  )
 })

@@ -1,9 +1,9 @@
 import { atTime, formatTime } from '../../domain/dateUtils'
+import { evClass } from '../labels'
 import { blocksTime } from '../../domain/schedule'
 import type { FreeSlot } from '../../domain/schedule'
 import type { CalendarEvent } from '../../domain/types'
 import { layoutDay } from '../../domain/weekLayout'
-import { catClass } from '../kit'
 
 const START = 6
 const END = 22
@@ -64,7 +64,7 @@ export default function DayRiver({
             type="button"
             onClick={() => onOpen(b.event)}
             title={`${formatTime(b.event.start)} ${b.event.title}`}
-            className={`${catClass(b.event.category)} absolute rounded-[6px] bg-cat transition-[filter] hover:brightness-110 ${
+            className={`${evClass(b.event)} absolute rounded-[6px] bg-cat transition-[filter] hover:brightness-110 ${
               (b.event.end ?? b.event.start) < now ? 'opacity-45' : ''
             }`}
             style={{

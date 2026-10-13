@@ -26,6 +26,7 @@ import { occurrenceDays, toRRule } from '../src/domain/recurrence'
 import { rowToEvents } from '../src/domain/entries'
 import { remindersBetween } from '../src/domain/reminders'
 import { normalize, recentNotes, search } from '../src/domain/search'
+import { suggestColor, validateLabel } from '../src/domain/labels'
 import { moveBy, rangeFrom, resizeBy, shiftDays } from '../src/domain/move'
 import { mapGoogleEvent } from '../src/sources/googleCalendar'
 
@@ -60,7 +61,7 @@ const wedBusy = busyMinutes(wed.timed, day(2))
 check('Mittwoch: Belegung ohne Doppelzählung', wedBusy === 195 + 360 + 90, `${wedBusy} min`)
 
 // 5. Ganztägiger Termin am Freitag
-const fri = eventsForDay(events, day(4))
+const fri = eventsForDay(events.filter((e) => e.externalId !== 'long-window'), day(4))
 check('Freitag: ganztägiger Termin erkannt (plus Notiz)', fri.allDay.filter((e) => e.kind !== 'note').length === 1 && fri.allDay.length === 2)
 const friSlots = findFreeSlots(fri, day(4), now)
 check('Freitag: freie Zeit als unsicher markiert', friSlots.length > 0 && friSlots.every((s) => s.uncertain))
@@ -343,6 +344,11 @@ check('Aufziehen am Tagesende: mindestens 15 min, endet um 24:00', rg2.start.get
 const sh = shiftDays(new Date(2026, 9, 24, 9, 10), new Date(2026, 9, 24, 10, 5), 1)
 check('Monat: anderer Tag, Uhrzeit exakt (auch über die Zeitumstellung)', sh.start.getDate() === 25 && sh.start.getHours() === 9 && sh.start.getMinutes() === 10 && sh.end!.getMinutes() === 5)
 check('Monat: über das Monatsende', shiftDays(new Date(2026, 9, 30, 8, 0), null, 3).start.getMonth() === 10)
+const L = [{ id: 'a', name: 'Statistik', color: 'teal' as const, category: 'study' as const, sort: 0 }]
+check('Kategorie: Name doppelt (Gross/Klein egal)', validateLabel(' statistik ', L) !== null)
+check('Kategorie: eigener Name beim Bearbeiten erlaubt', validateLabel('Statistik', L, 'a') === null)
+check('Kategorie: leer und zu lang abgelehnt', validateLabel('  ', L) !== null && validateLabel('x'.repeat(41), L) !== null)
+check('Kategorie: Farbvorschlag ist noch frei', suggestColor(L) !== 'teal')
 
 console.log(failed === 0 ? '\nAlle Prüfungen bestanden.' : `\n${failed} Prüfung(en) fehlgeschlagen.`)
 process.exit(failed === 0 ? 0 : 1)

@@ -1,4 +1,5 @@
 import { addDays, formatTime, startOfDay } from '../domain/dateUtils'
+import { evClass } from './labels'
 import { RECURRENCE_LABEL } from '../domain/recurrence'
 import type { CalendarEvent, Category } from '../domain/types'
 import AgendaView from './calendar/AgendaView'
@@ -80,7 +81,7 @@ export default function ActivitiesPage({ events, now, readOnly, onOpen, onTempla
         </section>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-12">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-12">
         <section className="min-w-0 lg:col-span-8">
           <h2 className="h-section mb-3">Nächste zwei Wochen</h2>
           <AgendaView from={now} days={14} events={upcoming} now={now} onOpen={onOpen} />
@@ -95,7 +96,7 @@ export default function ActivitiesPage({ events, now, readOnly, onOpen, onTempla
               <ul className="-mx-2 mt-2">
                 {seriesList.map((e) => (
                   <li key={e.ref!.id}>
-                    <button type="button" onClick={() => onOpen(e)} className={`${catClass(e.category)} flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-deepink/10`}>
+                    <button type="button" onClick={() => onOpen(e)} className={`${evClass(e)} flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-deepink/10`}>
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cat/25 text-deepink">
                         <Icon name="repeat" size={15} />
                       </span>

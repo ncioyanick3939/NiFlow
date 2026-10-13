@@ -16,12 +16,13 @@ interface Spec {
   category: Category
   kind?: EventKind
   intensity?: Intensity
+  labelId?: string
 }
 
 const SPECS: Spec[] = [
   { key: 'mo-swim', day: 0, from: '06:30', to: '07:30', title: 'Schwimmen: Technik', category: 'training', intensity: 'medium' },
   { key: 'mo-work', day: 0, from: '08:00', to: '12:00', title: 'Arbeit', category: 'work' },
-  { key: 'mo-lecture', day: 0, from: '13:15', to: '15:00', title: 'Vorlesung Statistik', category: 'study' },
+  { key: 'mo-lecture', day: 0, from: '13:15', to: '15:00', title: 'Vorlesung Statistik', category: 'study', labelId: 'demo-lab-stat' },
   { key: 'mo-run', day: 0, from: '18:00', to: '19:00', title: 'Lauf: Intervalle', category: 'training', intensity: 'high' },
 
   { key: 'tu-work', day: 1, from: '08:00', to: '17:00', title: 'Arbeit', category: 'work' },
@@ -34,14 +35,14 @@ const SPECS: Spec[] = [
   { key: 'we-brick', day: 2, from: '19:00', to: '20:30', title: 'Koppeltraining', category: 'training', intensity: 'high' },
 
   { key: 'th-work', day: 3, from: '07:00', to: '17:30', title: 'Arbeit', category: 'work' },
-  { key: 'th-dinner', day: 3, from: '18:30', to: '21:00', title: 'Znacht bei den Grosseltern', category: 'private' },
+  { key: 'th-dinner', day: 3, from: '18:30', to: '21:00', title: 'Znacht bei den Grosseltern', category: 'private', labelId: 'demo-lab-fam' },
 
   { key: 'fr-swim', day: 4, from: '06:30', to: '07:30', title: 'Schwimmen: Ausdauer', category: 'training', intensity: 'medium' },
   { key: 'fr-lecture', day: 4, from: '10:15', to: '12:00', title: 'Vorlesung Software Engineering', category: 'study' },
   { key: 'fr-dinner', day: 4, from: '19:00', to: '22:00', title: 'Abend mit Freundin', category: 'private' },
 
   { key: 'sa-ride', day: 5, from: '08:00', to: '12:00', title: 'Rennvelo: lange Ausfahrt', category: 'training', intensity: 'high' },
-  { key: 'sa-family', day: 5, from: '15:00', to: null, title: 'Familienbesuch', category: 'private' },
+  { key: 'sa-family', day: 5, from: '15:00', to: null, title: 'Familienbesuch', category: 'private', labelId: 'demo-lab-fam' },
 
   { key: 'su-run', day: 6, from: '09:00', to: '11:00', title: 'Langer Lauf', category: 'training', intensity: 'medium' },
 
@@ -68,6 +69,7 @@ export function createTestEvents(now: Date): CalendarEvent[] {
       category: s.category,
       kind: s.kind ?? 'event',
       intensity: s.intensity,
+      labelId: s.labelId ?? null,
     }
   })
 
@@ -78,10 +80,24 @@ export function createTestEvents(now: Date): CalendarEvent[] {
     source: 'test',
     externalId: 'fr-birthday',
     title: 'Geburtstag Grossmutter',
+    labelId: 'demo-lab-fam',
     start: friday,
     end: addDays(friday, 1),
     allDay: true,
     category: 'private',
+    kind: 'event',
+  })
+
+  // Mehrtägig mit sehr langem Titel: so etwas kommt aus Google und darf das Layout nicht sprengen
+  events.push({
+    id: makeEventId('test', 'long-window'),
+    source: 'test',
+    externalId: 'long-window',
+    title: 'Kolloquienwahl-Fenster im Online-Portal für das Herbstsemester (30.09.–18.10.26)',
+    start: addDays(monday, -2),
+    end: addDays(monday, 6),
+    allDay: true,
+    category: 'study',
     kind: 'event',
   })
 

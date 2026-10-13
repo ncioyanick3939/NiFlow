@@ -3,6 +3,7 @@ import { remindersBetween } from '../domain/reminders'
 import type { Reminder } from '../domain/reminders'
 import type { Task } from '../domain/tasks'
 import type { CalendarEvent } from '../domain/types'
+import { pushOnThisDevice, syncQueue } from '../data/webPush'
 
 const FIRED_KEY = 'niflow-reminders-fired'
 
@@ -49,7 +50,8 @@ export function useReminders(events: CalendarEvent[], tasks: Task[], active: boo
       for (const r of due) {
         if (fired.has(r.key)) continue
         fired.add(r.key)
-        if (notifyState() === 'granted') {
+        // Bekommt dieses Gerät die Erinnerung schon per Push, keine zweite Systemmeldung
+        if (notifyState() === 'granted' && !pushOnThisDevice()) {
           try {
             new Notification(r.title, { body: r.body, tag: r.key })
           } catch {
@@ -74,4 +76,48 @@ export function useNotifyPermission() {
     setState(result as NotifyState)
   }
   return { state, request }
+}
+
+const QUEUE_HASH = 'niflow-push-queue'
+const QUEUE_DAYS = 14
+
+/**
+ * Legt die Erinnerungen der nächsten zwei Wochen auf den Server, damit sie auch bei
+ * geschlossener App kommen. Nur wenn sich etwas geändert hat (pro Browser gemerkt).
+ */
+export function usePushQueue(events: CalendarEvent[], tasks: Task[], active: boolean) {
+  const disabled = useRef(false)
+  useEffect(() => {
+    if (!active || disabled.current) return
+    const id = setTimeout(() => {
+      const now = new Date()
+      const items = remindersBetween(events, tasks, new Date(now.getTime() - 60000), new Date(now.getTime() + QUEUE_DAYS * 86400000)).slice(0, 300)
+      const hash = JSON.stringify(items.map((r) => [r.key, r.at.getTime(), r.title, r.body]))
+      let prev: string | null = null
+      try {
+        prev = localStorage.getItem(QUEUE_HASH)
+      } catch {
+        // ignorieren
+      }
+      // Einmal am Tag trotzdem neu schicken, damit das 14-Tage-Fenster weiterrückt
+      const day = now.toDateString()
+      if (prev === `${day}|${hash}`) return
+      syncQueue(items)
+        .then((ok) => {
+          if (!ok) {
+            disabled.current = true // Migration fehlt noch: nicht weiter versuchen
+            return
+          }
+          try {
+            localStorage.setItem(QUEUE_HASH, `${day}|${hash}`)
+          } catch {
+            // ignorieren
+          }
+        })
+        .catch(() => {
+          // Netzwerkfehler: beim nächsten Mal wieder
+        })
+    }, 3000)
+    return () => clearTimeout(id)
+  }, [events, tasks, active])
 }

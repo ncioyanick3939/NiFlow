@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { LabelsContext, useLabelsData, withLabels } from './labels'
 import { createEntry, deleteEntry, skipOccurrence, updateEntry } from '../data/entries'
 import { callPush } from '../data/googlePush'
 import type { PushStatus } from '../data/googlePush'
@@ -34,7 +35,7 @@ import TasksPage from './tasks/TasksPage'
 import { useTheme } from './theme'
 import TrainingPage from './TrainingPage'
 import Welcome from './Welcome'
-import { useReminders } from './reminders'
+import { usePushQueue, useReminders } from './reminders'
 
 type SheetState =
   | { kind: 'detail'; event: CalendarEvent }
@@ -60,6 +61,7 @@ export default function App() {
   const mode = connected ? 'live' : demo ? 'demo' : 'off'
   const { events: sourceEvents, states, loading, reload } = useEvents(mode, ready)
   const planner = usePlanner(mode, ready)
+  const labels = useLabelsData(mode, ready)
   const [section, setSection] = useState<Section>(sectionFromHash)
   const [sheet, setSheet] = useState<SheetState>(null)
   const [calendarJump, setCalendarJump] = useState<{ date: Date; n: number } | null>(null)
@@ -71,12 +73,17 @@ export default function App() {
 
   // Aufgaben mit Datum und Prüfungen erscheinen im Kalender: eine Datenquelle, immer konsistent.
   const events = useMemo(
-    () => [
-      ...sourceEvents,
-      ...planner.tasks.map(taskToEvent).filter((e): e is CalendarEvent => e !== null),
-      ...planner.exams.map(examToEvent),
-    ],
-    [sourceEvents, planner.tasks, planner.exams],
+    () =>
+      withLabels(
+        [
+          ...sourceEvents,
+          ...planner.tasks.map(taskToEvent).filter((e): e is CalendarEvent => e !== null),
+          ...planner.exams.map(examToEvent),
+        ],
+        labels.byId,
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sourceEvents, planner.tasks, planner.exams, labels.labels],
   )
   const examById = useMemo(() => new Map(planner.exams.map((x) => [x.id, x])), [planner.exams])
   const overdueCount = planner.tasks.filter((t) => isOverdue(t, now)).length
@@ -117,6 +124,8 @@ export default function App() {
   }, [])
 
   useReminders(events, planner.tasks, connected, (r) => showToast(`${r.title} · ${r.body}`))
+  // Nur wenn eigene Einträge und Aufgaben sicher geladen sind, sonst würden Erinnerungen gelöscht
+  usePushQueue(events, planner.tasks, connected && !loading && states.find((s) => s.id === 'own')?.status === 'ok' && !planner.loading && !planner.error)
 
   /** Nach einer Änderung an eigenen Terminen: in Google nachführen, wenn der Abgleich aktiv ist. */
   const pushToGoogle = useCallback(
@@ -348,6 +357,7 @@ export default function App() {
   })()
 
   return (
+    <LabelsContext.Provider value={labels}>
     <div className="flex min-h-dvh">
       <Sidebar
         active={section}
@@ -362,7 +372,7 @@ export default function App() {
         badge={overdueCount}
         onSearch={() => setSheet({ kind: 'search' })}
       />
-      <main className="min-w-0 flex-1">
+      <main className="min-w-0 flex-1 overflow-x-clip">
         {demo && !connected && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-sun/25 px-5 py-2.5 text-sm md:px-8 lg:px-10">
             <span className="font-semibold">Demo</span>
@@ -489,6 +499,10 @@ export default function App() {
               void disconnectGoogle()
             }}
             onChanged={() => void reload(['intervals'])}
+            onLabelsChanged={async (deleted) => {
+              await labels.reload()
+              if (deleted) await Promise.all([reload(['own']), planner.reload()])
+            }}
             push={push}
             onPush={(next) => {
               setPush(next)
@@ -659,5 +673,6 @@ export default function App() {
         )}
       </Sheet>
     </div>
+    </LabelsContext.Provider>
   )
 }

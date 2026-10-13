@@ -49,6 +49,10 @@ export interface CalendarEvent {
   completed?: boolean
   load?: number
   distanceKm?: number
+  /** Eigene Kategorie (eigene Einträge und Aufgaben). Name und Farbe werden in der App ergänzt. */
+  labelId?: string | null
+  labelName?: string
+  labelColor?: import('./labels').LabelColor
 }
 
 export const CATEGORY_LABEL: Record<Category, string> = {

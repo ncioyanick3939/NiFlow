@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CategoryChips } from './labels'
 import type { FormEvent } from 'react'
 import { validateEntry } from '../domain/entries'
 import type { EntryErrors, EntryInput } from '../domain/entries'
@@ -7,7 +8,7 @@ import type { Recurrence } from '../domain/recurrence'
 import { PRIORITY_LABEL } from '../domain/types'
 import type { Priority } from '../domain/types'
 import Icon from './icons'
-import { CATEGORIES, CATEGORY_LABEL, Segmented, catClass } from './kit'
+import { Segmented } from './kit'
 
 interface Props {
   initial: EntryInput
@@ -172,25 +173,7 @@ export default function EntryForm({ initial, editing, onSave, onCancel, examName
         </div>
       )}
 
-      <fieldset>
-        <legend className="label">Kategorie</legend>
-        <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => set('category', c)}
-              aria-pressed={v.category === c}
-              className={`${catClass(c)} inline-flex min-h-10 items-center gap-2 rounded-full border px-3 text-sm transition-colors ${
-                v.category === c ? 'border-cat bg-cat/10 font-medium' : 'border-line text-muted hover:text-ink'
-              }`}
-            >
-              <span className="h-2 w-2 rounded-full bg-cat" aria-hidden="true" />
-              {CATEGORY_LABEL[c]}
-            </button>
-          ))}
-        </div>
-      </fieldset>
+      <CategoryChips category={v.category} labelId={v.labelId} onChange={(c, l) => setV((p) => ({ ...p, category: c, labelId: l }))} />
 
       {!isNote && (
         <fieldset>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { evClass } from './labels'
 import type { FormEvent } from 'react'
 import {
   addDays,
@@ -22,7 +23,7 @@ import WeekStrip from './dashboard/WeekStrip'
 import type { DashSection } from './hooks'
 import Icon, { sportIcon } from './icons'
 import type { IconName } from './icons'
-import { catClass, formatEventTime } from './kit'
+import { formatEventTime } from './kit'
 import TaskRow from './tasks/TaskRow'
 
 interface Props {
@@ -146,7 +147,7 @@ export default function Dashboard(p: Props) {
                   <span className="h-display block truncate text-[26px] leading-tight md:text-[30px]">{next.title}</span>
                   <span className="tnum mt-1 flex flex-wrap items-center gap-x-3 text-sm text-deepmuted">
                     <span>{formatEventTime(next, startOfDay(next.start).getTime() !== today.getTime())}</span>
-                    <span className={`${catClass(next.category)} inline-flex items-center gap-1.5`}>
+                    <span className={`${evClass(next)} inline-flex items-center gap-1.5`}>
                       <span className="h-2 w-2 rounded-full bg-cat" aria-hidden="true" />
                       {CATEGORY_LABEL[next.category]}
                     </span>
@@ -165,7 +166,7 @@ export default function Dashboard(p: Props) {
 
           <div className="relative mt-5 grid gap-x-8 gap-y-1 sm:grid-cols-2">
             {[...allDay, ...remaining].slice(0, 6).map((e) => (
-              <button key={e.id} type="button" onClick={() => p.onOpen(e)} className={`${catClass(e.category)} flex min-h-10 items-center gap-3 rounded-md px-2 text-left text-sm transition-colors hover:bg-deepink/[0.07]`}>
+              <button key={e.id} type="button" onClick={() => p.onOpen(e)} className={`${evClass(e)} flex min-h-10 items-center gap-3 rounded-md px-2 text-left text-sm transition-colors hover:bg-deepink/[0.07]`}>
                 <span className="h-2 w-2 shrink-0 rounded-full bg-cat" aria-hidden="true" />
                 <span className="tnum w-11 shrink-0 text-deepmuted">{e.allDay ? 'Tag' : formatTime(e.start)}</span>
                 <span className="truncate">{e.title}</span>
@@ -292,7 +293,7 @@ export default function Dashboard(p: Props) {
                     <span className="min-w-0 flex-1 space-y-1 pt-0.5">
                       {d.items.length === 0 && <span className="block pt-1.5 text-sm text-muted">Frei</span>}
                       {d.items.slice(0, 3).map((e) => (
-                        <span key={e.id} className={`${catClass(e.category)} flex items-center gap-2 text-sm`}>
+                        <span key={e.id} className={`${evClass(e)} flex items-center gap-2 text-sm`}>
                           <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${e.kind === 'task' ? 'border border-cat' : 'bg-cat'}`} aria-hidden="true" />
                           {!e.allDay && <span className="tnum shrink-0 text-muted">{formatTime(e.start)}</span>}
                           <span className={`truncate ${e.kind === 'exam' ? 'font-semibold' : ''}`}>{e.title}</span>
@@ -322,7 +323,7 @@ export default function Dashboard(p: Props) {
                 <h2 className="h-section mb-2">Notizen für heute</h2>
                 <div className="space-y-2">
                   {notes.map((n) => (
-                    <button key={n.id} type="button" onClick={() => p.onOpen(n)} className={`${catClass(n.category)} block w-full rounded-md border-l-[3px] border-cat bg-surface px-3 py-2.5 text-left transition-colors hover:bg-canvas`}>
+                    <button key={n.id} type="button" onClick={() => p.onOpen(n)} className={`${evClass(n)} block w-full rounded-md border-l-[3px] border-cat bg-surface px-3 py-2.5 text-left transition-colors hover:bg-canvas`}>
                       <span className="block truncate text-sm font-medium">{n.title}</span>
                       {n.description && <span className="mt-0.5 line-clamp-2 block text-xs text-muted">{n.description}</span>}
                     </button>
@@ -427,7 +428,7 @@ function QuickAdd({ onTask, onNote }: { onTask: (t: string) => Promise<void>; on
         </label>
         <input
           id="quick"
-          className="min-h-11 min-w-0 flex-1 bg-transparent px-1 text-sm outline-none placeholder:text-muted/70 focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="min-h-11 min-w-0 flex-1 bg-transparent px-1 text-base outline-none md:text-sm placeholder:text-muted/70 focus-visible:ring-0 focus-visible:ring-offset-0"
           placeholder={asNote ? 'Notiz für heute …' : 'Aufgabe für heute …'}
           value={text}
           maxLength={200}

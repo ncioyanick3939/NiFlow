@@ -60,6 +60,32 @@
 .cat-study { --c: var(--study); }
 .cat-private { --c: var(--private); }
 
+/* Eigene Kategorien: Farbe überschreibt die des Grundbereichs */
+.col-teal { --c: 13 148 136; }
+.col-sky { --c: 2 132 199; }
+.col-indigo { --c: 79 70 229; }
+.col-violet { --c: 147 51 234; }
+.col-pink { --c: 219 39 119; }
+.col-red { --c: 220 38 38; }
+.col-orange { --c: 234 88 12; }
+.col-amber { --c: 180 120 4; }
+.col-lime { --c: 77 124 15; }
+.col-green { --c: 22 163 74; }
+.col-slate { --c: 71 85 105; }
+.col-brown { --c: 146 96 60; }
+:root.dark .col-teal { --c: 45 212 191; }
+:root.dark .col-sky { --c: 56 189 248; }
+:root.dark .col-indigo { --c: 129 140 248; }
+:root.dark .col-violet { --c: 192 132 252; }
+:root.dark .col-pink { --c: 244 114 182; }
+:root.dark .col-red { --c: 248 113 113; }
+:root.dark .col-orange { --c: 251 146 60; }
+:root.dark .col-amber { --c: 251 191 36; }
+:root.dark .col-lime { --c: 163 230 53; }
+:root.dark .col-green { --c: 74 222 128; }
+:root.dark .col-slate { --c: 148 163 184; }
+:root.dark .col-brown { --c: 214 167 125; }
+
 @layer base {
   html,
   body,
@@ -98,7 +124,7 @@
     @apply btn border border-line bg-surface text-ink hover:bg-surface2;
   }
   .field {
-    @apply min-h-11 w-full rounded-md border border-line bg-surface px-3 text-sm text-ink placeholder:text-muted/70 transition-colors duration-150 hover:border-muted/50;
+    @apply min-h-11 w-full rounded-md border border-line bg-surface px-3 text-base text-ink md:text-sm placeholder:text-muted/70 transition-colors duration-150 hover:border-muted/50;
   }
   .label {
     @apply mb-1 block text-xs font-medium text-muted;

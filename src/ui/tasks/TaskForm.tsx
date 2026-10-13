@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CategoryChips } from '../labels'
 import type { FormEvent } from 'react'
 import { addDays } from '../../domain/dateUtils'
 import { toDateInput } from '../../domain/entries'
@@ -8,7 +9,7 @@ import type { TaskErrors, TaskInput, TaskStatus } from '../../domain/tasks'
 import { PRIORITY_LABEL } from '../../domain/types'
 import type { Priority } from '../../domain/types'
 import Icon from '../icons'
-import { CATEGORIES, CATEGORY_LABEL, Segmented, catClass } from '../kit'
+import { Segmented } from '../kit'
 
 interface Props {
   initial: TaskInput
@@ -154,17 +155,7 @@ export default function TaskForm({ initial, editing, exams, now, onSave, onCance
         </div>
       </div>
 
-      <fieldset>
-        <legend className="label">Kategorie</legend>
-        <div className="flex flex-wrap gap-1.5">
-          {CATEGORIES.map((c) => (
-            <button key={c} type="button" onClick={() => set('category', c)} aria-pressed={v.category === c} className={`${catClass(c)} inline-flex min-h-9 items-center gap-2 rounded-full border px-3 text-xs transition-colors ${v.category === c ? 'border-cat bg-cat/10 font-medium' : 'border-line text-muted hover:text-ink'}`}>
-              <span className="h-2 w-2 rounded-full bg-cat" aria-hidden="true" />
-              {CATEGORY_LABEL[c]}
-            </button>
-          ))}
-        </div>
-      </fieldset>
+      <CategoryChips category={v.category} labelId={v.labelId} onChange={(c, l) => setV((p) => ({ ...p, category: c, labelId: l }))} small />
 
       <div>
         <label className="label" htmlFor="t-desc">Beschreibung und Notizen</label>

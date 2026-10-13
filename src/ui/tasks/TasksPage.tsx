@@ -140,18 +140,18 @@ export default function TasksPage({ tasks, exams, now, loading, error, readOnly,
               {VIEW_LABEL[view]} <span className="tnum font-sans text-base font-normal text-muted">{list.length}</span>
             </h2>
             <label className="sr-only" htmlFor="t-sort">Sortieren</label>
-            <select id="t-sort" className="field min-h-9 w-auto rounded-full py-0 text-xs" value={sort} onChange={(e) => setSort(e.target.value as TaskSort)} disabled={view === 'done'}>
+            <select id="t-sort" className="field min-h-9 w-auto rounded-full py-0 text-base md:text-xs" value={sort} onChange={(e) => setSort(e.target.value as TaskSort)} disabled={view === 'done'}>
               <option value="due">Nach Fälligkeit</option>
               <option value="priority">Nach Priorität</option>
               <option value="category">Nach Kategorie</option>
             </select>
             <label className="sr-only" htmlFor="t-cat">Kategorie</label>
-            <select id="t-cat" className="field min-h-9 w-auto rounded-full py-0 text-xs lg:hidden" value={cat} onChange={(e) => setCat(e.target.value as Category | '')}>
+            <select id="t-cat" className="field min-h-9 w-auto rounded-full py-0 text-base md:text-xs lg:hidden" value={cat} onChange={(e) => setCat(e.target.value as Category | '')}>
               <option value="">Alle Kategorien</option>
               {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
             </select>
             <label className="sr-only" htmlFor="t-prio">Priorität</label>
-            <select id="t-prio" className="field min-h-9 w-auto rounded-full py-0 text-xs" value={prio} onChange={(e) => setPrio(e.target.value as Priority | '')}>
+            <select id="t-prio" className="field min-h-9 w-auto rounded-full py-0 text-base md:text-xs" value={prio} onChange={(e) => setPrio(e.target.value as Priority | '')}>
               <option value="">Alle Prioritäten</option>
               {(['urgent', 'high', 'medium', 'low'] as Priority[]).map((p) => <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>)}
             </select>
@@ -186,7 +186,7 @@ export default function TasksPage({ tasks, exams, now, loading, error, readOnly,
                 <label htmlFor="t-quick" className="sr-only">Neue Aufgabe</label>
                 <input
                   id="t-quick"
-                  className="min-h-11 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted/80 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="min-h-11 min-w-0 flex-1 bg-transparent text-base outline-none md:text-sm placeholder:text-muted/80 focus-visible:ring-0 focus-visible:ring-offset-0"
                   placeholder={view === 'today' ? 'Aufgabe für heute hinzufügen' : 'Aufgabe hinzufügen'}
                   value={quick}
                   maxLength={200}

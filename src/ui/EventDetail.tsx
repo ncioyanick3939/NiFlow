@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { evClass } from './labels'
 import { addDays, formatDateLong, formatWeekday } from '../domain/dateUtils'
 import { eventToInput, toDateInput } from '../domain/entries'
 import type { EntryInput } from '../domain/entries'
@@ -6,7 +7,7 @@ import { RECURRENCE_LABEL } from '../domain/recurrence'
 import { CATEGORY_LABEL, PRIORITY_LABEL, SOURCE_LABEL } from '../domain/types'
 import type { CalendarEvent } from '../domain/types'
 import Icon, { sportIcon } from './icons'
-import { catClass, formatEventTime, kindLabel } from './kit'
+import { formatEventTime, kindLabel } from './kit'
 
 interface Props {
   event: CalendarEvent
@@ -41,13 +42,13 @@ export default function EventDetail({ event: e, readOnly, onEdit, onMove, onDele
   const moveTomorrow = () => run(() => onMove(e, { ...eventToInput(e), date: toDateInput(addDays(e.start, 1)) }))
 
   return (
-    <div className={`${catClass(e.category)} space-y-5`}>
+    <div className={`${evClass(e)} space-y-5`}>
       <div className="flex gap-3">
         <span className="w-1 shrink-0 rounded-full bg-cat" aria-hidden="true" />
         <div className="min-w-0">
           <p className="eyebrow flex items-center gap-2">
             {e.source === 'intervals' && <Icon name={sportIcon(e.sport)} size={14} />}
-            {kind} · {CATEGORY_LABEL[e.category]}
+            {kind} · {e.labelName ?? CATEGORY_LABEL[e.category]}
           </p>
           <h3 className="mt-1 break-words text-xl font-semibold leading-snug">{e.title}</h3>
           <p className="tnum mt-1 text-sm text-muted">

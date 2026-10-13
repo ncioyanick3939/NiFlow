@@ -47,12 +47,24 @@ npx supabase db push                                   # Tabellen und Zugriffsre
 npx supabase functions deploy google-token --no-verify-jwt --use-api
 npx supabase functions deploy intervals-events --no-verify-jwt --use-api
 npx supabase functions deploy google-push --no-verify-jwt --use-api
+npx supabase functions deploy push --no-verify-jwt --use-api
 ```
 
 Google Cloud → Google Auth Platform → Datenzugriff: zusätzlich den Bereich
 `https://www.googleapis.com/auth/calendar.app.created` hinzufügen, danach in NiFlow neu mit Google anmelden.
 
 Secrets (Supabase → Edge Functions → Secrets): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+
+### Erinnerungen bei geschlossener App (Web Push)
+
+1. `node scripts/vapid-keys.mjs` erzeugt zwei Schlüssel.
+2. In Supabase → Edge Functions → Secrets eintragen: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`
+   und `VAPID_SUBJECT` (z. B. `mailto:du@beispiel.ch`).
+3. Funktion `push` hochladen (siehe oben). Die Migration `push_cron` ruft sie jede Minute auf (pg_cron + pg_net).
+4. In NiFlow: Einstellungen → Erinnerungen → Einschalten. Auf dem iPhone nur aus der Home-Bildschirm-App.
+
+Die App legt die Erinnerungen der nächsten 14 Tage in `push_queue` (Titel, Text, Zeitpunkt).
+Die Funktion verschickt fällige Einträge einmal, verschlüsselt nach RFC 8291.
 
 ## Aufbau
 

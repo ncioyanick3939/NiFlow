@@ -40,12 +40,12 @@ export default function AgendaView({ from, days, events, now, onOpen, onCreate }
         const today = isSameDay(g.date, now)
         const past = g.date < startOfDay(now)
         return (
-          <section key={g.date.getTime()} className="grid gap-x-6 py-4 md:grid-cols-[10rem,1fr]">
+          <section key={g.date.getTime()} className="grid grid-cols-[minmax(0,1fr)] gap-x-6 py-4 md:grid-cols-[10rem,minmax(0,1fr)]">
             <header className="mb-1 flex items-baseline gap-3 md:mb-0 md:block md:pt-2">
               <p className={`h-display text-lg capitalize leading-tight ${today ? 'text-accent' : ''}`}>{today ? 'Heute' : formatWeekday(g.date)}</p>
               <p className="tnum text-sm text-muted">{formatDateLong(g.date)}</p>
             </header>
-            <div>
+            <div className="min-w-0">
               {g.items.map((e) => (
                 <EventRow key={e.id} e={e} onOpen={onOpen} dim={past} />
               ))}

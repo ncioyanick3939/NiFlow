@@ -4,13 +4,14 @@ import { formatTime } from '../domain/dateUtils'
 import { callIntervals } from '../sources/intervalsSource'
 import { callPush } from '../data/googlePush'
 import type { PushStatus } from '../data/googlePush'
-import { useNotifyPermission } from './reminders'
 import { DASH_LABEL } from './hooks'
 import type { DashSection } from './hooks'
 import type { SourceState } from '../sources/types'
 import Icon from './icons'
 import { Segmented } from './kit'
 import Page from './Page'
+import PushSettings from './PushSettings'
+import LabelsEditor from './LabelsEditor'
 import type { ThemeChoice } from './theme'
 
 interface Props {
@@ -26,16 +27,16 @@ interface Props {
   onPush: (s: PushStatus) => void
   dash: Record<DashSection, boolean>
   onDash: (k: DashSection) => void
+  onLabelsChanged: (deleted: boolean) => Promise<void>
 }
 
 type Message = { kind: 'ok' | 'error'; text: string } | null
 
-export default function SettingsView({ email, demo, states, theme, onTheme, onConnect, onSignOut, onChanged, push, onPush, dash, onDash }: Props) {
+export default function SettingsView({ email, demo, states, theme, onTheme, onConnect, onSignOut, onChanged, push, onPush, dash, onDash, onLabelsChanged }: Props) {
   const [key, setKey] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<Message>(null)
   const state = (id: string) => states.find((s) => s.id === id)
-  const notify = useNotifyPermission()
   const [pushBusy, setPushBusy] = useState(false)
   const [pushMsg, setPushMsg] = useState<{ kind: "ok" | "error"; text: string; reconnect?: boolean } | null>(null)
 
@@ -116,6 +117,12 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
           ]}
         />
       </Group>
+
+      {(email || demo) && (
+        <Group title="Kategorien">
+          <LabelsEditor readOnly={!email} onChanged={onLabelsChanged} />
+        </Group>
+      )}
 
       <Group title="Übersicht">
         <p className="mb-2 text-sm text-muted">Welche Bereiche die Übersicht zeigt. Gilt für diesen Browser.</p>
@@ -227,23 +234,7 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
 
       {email && (
         <Group title="Erinnerungen">
-          <p className="mb-3 text-sm text-muted">
-            Erinnerungen stellst du bei Terminen und Aufgaben ein. Sie erscheinen, solange NiFlow in einem Browser-Tab geöffnet ist. Bei
-            geschlossener App kommen noch keine Erinnerungen.
-          </p>
-          {notify.state === 'granted' ? (
-            <p className="flex items-center gap-2 text-sm">
-              <Icon name="check" size={16} className="text-accent" /> Benachrichtigungen sind erlaubt.
-            </p>
-          ) : notify.state === 'denied' ? (
-            <p className="text-sm text-muted">Benachrichtigungen sind im Browser blockiert. Erinnerungen erscheinen deshalb nur als Hinweis in NiFlow.</p>
-          ) : notify.state === 'unsupported' ? (
-            <p className="text-sm text-muted">Dieser Browser unterstützt keine Benachrichtigungen. Erinnerungen erscheinen als Hinweis in NiFlow.</p>
-          ) : (
-            <button type="button" className="btn-outline" onClick={() => void notify.request()}>
-              Benachrichtigungen erlauben
-            </button>
-          )}
+          <PushSettings />
         </Group>
       )}
       </div>
@@ -253,7 +244,7 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="grid gap-3 rounded-2xl bg-surface p-5 md:grid-cols-[10rem,1fr] md:gap-8 md:p-6">
+    <section className="grid grid-cols-[minmax(0,1fr)] gap-3 rounded-2xl bg-surface p-5 md:grid-cols-[10rem,minmax(0,1fr)] md:gap-8 md:p-6">
       <h2 className="h-section">{title}</h2>
       <div className="min-w-0">{children}</div>
     </section>

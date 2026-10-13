@@ -1,10 +1,10 @@
 import { useState } from 'react'
+import { evClass } from '../labels'
 import { addDays, formatTime, isSameDay, startOfDay, startOfWeek } from '../../domain/dateUtils'
 import { shiftDays } from '../../domain/move'
 import { eventsForDay } from '../../domain/schedule'
 import type { CalendarEvent } from '../../domain/types'
 import Icon from '../icons'
-import { catClass } from '../kit'
 
 const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 
@@ -101,7 +101,7 @@ export default function MonthView({ selected, month, events, now, onOpen, onPick
               {/* Handy: nur Punkte */}
               <div className="flex flex-wrap gap-1 px-1 md:hidden">
                 {all.slice(0, 5).map((e) => (
-                  <span key={e.id} className={`${catClass(e.category)} h-1.5 w-1.5 rounded-full ${e.kind === 'note' ? 'border border-cat' : 'bg-cat'}`} aria-hidden="true" />
+                  <span key={e.id} className={`${evClass(e)} h-1.5 w-1.5 rounded-full ${e.kind === 'note' ? 'border border-cat' : 'bg-cat'}`} aria-hidden="true" />
                 ))}
               </div>
               {/* Desktop: Einträge */}
@@ -124,7 +124,7 @@ export default function MonthView({ selected, month, events, now, onOpen, onPick
                       ev.stopPropagation()
                       onOpen(e)
                     }}
-                    className={`${catClass(e.category)} flex w-full items-center gap-1.5 truncate rounded-md px-1.5 py-[3px] text-left text-[11px] transition-colors ${onMove && canMoveDay(e) ? 'cursor-grab active:cursor-grabbing' : ''} ${dragging?.id === e.id ? 'opacity-40' : ''} ${
+                    className={`${evClass(e)} flex w-full items-center gap-1.5 truncate rounded-md px-1.5 py-[3px] text-left text-[11px] transition-colors ${onMove && canMoveDay(e) ? 'cursor-grab active:cursor-grabbing' : ''} ${dragging?.id === e.id ? 'opacity-40' : ''} ${
                       e.kind === 'exam' ? 'bg-exam font-semibold text-white' : e.allDay && e.kind !== 'note' && e.kind !== 'task' ? 'bg-cat/15 font-medium hover:bg-cat/25' : 'hover:bg-cat/10'
                     }`}
                   >

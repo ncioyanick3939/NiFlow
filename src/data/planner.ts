@@ -3,6 +3,7 @@ import type { Exam, ExamInput, ExamRow } from '../domain/exams'
 import { rowToTask, taskToRow, validateTask } from '../domain/tasks'
 import type { Task, TaskInput, TaskRow, TaskStatus } from '../domain/tasks'
 import { supabase } from '../lib/supabase'
+import { labelColumnMissing, stripLabel, withLabelFallback } from './labels'
 
 // Zugriff auf Aufgaben und Prüfungen. RLS in der Datenbank begrenzt auf die eigenen Zeilen.
 
@@ -18,9 +19,11 @@ function describe(error: { message: string; code?: string }): Error {
 }
 
 export async function listTasks(): Promise<Task[]> {
-  const { data, error } = await supabase.from('tasks').select(TASK_COLS).order('created_at').limit(5000)
+  const { data, error } = await withLabelFallback(() =>
+    supabase.from('tasks').select(labelColumnMissing ? TASK_COLS : `${TASK_COLS},label_id`).order('created_at').limit(5000),
+  )
   if (error) throw describe(error)
-  return (data as TaskRow[]).map(rowToTask)
+  return (data as unknown as TaskRow[]).map(rowToTask)
 }
 
 export async function listExams(): Promise<Exam[]> {
@@ -36,23 +39,20 @@ function checkedTask(t: TaskInput) {
 
 export async function createTask(t: TaskInput): Promise<void> {
   checkedTask(t)
-  const { error } = await supabase.from('tasks').insert(taskToRow(t))
+  const { error } = await withLabelFallback(() => supabase.from('tasks').insert(stripLabel(taskToRow(t))))
   if (error) throw describe(error)
 }
 
 export async function createTasks(list: TaskInput[]): Promise<void> {
   list.forEach(checkedTask)
-  const { error } = await supabase.from('tasks').insert(list.map((t) => taskToRow(t)))
+  const { error } = await withLabelFallback(() => supabase.from('tasks').insert(list.map((t) => stripLabel(taskToRow(t)))))
   if (error) throw describe(error)
 }
 
 export async function updateTask(id: string, t: TaskInput, prevStatus: TaskStatus): Promise<void> {
   checkedTask(t)
-  const { data, error } = await supabase
-    .from('tasks')
-    .update({ ...taskToRow(t, prevStatus), updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select('id')
+  const row = { ...taskToRow(t, prevStatus), updated_at: new Date().toISOString() }
+  const { data, error } = await withLabelFallback(() => supabase.from('tasks').update(stripLabel(row)).eq('id', id).select('id'))
   if (error) throw describe(error)
   if (!data?.length) throw new Error('Aufgabe nicht gefunden. Sie wurde vielleicht schon gelöscht.')
 }
