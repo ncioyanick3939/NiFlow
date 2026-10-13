@@ -15,6 +15,8 @@ const MESSAGES: Record<string, string> = {
   rate_limited: 'Das Tageslimit für KI-Anfragen ist erreicht. Morgen geht es weiter.',
   ai_busy: 'Die KI ist gerade ausgelastet. Bitte in einem Moment nochmals versuchen.',
   ai_key_invalid: 'Der API-Schlüssel der KI wird abgelehnt. Bitte den Schlüssel prüfen und neu als Secret setzen.',
+  ai_credit: 'Das Guthaben bei Anthropic ist aufgebraucht oder fehlt. Bitte unter console.anthropic.com → Billing Guthaben aufladen.',
+  ai_model: 'Die KI kennt das eingestellte Modell nicht. Bitte das Secret AI_MODEL prüfen oder entfernen.',
   ai_error: 'Die KI konnte gerade nicht antworten. Bitte nochmals versuchen.',
   bad_request: 'Die Anfrage war unvollständig.',
 }
@@ -44,11 +46,12 @@ export async function askAssistant(messages: AssistantTurn[], context: string, s
     if ((err as Error)?.name === 'AbortError') throw err
     throw new AssistantError('network', 'Keine Verbindung zum Server.')
   }
-  const body = (await res.json().catch(() => ({}))) as { reply?: unknown; proposals?: unknown; error?: unknown }
+  const body = (await res.json().catch(() => ({}))) as { reply?: unknown; proposals?: unknown; error?: unknown; detail?: unknown }
   if (!res.ok || body.error) {
     const code = String(body.error ?? res.status)
     if (res.status === 404 && !body.error) throw new AssistantError('missing', 'Die Funktion plan-assistant ist noch nicht auf dem Server hochgeladen.')
-    throw new AssistantError(code, MESSAGES[code] ?? `Die KI ist fehlgeschlagen (${code}).`)
+    const detail = typeof body.detail === 'string' && body.detail ? ` Technische Meldung: ${body.detail}` : ''
+    throw new AssistantError(code, `${MESSAGES[code] ?? `Die KI ist fehlgeschlagen (${code}).`}${detail}`)
   }
   return { reply: typeof body.reply === 'string' ? body.reply : '', proposals: Array.isArray(body.proposals) ? body.proposals : [] }
 }

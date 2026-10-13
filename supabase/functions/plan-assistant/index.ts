@@ -10,7 +10,7 @@
 //
 // POST { messages: [{ role: 'user' | 'assistant', content }], context: string, tz }
 //   -> { reply: string, proposals: object[] }
-// Fehler: { error: 'unauthorized' | 'not_configured' | 'rate_limited' | 'bad_request' | 'ai_busy' | 'ai_key_invalid' | 'ai_error' }
+// Fehler: { error: 'unauthorized' | 'not_configured' | 'rate_limited' | 'bad_request' | 'ai_busy' | 'ai_key_invalid' | 'ai_credit' | 'ai_model' | 'ai_error' }
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -158,10 +158,23 @@ Deno.serve(async (req) => {
     return json({ error: 'ai_error' }, 502)
   }
   if (!res.ok) {
-    console.error('anthropic', res.status, (await res.text().catch(() => '')).slice(0, 300))
+    const raw = await res.text().catch(() => '')
+    console.error('anthropic', res.status, raw.slice(0, 500))
+    let kind = ''
+    let message = ''
+    try {
+      const e = JSON.parse(raw) as { error?: { type?: string; message?: string } }
+      kind = e.error?.type ?? ''
+      message = e.error?.message ?? ''
+    } catch {
+      // keine JSON-Antwort
+    }
     if (res.status === 401 || res.status === 403) return json({ error: 'ai_key_invalid' }, 502)
     if (res.status === 429 || res.status === 529 || res.status === 503) return json({ error: 'ai_busy' }, 503)
-    return json({ error: 'ai_error' }, 502)
+    if (/credit balance/i.test(message)) return json({ error: 'ai_credit' }, 502)
+    if (res.status === 404 || /model/i.test(message)) return json({ error: 'ai_model', detail: message.slice(0, 160) }, 502)
+    // Die Meldung der Anthropic-API enthält keine Geheimnisse und hilft bei der Fehlersuche.
+    return json({ error: 'ai_error', detail: `${res.status} ${kind} ${message}`.trim().slice(0, 200) }, 502)
   }
 
   const data = (await res.json().catch(() => null)) as { content?: { type: string; name?: string; input?: Record<string, unknown>; text?: string }[] } | null
