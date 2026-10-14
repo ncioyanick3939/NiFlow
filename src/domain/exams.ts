@@ -170,35 +170,95 @@ export function examToEvent(x: Exam): CalendarEvent {
   }
 }
 
+export type StudyPhase = 'learn' | 'summary' | 'practice' | 'mock' | 'review'
+
 export interface StudySuggestion {
   title: string
   dueDate: string
   estimateMinutes: number
+  phase: StudyPhase
 }
 
-const PLAN = [
-  { title: 'Themen wiederholen', share: 0.15, minutes: 90 },
-  { title: 'Zusammenfassung erstellen', share: 0.35, minutes: 120 },
-  { title: 'Übungsaufgaben lösen', share: 0.55, minutes: 120 },
-  { title: 'Alte Prüfung bearbeiten', share: 0.75, minutes: 120 },
-  { title: 'Letzte Wiederholung', share: 1, minutes: 60 },
-]
+/** Lernstoff aus dem Textfeld: eine Zeile oder ein Komma/Semikolon pro Thema, Aufzählungszeichen weg, ohne Doppelte. */
+export function parseTopics(text: string): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const raw of text.split(/[\n;,]/)) {
+    const t = raw.replace(/^\s*(?:[-*•–]|\d+[.)])\s*/, '').replace(/\s+/g, ' ').trim().slice(0, 60)
+    if (!t || seen.has(t.toLowerCase())) continue
+    seen.add(t.toLowerCase())
+    out.push(t)
+  }
+  return out.slice(0, 12)
+}
+
+const MAX_PER_DAY = 2
 
 /**
- * Vorschlag für Lernaufgaben, gleichmässig verteilt zwischen morgen und dem Tag vor der Prüfung.
- * Wird nur angelegt, wenn der Nutzer ihn bestätigt. Bei sehr kurzer Zeit landen mehrere Aufgaben
- * am selben Tag; liegt die Prüfung heute oder in der Vergangenheit, gibt es keinen Vorschlag.
+ * Lernplan-Vorschlag zwischen morgen und dem Tag vor der Prüfung, in vier Phasen:
+ * Erarbeiten (pro Thema, wenn Lernstoff eingetragen ist) → Zusammenfassung → Üben → alte Prüfung → letzte Wiederholung.
+ * Je weniger Tage bleiben, desto weniger Schritte. Ist die Prüfung schon «Vorbereitet», bleibt nur die letzte Wiederholung.
+ * Höchstens zwei Aufgaben pro Tag (bestehende Lernaufgaben zählen mit), schon vorhandene Titel werden nicht doppelt vorgeschlagen.
+ * Wird nur angelegt, wenn die Person bestätigt. Liegt die Prüfung heute oder in der Vergangenheit, gibt es keinen Vorschlag.
  */
-export function suggestStudyTasks(x: Exam, now: Date): StudySuggestion[] {
+export function suggestStudyTasks(x: Exam, now: Date, existing: { title: string; dueDate: string | null; status: string }[] = []): StudySuggestion[] {
   const days = daysUntil(x, now)
   if (days < 1) return []
   const first = addDays(startOfDay(now), days === 1 ? 0 : 1)
   const last = addDays(startOfDay(x.start), -1)
-  const span = Math.max(Math.round((last.getTime() - first.getTime()) / 86400000), 0)
+  const slots = Math.max(Math.round((last.getTime() - first.getTime()) / 86400000), 0) + 1
   const name = x.subject || x.title
-  return PLAN.map((p) => ({
-    title: `${name}: ${p.title}`,
-    dueDate: toDateInput(addDays(first, Math.round(span * p.share))),
-    estimateMinutes: p.minutes,
-  }))
+  const heavy = x.priority === 'urgent' || x.priority === 'high'
+  const mins = (m: number) => (heavy && m >= 90 ? Math.round((m * 1.25) / 15) * 15 : m)
+
+  type Step = { title: string; minutes: number; phase: StudyPhase; share: number }
+  const steps: Step[] = []
+  const review: Step = { title: `${name}: Letzte Wiederholung`, minutes: 60, phase: 'review', share: 1 }
+
+  if (x.prepStatus === 'ready') {
+    steps.push(review)
+  } else if (slots <= 1) {
+    steps.push({ title: `${name}: Stoff durchgehen`, minutes: mins(90), phase: 'summary', share: 0 }, review)
+  } else {
+    const topics = parseTopics(x.topics)
+    const verb = x.prepStatus === 'in_progress' ? 'wiederholen' : 'erarbeiten'
+    const learnMinutes = x.prepStatus === 'in_progress' ? 60 : 90
+    if (topics.length === 0) {
+      steps.push({ title: `${name}: Themen wiederholen`, minutes: mins(90), phase: 'learn', share: 0.15 })
+    } else {
+      // Höchstens halb so viele Lernschritte wie Tage; zusätzliche Themen werden gebündelt
+      const count = Math.min(topics.length, Math.max(1, Math.floor(slots / 2)))
+      for (let i = 0; i < count; i++) {
+        const chunk = topics.slice(Math.floor((i * topics.length) / count), Math.floor(((i + 1) * topics.length) / count))
+        steps.push({
+          title: `${name}: ${chunk.join(', ')} ${verb}`.slice(0, 190),
+          minutes: mins(learnMinutes + (chunk.length - 1) * 30),
+          phase: 'learn',
+          share: count === 1 ? 0.1 : (0.4 * i) / (count - 1),
+        })
+      }
+    }
+    if (slots >= 3) steps.push({ title: `${name}: Zusammenfassung erstellen`, minutes: mins(120), phase: 'summary', share: 0.5 })
+    if (slots >= 4) steps.push({ title: `${name}: Übungsaufgaben lösen`, minutes: mins(120), phase: 'practice', share: 0.65 })
+    if (slots >= 5) steps.push({ title: `${name}: Alte Prüfung bearbeiten`, minutes: mins(120), phase: 'mock', share: 0.8 })
+    if (slots >= 8) steps.push({ title: `${name}: Schwachstellen nachholen`, minutes: 60, phase: 'practice', share: 0.9 })
+    steps.push(review)
+  }
+
+  const have = new Set(existing.map((t) => t.title.trim().toLowerCase()))
+  const load = new Map<string, number>()
+  for (const t of existing) if (t.dueDate && t.status !== 'done') load.set(t.dueDate, (load.get(t.dueDate) ?? 0) + 1)
+
+  const out: StudySuggestion[] = []
+  let prev = 0
+  for (const st of steps.sort((a, b) => a.share - b.share)) {
+    if (have.has(st.title.toLowerCase())) continue
+    let day = Math.max(Math.round((slots - 1) * st.share), prev)
+    while (day < slots - 1 && (load.get(toDateInput(addDays(first, day))) ?? 0) >= MAX_PER_DAY) day++
+    const dueDate = toDateInput(addDays(first, day))
+    load.set(dueDate, (load.get(dueDate) ?? 0) + 1)
+    prev = day
+    out.push({ title: st.title, dueDate, estimateMinutes: st.minutes, phase: st.phase })
+  }
+  return out
 }

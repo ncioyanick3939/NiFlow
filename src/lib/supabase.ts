@@ -1,3 +1,4 @@
+import { isNativeApp, PUBLIC_APP_URL } from './platform'
 import { createClient } from '@supabase/supabase-js'
 
 // Diese beiden Werte sind öffentlich gedacht (Project URL und "Publishable key").
@@ -31,7 +32,7 @@ export async function disconnectGoogle(): Promise<void> {
 }
 
 /** Wo die Links aus E-Mails (Bestätigen, Passwort zurücksetzen) wieder in die App führen. */
-const appUrl = () => window.location.origin + window.location.pathname
+const appUrl = () => (isNativeApp() ? PUBLIC_APP_URL : window.location.origin + window.location.pathname)
 
 export async function signInWithEmail(email: string, password: string): Promise<void> {
   const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })

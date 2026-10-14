@@ -45,6 +45,12 @@ const PATHS: Record<string, ReactElement> = {
       <path d="M12 7v5l3 2" />
     </>
   ),
+  timer: (
+    <>
+      <circle cx="12" cy="13.5" r="7.5" />
+      <path d="M12 9.5v4l2.5 1.5M9.5 2.5h5" />
+    </>
+  ),
   sun: (
     <>
       <circle cx="12" cy="12" r="4" />

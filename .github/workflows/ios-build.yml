@@ -1,0 +1,30 @@
+name: iOS-Build prüfen
+
+# Prüft nur, ob die iOS-App kompiliert (Simulator, ohne Signatur, ohne Apple-Konto).
+# Läuft nur von Hand: GitHub → Actions → «iOS-Build prüfen» → Run workflow.
+# Hinweis: macOS-Minuten sind in privaten Repos teurer (Faktor 10), in öffentlichen gratis.
+on:
+  workflow_dispatch:
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync ios
+      - name: Für den Simulator bauen (ohne Signatur)
+        run: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build

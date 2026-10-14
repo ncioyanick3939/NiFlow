@@ -1,3 +1,6 @@
+import { isNativeApp } from '../lib/platform'
+import WeatherPlace from './WeatherPlace'
+import type { WeatherPlace as Place } from '../domain/weather'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { formatTime } from '../domain/dateUtils'
@@ -37,11 +40,15 @@ interface Props {
   onRevokeAi: () => void
   /** Löscht das Konto samt Daten. Wirft bei Fehlern. */
   onDeleteAccount: () => Promise<void>
+  /** Ort für das Wetter (nur auf diesem Gerät gespeichert) */
+  place: Place | null
+  onPlace: (p: Place | null) => void
 }
 
 type Message = { kind: 'ok' | 'error'; text: string } | null
 
-export default function SettingsView({ email, demo, states, theme, onTheme, onConnect, onSignOut, onChanged, push, onPush, dash, onDash, onLabelsChanged, hasGoogle, aiConsent, onRevokeAi, onDeleteAccount }: Props) {
+export default function SettingsView({ email, demo, states, theme, onTheme, onConnect, onSignOut, onChanged, push, onPush, dash, onDash, onLabelsChanged, hasGoogle, aiConsent, onRevokeAi, onDeleteAccount, place, onPlace }: Props) {
+  const native = isNativeApp()
   const [confirmOut, setConfirmOut] = useState(false)
   const [key, setKey] = useState('')
   const [busy, setBusy] = useState(false)
@@ -119,9 +126,11 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
         ) : (
           <div className="flex flex-wrap items-center gap-3">
             <p className="mr-auto text-sm text-muted">{demo ? 'Du siehst die Demo mit erfundenen Daten.' : 'Nicht angemeldet.'}</p>
-            <button type="button" className="btn-primary" onClick={onConnect}>
-              Mit Google anmelden
-            </button>
+            {!native && (
+              <button type="button" className="btn-primary" onClick={onConnect}>
+                Mit Google anmelden
+              </button>
+            )}
           </div>
         )}
       </Group>
@@ -163,10 +172,10 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
             <SourceLine name="Eigene Einträge" detail="Gespeichert in deiner geschützten Datenbank" s={state('own')} />
             <SourceLine
               name="Google Kalender"
-              detail={hasGoogle ? 'Termine aus deinen Google-Kalendern, nur lesen.' : 'Nicht verbunden. Melde dich dafür mit Google an, am besten mit derselben E-Mail-Adresse wie bei NiFlow.'}
+              detail={hasGoogle ? 'Termine aus deinen Google-Kalendern, nur lesen.' : native ? 'In der iOS-App noch nicht verfügbar. Im Browser unter ncioyanick3939.github.io/NiFlow möglich.' : 'Nicht verbunden. Melde dich dafür mit Google an, am besten mit derselben E-Mail-Adresse wie bei NiFlow.'}
               s={state('google')}
               action={
-                (!hasGoogle || state('google')?.status === 'error') && (
+                !native && (!hasGoogle || state('google')?.status === 'error') && (
                   <button type="button" className="btn-outline min-h-9 text-xs" onClick={onConnect}>
                     {hasGoogle ? 'Neu verbinden' : 'Mit Google verbinden'}
                   </button>
@@ -256,6 +265,16 @@ export default function SettingsView({ email, demo, states, theme, onTheme, onCo
               )}
             </p>
           )}
+        </Group>
+      )}
+
+      {email && (
+        <Group title="Wetter">
+          <p className="mb-3 text-sm text-muted">
+            Mit einem Ort kann dir der Planungs-Assistent Wetterfragen beantworten und Velo und Laufen auf trockene Tage legen. Der Ort bleibt auf diesem Gerät.
+            Das Wetter kommt von Open-Meteo, gesendet werden nur die Koordinaten des Ortes.
+          </p>
+          <WeatherPlace place={place} onChange={onPlace} />
         </Group>
       )}
 

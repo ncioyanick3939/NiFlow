@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { formatDateLong, formatTime, formatWeekday } from '../../domain/dateUtils'
+import { toDateInput } from '../../domain/entries'
 import { PREP_LABEL, daysUntil, examToInput, suggestStudyTasks } from '../../domain/exams'
 import type { Exam, PrepStatus } from '../../domain/exams'
 import { emptyTask, sortTasks } from '../../domain/tasks'
@@ -22,6 +23,8 @@ interface Props {
   onAddTask: (defaults: Partial<TaskInput>) => void
   onAddTasks: (list: TaskInput[]) => Promise<void>
   onPlanSession: () => void
+  /** Öffnet den Planungs-Assistenten mit einer Frage (fehlt, wenn er nicht verfügbar ist) */
+  onAskAssistant?: (prompt: string) => void
   onToggleTask: (t: Task) => void
   onOpenTask: (t: Task) => void
   onOpenEvent: (e: CalendarEvent) => void
@@ -57,7 +60,7 @@ export default function ExamDetail(p: Props) {
     }
   }
 
-  const proposal = suggestStudyTasks(x, p.now)
+  const proposal = suggestStudyTasks(x, p.now, p.tasks)
   const topics = x.topics.split('\n').map((t) => t.trim()).filter(Boolean)
 
   return (
@@ -171,9 +174,24 @@ export default function ExamDetail(p: Props) {
           p.sessions.map((e) => <EventRow key={e.id} e={e} onOpen={p.onOpenEvent} showDay />)
         )}
         {!p.readOnly && days >= 0 && (
-          <button type="button" className="btn-outline mt-2 min-h-9 text-xs" onClick={p.onPlanSession}>
-            <Icon name="calendar" size={14} /> Lerntermin planen
-          </button>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" className="btn-outline min-h-9 text-xs" onClick={p.onPlanSession}>
+              <Icon name="calendar" size={14} /> Lerntermin planen
+            </button>
+            {p.onAskAssistant && days >= 1 && (
+              <button
+                type="button"
+                className="btn-outline min-h-9 text-xs text-accent"
+                onClick={() =>
+                  p.onAskAssistant!(
+                    `Arbeite einen Lernplan für «${(x.subject || x.title).slice(0, 60)}» aus (Prüfung am ${toDateInput(x.start)}). Lege die Lernblöcke in meine freien Zeiten, verteile den Stoff${topics.length ? ' (' + topics.slice(0, 8).join(', ') + ')' : ''} über die Tage und beachte Training und Wetter.`,
+                  )
+                }
+              >
+                <Icon name="sparkle" size={14} /> Mit Assistent einplanen
+              </button>
+            )}
+          </div>
         )}
       </section>
 

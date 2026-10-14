@@ -18,6 +18,10 @@ import { connectGoogle, deleteAccount, disconnectGoogle, hasGoogleIdentity } fro
 import AssistantPanel from './assistant/AssistantPanel'
 import { useAiConsent } from './assistant/useAiConsent'
 import { useAssistant } from './assistant/useAssistant'
+import { useWeather } from './useWeather'
+import TimerPanel from './timer/TimerPanel'
+import TimerPill from './timer/TimerPill'
+import { useTimer } from './timer/useTimer'
 import CalendarPage from './calendar/CalendarPage'
 import Dashboard from './Dashboard'
 import EntryForm from './EntryForm'
@@ -51,7 +55,8 @@ type SheetState =
   | { kind: 'create' }
   | { kind: 'more' }
   | { kind: 'search' }
-  | { kind: 'assistant' }
+  | { kind: 'assistant'; prompt?: string }
+  | { kind: 'timer' }
   | null
 
 function sectionFromHash(): Section {
@@ -93,7 +98,9 @@ export default function App() {
     [sourceEvents, planner.tasks, planner.exams, labels.labels],
   )
   const examById = useMemo(() => new Map(planner.exams.map((x) => [x.id, x])), [planner.exams])
-  const assistant = useAssistant({ events, tasks: planner.tasks, exams: planner.exams, now })
+  const weather = useWeather(!!session)
+  const assistant = useAssistant({ events, tasks: planner.tasks, exams: planner.exams, now, weather: { days: weather.days, placeSet: !!weather.place } })
+  const timer = useTimer((text) => showToast(text))
   const overdueCount = planner.tasks.filter((t) => isOverdue(t, now)).length
 
   // Status des Google-Abgleichs laden (nur angemeldet). Fehler hier sind nicht kritisch.
@@ -375,6 +382,8 @@ export default function App() {
         return 'Prüfung'
       case 'assistant':
         return 'Planungs-Assistent'
+      case 'timer':
+        return 'Timer'
       case 'examForm':
         return sheet.editId ? 'Prüfung bearbeiten' : 'Neue Prüfung'
       case 'create':
@@ -407,6 +416,7 @@ export default function App() {
         badge={overdueCount}
         onSearch={() => setSheet({ kind: 'search' })}
         onAssistant={readOnly ? undefined : () => setSheet({ kind: 'assistant' })}
+        onTimer={() => setSheet({ kind: 'timer' })}
       />
       <main className="min-w-0 flex-1 overflow-x-clip">
         {demo && !connected && (
@@ -473,6 +483,7 @@ export default function App() {
             prefs={dash.prefs}
             onSearch={() => setSheet({ kind: 'search' })}
             onAssistant={readOnly ? undefined : () => setSheet({ kind: 'assistant' })}
+            onTimer={() => setSheet({ kind: 'timer' })}
             onCreateTask={() => createTaskSheet({ dueDate: toDateInput(now) })}
             onCreateExam={createExamSheet}
           />
@@ -542,6 +553,8 @@ export default function App() {
               aiConsent.revoke()
               assistant.clear()
             }}
+            place={weather.place}
+            onPlace={weather.setPlace}
             onDeleteAccount={async () => {
               await deleteAccount()
               setDemo(false)
@@ -563,6 +576,8 @@ export default function App() {
           />
         )}
       </main>
+
+      {sheet?.kind !== 'timer' && <TimerPill state={timer.state} rest={timer.rest} onOpen={() => setSheet({ kind: 'timer' })} />}
 
       <BottomBar active={section} onNavigate={navigate} onMore={() => setSheet({ kind: 'more' })} badge={overdueCount} withFab={!readOnly && section !== 'settings' && section !== 'training'} />
 
@@ -659,6 +674,7 @@ export default function App() {
               await planner.reload()
             }}
             onPlanSession={() => planSession(currentExam.id)}
+            onAskAssistant={!readOnly ? (prompt) => setSheet({ kind: 'assistant', prompt }) : undefined}
             onToggleTask={toggleTask}
             onOpenTask={openTask}
             onOpenEvent={openEvent}
@@ -691,7 +707,7 @@ export default function App() {
           </div>
         )}
         {sheet?.kind === 'assistant' && (
-          <AssistantPanel chat={assistant} consent={aiConsent.given} onConsent={aiConsent.give} suggestions={quickPrompts(planner.exams, planner.tasks, now)} onApply={applyProposals} />
+          <AssistantPanel chat={assistant} consent={aiConsent.given} onConsent={aiConsent.give} suggestions={quickPrompts(planner.exams, planner.tasks, now)} onApply={applyProposals} place={weather.place} onPlace={weather.setPlace} autoPrompt={sheet.prompt} />
         )}
         {sheet?.kind === 'search' && (
           <SearchPanel
@@ -706,9 +722,28 @@ export default function App() {
             onOpenExam={(x) => setSheet({ kind: 'exam', examId: x.id })}
           />
         )}
+        {sheet?.kind === 'timer' && (
+          <TimerPanel
+            timer={timer}
+            tasks={planner.tasks.filter((t) => t.status !== 'done')}
+            onSaveSession={
+              readOnly
+                ? undefined
+                : async (input) => {
+                    await createEntry(input)
+                    await reload(['own'])
+                  }
+            }
+          />
+        )}
         {sheet?.kind === 'more' && (
           <div className="space-y-4">
             <div className="space-y-1">
+              <button type="button" onClick={() => setSheet({ kind: 'timer' })} className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-left transition-colors hover:bg-surface2">
+                <Icon name="timer" size={20} className="text-accent" />
+                <span className="flex-1 font-medium">Timer</span>
+                <Icon name="chevronRight" size={16} className="text-muted" />
+              </button>
               {!readOnly && (
                 <button type="button" onClick={() => setSheet({ kind: 'assistant' })} className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-left transition-colors hover:bg-surface2">
                   <Icon name="sparkle" size={20} className="text-accent" />

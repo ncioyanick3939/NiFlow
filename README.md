@@ -33,6 +33,55 @@ Grenzen: Push braucht die VAPID-Schlüssel in Supabase und NiFlow muss ab und zu
 werden beim nächsten Abgleich überschrieben; von Strava importierte Aktivitäten gibt Intervals.icu
 über die API teilweise nicht heraus.
 
+### Wetter und Lernplan
+
+- Wetter: Einstellungen → Wetter (oder im Assistenten) einen Ort suchen. Vorhersage und Ortssuche kommen von Open-Meteo (gratis, kein Schlüssel).
+  Der Ort bleibt in `localStorage` auf dem Gerät, die Vorhersage wird 3 Stunden zwischengespeichert. Zum Assistenten gehen nur die Tageswerte, nie der Ortsname.
+  Die KI bekommt pro Tag eine Zeile mit Wetter und «draussen: gut/mittel/schlecht» (Regel in `src/domain/weather.ts`, `outdoorRating`).
+- Server: Der Prompt der Funktion `plan-assistant` hat neue Regeln für Wetter und Lernplan. Nach Änderungen neu hochladen:
+  `npx supabase functions deploy plan-assistant --no-verify-jwt --use-api`
+- Lernplan (Prüfung → «Lernplan vorschlagen»): Erarbeiten je Thema (aus dem Feld Lernstoff), Zusammenfassung, Üben, alte Prüfung, Schwachstellen, letzte Wiederholung.
+  Je weniger Tage, desto weniger Schritte; höchstens zwei Lernaufgaben pro Tag; vorhandene Titel werden nicht doppelt vorgeschlagen.
+  «Mit Assistent einplanen» stellt dem Assistenten die Frage, die Lernblöcke in freie Zeiten zu legen (mit Training und Wetter).
+
+### Timer
+
+Fokus-Timer (Übersicht → Timer-Symbol, «Mehr» → Timer, Seitenleiste am Computer): einmaliger Countdown (1 bis 240 Minuten) oder Pomodoro (Fokus und Pause,
+jede 4. Pause dreimal so lang, höchstens 8 Blöcke), optional mit Beschriftung oder verknüpfter Aufgabe. Pause/Weiter, Beenden, danach «Als Lernzeit speichern»
+legt einen Termin (Studium) mit der Fokuszeit an. Logik und Tests: `src/domain/timer.ts`.
+
+- Der Timer rechnet mit Zeitstempeln und überlebt Schliessen, Hintergrund und Neustart (`localStorage`). Beim Wiederöffnen wird nachgeführt, ohne Ton.
+- Alarm: Ton (Web Audio), Vibration und im Browser eine Mitteilung, wenn der Tab im Hintergrund ist und erlaubt wurde. Im Browser gibt es nichts bei geschlossenem Tab.
+- iOS-App: Die nächsten Signale werden als lokale Mitteilungen geplant (`@capacitor/local-notifications`), sie kommen auch bei gesperrtem Bildschirm.
+  Auf einem echten iPhone noch nicht getestet. Nach dem Hinzufügen des Plugins `npx cap sync ios` ausführen (macht `npm run ios:sync`).
+
+## iOS-App (Capacitor)
+
+Die iOS-App ist eine Hülle (WKWebView) um die gebaute Web-App. Der Ordner `ios/` ist ein fertiges Xcode-Projekt (Swift Package Manager, kein CocoaPods).
+Bundle-ID und Name stehen in `capacitor.config.ts` (`ch.niflow.app`, `NiFlow`). Die Bundle-ID muss zu App Store Connect passen und lässt sich nach der Veröffentlichung nicht mehr ändern.
+
+```
+npm run ios:sync    # baut die Web-App und kopiert sie nach ios/App/App/public
+npm run ios:open    # öffnet Xcode (nur auf einem Mac)
+```
+
+Ohne Mac: GitHub → Actions → «iOS-Build prüfen» → Run workflow. Das baut die App auf einem macOS-Runner für den Simulator (ohne Signatur,
+ohne Apple-Konto) und zeigt, ob sie kompiliert. Zum Testen auf dem iPhone und für den Store braucht es zusätzlich Signatur (Apple Developer Program)
+und einen Build auf einem Mac oder einem Cloud-Dienst mit macOS (z. B. Xcode Cloud, Codemagic).
+
+Was in der iOS-App anders ist (siehe `src/lib/platform.ts`):
+
+- Die Google-Anmeldung ist ausgeblendet. Google erlaubt OAuth nicht in eingebetteten Browsern. Angemeldet wird mit E-Mail und Passwort.
+  Damit entfällt für die erste Version auch die Pflicht zu «Sign in with Apple» (Richtlinie 4.8). Google Kalender gibt es dann nur im Browser.
+- Links aus E-Mails (Bestätigen, Passwort zurücksetzen) führen auf die Web-App (`PUBLIC_APP_URL`), nicht in die iOS-App. Danach in der App mit dem Passwort anmelden.
+- Web-Push gibt es im WKWebView nicht. Erinnerungen laufen nur in der App. Für Mitteilungen bei geschlossener App braucht es lokale Mitteilungen
+  (`@capacitor/local-notifications`) oder APNs.
+- Service Worker laufen nicht unter `capacitor://`; die App funktioniert ohne ihn, nur ohne Offline-Cache.
+
+Vor dem ersten Store-Build ausserdem nötig: Signing-Team in Xcode wählen, Version und Build-Nummer setzen, Datenschutz-Angaben in App Store Connect,
+Screenshots und Texte (siehe Dokument «NiFlow – App-Store-Texte»). Apple prüft, dass die App mehr ist als eine Website (Richtlinie 4.2). Native Funktionen
+wie lokale Mitteilungen und Haptik (`@capacitor/haptics`) helfen dabei.
+
 ## Lokal starten
 
 ```

@@ -41,13 +41,14 @@ interface Props {
   badge?: number
   onSearch?: () => void
   onAssistant?: () => void
+  onTimer?: () => void
 }
 
 /**
  * Seitenleiste (Tablet und Desktop): weiss, ruhig. Aktive Seite als weich getönte Rosé-Pille.
  * Schmal: nur Symbole, breit (ab xl): mit Text.
  */
-export function Sidebar({ active, onNavigate, onCreate, states, loading, onReload, badge, onSearch, onAssistant }: Props) {
+export function Sidebar({ active, onNavigate, onCreate, states, loading, onReload, badge, onSearch, onAssistant, onTimer }: Props) {
   const errors = states.filter((s) => s.status === 'error')
   const last = states
     .map((s) => s.lastSync)
@@ -107,13 +108,25 @@ export function Sidebar({ active, onNavigate, onCreate, states, loading, onReloa
       <nav aria-label="Hauptnavigation" className="space-y-1">
         {main.map(item)}
       </nav>
+      {onTimer && (
+        <button
+          type="button"
+          onClick={onTimer}
+          title="Timer"
+          aria-label="Timer"
+          className="mt-3 flex min-h-12 w-full items-center justify-center gap-3 rounded-2xl bg-surface2 px-3 text-[15px] font-semibold text-ink transition-colors duration-150 hover:bg-line xl:justify-start"
+        >
+          <Icon name="timer" size={20} />
+          <span className="hidden xl:inline">Timer</span>
+        </button>
+      )}
       {onAssistant && (
         <button
           type="button"
           onClick={onAssistant}
           title="Planungs-Assistent"
           aria-label="Planungs-Assistent"
-          className="mt-3 flex min-h-12 w-full items-center justify-center gap-3 rounded-2xl bg-accent/[0.1] px-3 text-[15px] font-semibold text-accent transition-colors duration-150 hover:bg-accent/[0.18] xl:justify-start"
+          className="mt-2 flex min-h-12 w-full items-center justify-center gap-3 rounded-2xl bg-accent/[0.1] px-3 text-[15px] font-semibold text-accent transition-colors duration-150 hover:bg-accent/[0.18] xl:justify-start"
         >
           <Icon name="sparkle" size={20} />
           <span className="hidden xl:inline">Assistent</span>

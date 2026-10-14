@@ -1,3 +1,4 @@
+import { isNativeApp } from '../lib/platform'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { authErrorText, validateCredentials, validateNewPassword } from '../domain/authText'
@@ -22,6 +23,7 @@ const MODE_TITLE: Record<AuthMode, string> = { login: 'Mit E-Mail anmelden', reg
 
 /** Startseite ohne Anmeldung: freundlich, ein klarer Hauptknopf, vier farbige Bereiche. */
 export default function Welcome({ onGoogle, onDemo, recovery, onRecoveryDone }: Props) {
+  const native = isNativeApp()
   const today = new Date()
   const [mode, setMode] = useState<AuthMode | null>(null)
   const [email, setEmail] = useState('')
@@ -121,10 +123,12 @@ export default function Welcome({ onGoogle, onDemo, recovery, onRecoveryDone }: 
 
             {!mode ? (
               <div className="mt-8 space-y-2">
-                <button type="button" className="btn-primary min-h-12 w-full rounded-2xl" onClick={onGoogle}>
-                  Mit Google anmelden
-                </button>
-                <button type="button" className="btn-outline min-h-12 w-full rounded-2xl" onClick={() => open('login')}>
+                {!native && (
+                  <button type="button" className="btn-primary min-h-12 w-full rounded-2xl" onClick={onGoogle}>
+                    Mit Google anmelden
+                  </button>
+                )}
+                <button type="button" className={`${native ? 'btn-primary' : 'btn-outline'} min-h-12 w-full rounded-2xl`} onClick={() => open('login')}>
                   <Icon name="mail" size={18} /> Mit E-Mail anmelden
                 </button>
                 <button type="button" className="btn-ghost min-h-11 w-full rounded-2xl text-muted" onClick={onDemo}>

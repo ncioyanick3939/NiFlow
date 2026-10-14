@@ -15,6 +15,8 @@ import { blocksTime, effectiveEnd, eventsForDay, findFreeSlots } from './schedul
 import { emptyTask, taskToInput, validateTask } from './tasks'
 import type { Task, TaskInput } from './tasks'
 import { CATEGORY_LABEL } from './types'
+import { describeDay, outdoorRating, UNSURE_FROM_DAY } from './weather'
+import type { DayWeather } from './weather'
 import type { CalendarEvent, Category, Priority } from './types'
 
 /** Wie viele Tage voraus die KI sieht. */
@@ -37,8 +39,15 @@ export interface AiContext {
   examIds: Map<string, string>
 }
 
-export function buildAiContext(input: { events: CalendarEvent[]; tasks: Task[]; exams: Exam[]; now: Date; timeZone: string }): AiContext {
-  const { events, tasks, exams, now, timeZone } = input
+/** Wetter für die KI: days = Vorhersage (null = nicht verfügbar), placeSet = Ort ist eingestellt. Der Ortsname geht nie an die KI. */
+export interface AiWeather {
+  days: DayWeather[] | null
+  placeSet: boolean
+}
+
+export function buildAiContext(input: { events: CalendarEvent[]; tasks: Task[]; exams: Exam[]; now: Date; timeZone: string; weather?: AiWeather }): AiContext {
+  const { events, tasks, exams, now, timeZone, weather } = input
+  const weatherByDate = new Map((weather?.days ?? []).map((d) => [d.date, d]))
   const today = startOfDay(now)
   const lines: string[] = []
   lines.push(`Jetzt: ${dayLabel(now)} ${toDateInput(now)} ${formatTime(now)} (${timeZone})`)
@@ -81,6 +90,10 @@ export function buildAiContext(input: { events: CalendarEvent[]; tasks: Task[]; 
   lines.push('')
 
   // Termine und freie Zeit pro Tag
+  if (!weather || !weather.placeSet) lines.push('WETTER: kein Ort eingestellt (die Person kann ihn unter Einstellungen → Wetter wählen)')
+  else if (!weather.days) lines.push('WETTER: gerade nicht verfügbar')
+  else lines.push(`WETTER: Vorhersage für den eingestellten Ort steht bei den einzelnen Tagen (ab dem ${UNSURE_FROM_DAY + 1}. Tag unsicher)`)
+  lines.push('')
   lines.push(`KALENDER UND FREIE ZEIT (nächste ${AI_HORIZON_DAYS} Tage)`)
   for (let i = 0; i < AI_HORIZON_DAYS; i++) {
     const day = addDays(today, i)
@@ -89,6 +102,8 @@ export function buildAiContext(input: { events: CalendarEvent[]; tasks: Task[]; 
     const allDay = de.allDay.filter((e) => e.kind !== 'task')
     const free = findFreeSlots(de, day, now)
     lines.push(`${dayLabel(day)}${i === 0 ? ' (heute)' : ''}`)
+    const w = weatherByDate.get(toDateInput(day))
+    if (w) lines.push(`  Wetter: ${describeDay(w)} | draussen: ${outdoorRating(w)}${i >= UNSURE_FROM_DAY ? ' (unsicher)' : ''}`)
     for (const e of allDay) lines.push(`  ganztägig | ${clip(e.title)} | ${CATEGORY_LABEL[e.category]}`)
     for (const e of timed) {
       const end = e.end ? formatTime(e.end) : '?'
@@ -249,6 +264,6 @@ export function quickPrompts(exams: Exam[], tasks: Task[], now: Date): string[] 
   if (next && daysUntil(next, now) <= 45) out.push(`Plane meine Lernzeit für «${clip(next.subject || next.title, 36)}»`)
   const overdue = tasks.filter((t) => t.status !== 'done' && t.dueDate && t.dueDate < toDateInput(now))
   if (overdue.length > 0) out.push('Verteile meine überfälligen Aufgaben neu')
-  out.push('Plane meine Woche', 'Wo habe ich diese Woche noch Luft?')
+  out.push('Wie wird das Wetter diese Woche?', 'Plane meine Woche inklusive Wetter')
   return out.slice(0, 5)
 }

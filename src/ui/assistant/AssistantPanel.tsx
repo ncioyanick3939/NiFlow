@@ -4,6 +4,8 @@ import { parseDateInput } from '../../domain/entries'
 import type { Proposal } from '../../domain/aiPlan'
 import { categoryIcon } from '../icons'
 import Icon from '../icons'
+import type { WeatherPlace as Place } from '../../domain/weather'
+import WeatherPlace from '../WeatherPlace'
 import RichText from './RichText'
 import type { ChatMsg, useAssistant } from './useAssistant'
 
@@ -15,6 +17,11 @@ interface Props {
   /** Einwilligung zur Weitergabe an die KI (Apple 5.1.2(i)). Ohne sie wird nichts gesendet. */
   consent: boolean
   onConsent: () => void
+  /** Ort für das Wetter (nur auf diesem Gerät) */
+  place: Place | null
+  onPlace: (p: Place | null) => void
+  /** Frage, die beim Öffnen einmal automatisch gestellt wird (z. B. aus einer Prüfung heraus) */
+  autoPrompt?: string
   /** Legt die gewählten Vorschläge an und meldet pro Vorschlag, ob es geklappt hat. */
   onApply: (list: Proposal[]) => Promise<{ ok: boolean[]; error?: string }>
 }
@@ -134,7 +141,7 @@ function Bubble({ m, onToggle, onApply, onDismiss }: { m: ChatMsg; onToggle: (i:
   )
 }
 
-export default function AssistantPanel({ chat, suggestions, consent, onConsent, onApply }: Props) {
+export default function AssistantPanel({ chat, suggestions, consent, onConsent, onApply, place, onPlace, autoPrompt }: Props) {
   const { messages, busy, send, toggle, settle, clear } = chat
   const [text, setText] = useState('')
   const end = useRef<HTMLDivElement>(null)
@@ -146,6 +153,13 @@ export default function AssistantPanel({ chat, suggestions, consent, onConsent, 
     if (last?.role === 'assistant' && !busy) lastMsg.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
     else end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
   }, [messages.length, busy])
+
+  const autoSent = useRef(false)
+  useEffect(() => {
+    if (!consent || !autoPrompt || autoSent.current || busy) return
+    autoSent.current = true
+    void send(autoPrompt)
+  }, [consent, autoPrompt, busy, send])
 
   const submit = (value: string) => {
     if (!value.trim() || busy) return
@@ -171,6 +185,13 @@ export default function AssistantPanel({ chat, suggestions, consent, onConsent, 
                 <p className="mt-2 text-xs text-muted">Die KI sieht Titel, Zeiten und Prüfungsthemen der nächsten 14 Tage, keine Notizen. Nichts wird ohne dein OK geändert.</p>
               </div>
             </div>
+            {!place && (
+              <div className="space-y-2 rounded-2xl border border-line p-3">
+                <p className="text-sm font-semibold">Wetter einbeziehen</p>
+                <p className="text-xs text-muted">Wähle deinen Ort, dann kann der Assistent nach dem Wetter gefragt werden und Velo und Laufen auf trockene Tage legen.</p>
+                <WeatherPlace place={place} onChange={onPlace} compact />
+              </div>
+            )}
             <div className="flex flex-wrap gap-2">
               {suggestions.map((s) => (
                 <button key={s} type="button" onClick={() => submit(s)} className="rounded-full bg-accent/[0.12] px-3.5 py-2 text-left text-sm font-semibold text-accent transition hover:bg-accent/20 active:scale-[0.98]">
@@ -273,7 +294,7 @@ function ConsentCard({ onConsent }: { onConsent: () => void }) {
       <div className="space-y-3 rounded-3xl bg-surface2 p-4 text-sm leading-relaxed">
         <p>
           <span className="font-bold">Was gesendet wird:</span> Bei jeder Frage sendet NiFlow deine Nachricht und eine Übersicht der nächsten 14 Tage an die KI: Titel, Zeiten und
-          Kategorien deiner Termine und Aufgaben sowie Prüfungsthemen. Notizen und Beschreibungen werden nicht gesendet.
+          Kategorien deiner Termine und Aufgaben sowie Prüfungsthemen. Wenn du einen Wetter-Ort gewählt hast, kommt die Wettervorhersage dazu, aber ohne den Ortsnamen. Notizen und Beschreibungen werden nicht gesendet.
         </p>
         <p>
           <span className="font-bold">An wen:</span> Die Übersicht geht über unseren Server an den KI-Anbieter Anthropic (USA), der daraus die Antwort erstellt.

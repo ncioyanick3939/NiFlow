@@ -52,6 +52,8 @@ interface Props {
   onSearch: () => void
   /** Öffnet den KI-Planer; fehlt im Demo-Modus. */
   onAssistant?: () => void
+  /** Öffnet den Timer */
+  onTimer?: () => void
 }
 
 function greeting(now: Date): string {
@@ -212,6 +214,11 @@ export default function Dashboard(p: Props) {
             </h1>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 pb-1">
+            {p.onTimer && (
+              <button type="button" onClick={p.onTimer} className="flex h-10 w-10 items-center justify-center rounded-full bg-surface text-ink shadow-card transition active:scale-95" aria-label="Timer öffnen">
+                <Icon name="timer" size={19} />
+              </button>
+            )}
             {p.onAssistant && (
               <button type="button" onClick={p.onAssistant} className="hidden h-10 items-center justify-center gap-1.5 rounded-full bg-accent/[0.14] px-4 text-accent transition active:scale-95 md:flex" aria-label="Planungs-Assistent öffnen">
                 <Icon name="sparkle" size={18} />

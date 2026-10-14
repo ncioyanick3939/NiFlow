@@ -20,7 +20,9 @@ import { emptyInput, eventToInput, inputToRow, parseDateInput, rowToEvent, valid
 import type { EntryRow } from '../src/domain/entries'
 import { emptyTask, formatDue, groupTasks, inView, isOverdue, sortTasks, taskToEvent, taskToRow, validateTask } from '../src/domain/tasks'
 import type { Task } from '../src/domain/tasks'
-import { daysUntil, emptyExam, examToRow, rowToExam, suggestStudyTasks, validateExam } from '../src/domain/exams'
+import { daysUntil, emptyExam, examToRow, parseTopics, rowToExam, suggestStudyTasks, validateExam } from '../src/domain/exams'
+import { advance, alertPlan, clampMinutes, configure, createTimer, focusedSoFar, formatClock, parseTimer, pauseTimer, progress, remainingMs, resetTimer, resumeTimer, sessionBlock, startTimer, stopTimer, timerEntryInput } from '../src/domain/timer'
+import { describeCode, describeDay, outdoorRating, parseForecast, parsePlace, parsePlaces } from '../src/domain/weather'
 import type { ExamRow } from '../src/domain/exams'
 import { occurrenceDays, toRRule } from '../src/domain/recurrence'
 import { rowToEvents } from '../src/domain/entries'
@@ -278,7 +280,24 @@ const sug = suggestStudyTasks(ex, tNow)
 check('Lernplan: 5 Vorschläge zwischen morgen und Vortag', sug.length === 5 && sug[0].dueDate >= '2026-10-14' && sug[4].dueDate === '2026-10-19' && sug.every((x, i) => i === 0 || x.dueDate >= sug[i - 1].dueDate))
 check('Lernplan: kein Vorschlag am Prüfungstag', suggestStudyTasks(ex, new Date(2026, 9, 20, 7)).length === 0)
 const sugShort = suggestStudyTasks(ex, new Date(2026, 9, 19, 9))
-check('Lernplan: bei 1 Tag alles heute', sugShort.length === 5 && sugShort.every((x) => x.dueDate === '2026-10-19'))
+check('Lernplan: bei 1 Tag nur Durchgehen und Wiederholung, beides heute', sugShort.length === 2 && sugShort.every((x) => x.dueDate === '2026-10-19') && sugShort[1].phase === 'review')
+check('Lernplan: Themen werden erkannt (Zeilen, Komma, Aufzählung, ohne Doppelte)', parseTopics('- Matrizen\n2) Eigenwerte, matrizen; Basis').join('|') === 'Matrizen|Eigenwerte|Basis')
+{
+  const exT = { ...ex, topics: 'Wahrscheinlichkeit\nVerteilungen\nHypothesentests', prepStatus: 'not_started' as const, priority: 'medium' as const }
+  const far = suggestStudyTasks(exT, new Date(2026, 9, 6, 9))
+  check('Lernplan: je Thema ein Erarbeiten-Schritt, dann Zusammenfassung, Üben, alte Prüfung, Wiederholung', far.filter((x) => x.phase === 'learn').length === 3 && far.some((x) => x.title.includes('Verteilungen erarbeiten')) && far.map((x) => x.phase).join().endsWith('summary,practice,mock,practice,review'), far.map((x) => x.phase).join())
+  check('Lernplan: Daten steigen, letzte Wiederholung am Vortag, höchstens 2 pro Tag', far.every((x, i) => i === 0 || x.dueDate >= far[i - 1].dueDate) && far[far.length - 1].dueDate === '2026-10-19' && [...new Set(far.map((x) => x.dueDate))].every((d) => far.filter((x) => x.dueDate === d).length <= 2))
+  const part = suggestStudyTasks({ ...exT, prepStatus: 'in_progress' }, new Date(2026, 9, 6, 9))
+  check('Lernplan: «In Vorbereitung» heisst wiederholen statt erarbeiten', part.some((x) => x.title.includes('wiederholen')) && !part.some((x) => x.title.includes('erarbeiten')))
+  const ready = suggestStudyTasks({ ...exT, prepStatus: 'ready' }, new Date(2026, 9, 6, 9))
+  check('Lernplan: «Vorbereitet» ergibt nur die letzte Wiederholung', ready.length === 1 && ready[0].phase === 'review')
+  const dupe = suggestStudyTasks(exT, new Date(2026, 9, 6, 9), [{ title: far[0].title, dueDate: far[0].dueDate, status: 'open' }])
+  check('Lernplan: vorhandene Aufgabe wird nicht doppelt vorgeschlagen', dupe.length === far.length - 1 && !dupe.some((x) => x.title === far[0].title))
+  const many = suggestStudyTasks({ ...exT, topics: Array.from({ length: 10 }, (_, i) => `Thema ${i + 1}`).join('\n') }, new Date(2026, 9, 14, 9))
+  check('Lernplan: viele Themen bei wenig Zeit werden gebündelt', many.filter((x) => x.phase === 'learn').length <= 3 && many.some((x) => x.title.includes('Thema 1,')), many.map((x) => x.title).join(' / '))
+  const busyDay = suggestStudyTasks(exT, new Date(2026, 9, 6, 9), [{ title: 'A', dueDate: '2026-10-13', status: 'open' }, { title: 'B', dueDate: '2026-10-13', status: 'open' }])
+  check('Lernplan: Tage mit schon 2 Lernaufgaben werden übersprungen', !busyDay.some((x) => x.dueDate === '2026-10-13' && x.phase !== 'review'))
+}
 
 // Wiederholungen
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -415,7 +434,7 @@ check('Kategorie: Farbvorschlag ist noch frei', suggestColor(L) !== 'teal')
   check('KI-Vorschläge: Müll statt Liste ergibt nichts', parseProposals('x', ctx, tasksAi, evAi, now).proposals.length === 0)
   check('KI-Vorschläge: höchstens 20 werden angesehen', parseProposals(Array.from({ length: 30 }, (_, i) => ({ kind: 'add_task', title: `T${i}`, reason: '' })), ctx, tasksAi, evAi, now).proposals.length === 20)
   const qp = quickPrompts(examsAi, tasksAi, now)
-  check('KI-Startfragen: nennen Fach und überfällige Aufgaben', qp.some((q) => q.includes('Statistik')) && qp.some((q) => q.includes('überfällig')) && qp.length <= 5)
+  check('KI-Startfragen: nennen Fach, überfällige Aufgaben und Wetter', qp.some((q) => q.includes('Statistik')) && qp.some((q) => q.includes('überfällig')) && qp.some((q) => q.includes('Wetter')) && qp.length <= 5, qp.join('|'))
 }
 
 // KI-Antworten: Markdown darstellen
@@ -429,6 +448,85 @@ check('Kategorie: Farbvorschlag ist noch frei', suggestColor(L) !== 'teal')
   check('Markdown: offenes ** wird nicht angezeigt', !JSON.stringify(md[4]).includes('**'))
   check('Markdown: Code und HTML bleiben Text', parseInline('`x` <b>y</b>').some((i) => i.code) && parseInline('<b>y</b>').map((i) => i.text).join('') === '<b>y</b>')
   check('Markdown: leerer Text ergibt nichts', parseMarkdown('  \n').length === 0)
+}
+
+// Wetter
+{
+  const raw = { daily: { time: ['2026-10-14', '2026-10-15', 'kaputt', '2026-10-17'], weather_code: [3, 63, 0, 0], temperature_2m_max: [13.2, 10, 15, 18], temperature_2m_min: [6, 7, 5, 4], precipitation_sum: [0, 8.4, 0, 0], precipitation_probability_max: [10, 90, 0, null], wind_speed_10m_max: [12, 38, 5, 8] } }
+  const days = parseForecast(raw)
+  check('Wetter: ungültige Tage werden weggelassen', days.length === 3 && days[2].date === '2026-10-17' && days[2].precipProb === null)
+  check('Wetter: Müll ergibt keine Tage', parseForecast(null).length === 0 && parseForecast({ daily: { time: 'x' } }).length === 0)
+  check('Wetter: draussen gut / schlecht / mittel', outdoorRating(days[0]) === 'gut' && outdoorRating(days[1]) === 'schlecht' && outdoorRating({ ...days[0], precipProb: 40 }) === 'mittel')
+  check('Wetter: Gewitter, Hitze und Sturm sind schlecht', outdoorRating({ ...days[0], code: 95 }) === 'schlecht' && outdoorRating({ ...days[0], tMax: 35 }) === 'schlecht' && outdoorRating({ ...days[0], windMax: 50 }) === 'schlecht')
+  check('Wetter: Beschreibung nennt Himmel, Temperatur, Regen und Wind', describeDay(days[1]) === 'Regen, 7 bis 10 °C, Regen 90 % (8.4 mm), Wind bis 38 km/h', describeDay(days[1]))
+  check('Wetter: Code-Namen', describeCode(0) === 'klar' && describeCode(81) === 'Regenschauer' && describeCode(1234) === 'wechselhaft')
+  check('Wetter: Ort prüfen', parsePlace({ name: 'Bern', lat: 46.9, lon: 7.4 })?.name === 'Bern' && parsePlace({ name: 'X', lat: 200, lon: 0 }) === null && parsePlace('x') === null)
+  const pl = parsePlaces({ results: [{ name: 'Bern', admin1: 'Bern', country: 'Schweiz', latitude: 46.95, longitude: 7.45 }, { name: 'Bern', admin1: 'Kanton Freiburg', country: 'Schweiz', latitude: 46.8, longitude: 7.1 }, { name: 'Kaputt' }] })
+  check('Wetter: Ortssuche liefert gültige Treffer mit Region', pl.length === 2 && pl[0].name === 'Bern, Schweiz' && pl[1].name === 'Bern, Kanton Freiburg, Schweiz', pl.map((x) => x.name).join('|'))
+  const ctxW = buildAiContext({ events: [], tasks: [], exams: [], now: new Date(2026, 9, 14, 8), timeZone: 'Europe/Zurich', weather: { days, placeSet: true } })
+  check('KI-Kontext: Wetterzeile beim Tag, Ortsname nie dabei', ctxW.text.includes('Mi 14.10.') && ctxW.text.includes('Wetter: bedeckt, 6 bis 13 °C') && ctxW.text.includes('draussen: gut') && ctxW.text.includes('draussen: schlecht') && !ctxW.text.includes('Bern'))
+  const ctxNone = buildAiContext({ events: [], tasks: [], exams: [], now: new Date(2026, 9, 14, 8), timeZone: 'Europe/Zurich', weather: { days: null, placeSet: false } })
+  const ctxDown = buildAiContext({ events: [], tasks: [], exams: [], now: new Date(2026, 9, 14, 8), timeZone: 'Europe/Zurich', weather: { days: null, placeSet: true } })
+  check('KI-Kontext: sagt, wenn kein Ort eingestellt oder das Wetter nicht verfügbar ist', ctxNone.text.includes('kein Ort eingestellt') && ctxDown.text.includes('gerade nicht verfügbar'))
+  check('KI-Kontext: Tage ab dem 8. sind als unsicher markiert', buildAiContext({ events: [], tasks: [], exams: [], now: new Date(2026, 9, 14, 8), timeZone: 'Europe/Zurich', weather: { days: Array.from({ length: 10 }, (_, i) => ({ ...days[0], date: `2026-10-${14 + i}` })), placeSet: true } }).text.includes('(unsicher)'))
+}
+
+// Timer
+{
+  const t0 = 1_000_000_000_000
+  const MIN = 60000
+  let s = configure(createTimer(), { focusMin: 25 })
+  check('Timer: Start setzt das Ende auf jetzt + Dauer', startTimer(s, t0).endAt === t0 + 25 * MIN && startTimer(s, t0).status === 'running')
+  s = startTimer(s, t0)
+  check('Timer: Rest und Fortschritt', remainingMs(s, t0 + 5 * MIN) === 20 * MIN && Math.abs(progress(s, t0 + 5 * MIN) - 0.2) < 1e-9)
+  const p = pauseTimer(s, t0 + 10 * MIN)
+  check('Timer: Pause friert den Rest ein (auch Stunden später)', p.status === 'paused' && remainingMs(p, t0 + 99 * MIN) === 15 * MIN)
+  const r = resumeTimer(p, t0 + 30 * MIN)
+  check('Timer: Weiter rechnet ab jetzt mit dem Rest', r.status === 'running' && r.endAt === t0 + 45 * MIN)
+  check('Timer: start auf pausiertem Timer macht weiter statt neu zu beginnen', startTimer(p, t0 + 30 * MIN).endAt === t0 + 45 * MIN)
+  check('Timer: vor dem Ende passiert nichts', advance(s, t0 + 24 * MIN).event === null && advance(s, t0 + 24 * MIN).state === s)
+  const end = advance(s, t0 + 25 * MIN)
+  check('Timer: Einzel-Timer endet mit «finished» und merkt sich die Fokuszeit', end.event === 'finished' && end.state.status === 'done' && end.state.focusedMs === 25 * MIN && remainingMs(end.state, t0 + 99 * MIN) === 0)
+  const pomo = startTimer(configure(createTimer(), { mode: 'pomodoro', focusMin: 25, breakMin: 5 }), t0)
+  const b = advance(pomo, t0 + 25 * MIN)
+  check('Timer: Pomodoro wechselt nach dem Fokus in die Pause', b.event === 'focus_done' && b.state.phase === 'break' && b.state.durationMs === 5 * MIN && b.state.endAt === t0 + 30 * MIN && b.state.rounds === 1)
+  const f = advance(b.state, t0 + 30 * MIN)
+  check('Timer: nach der Pause beginnt der nächste Fokusblock', f.event === 'break_done' && f.state.phase === 'focus' && f.state.endAt === t0 + 55 * MIN)
+  const late = advance(pomo, t0 + 10 * 60 * MIN)
+  check('Timer: war die App lange zu, beginnt die Pause ab jetzt (kein Aufholen)', late.state.endAt === t0 + 10 * 60 * MIN + 5 * MIN && late.state.rounds === 1)
+  let cyc = pomo
+  let at = t0
+  for (let i = 0; i < 4; i++) {
+    at = cyc.endAt!
+    cyc = advance(cyc, at).state
+    if (i < 3) {
+      at = cyc.endAt!
+      cyc = advance(cyc, at).state
+    }
+  }
+  check('Timer: die 4. Pause ist dreimal so lang', cyc.phase === 'break' && cyc.durationMs === 15 * MIN && cyc.rounds === 4, `${cyc.phase} ${cyc.durationMs / MIN} ${cyc.rounds}`)
+  let many = pomo
+  for (let i = 0; i < 40 && many.status === 'running'; i++) many = advance(many, many.endAt!).state
+  check('Timer: Pomodoro hört nach 8 Blöcken von selbst auf', many.status === 'done' && many.rounds === 8)
+  check('Timer: Fokuszeit bisher zählt den angefangenen Block mit', focusedSoFar(s, t0 + 7 * MIN) === 7 * MIN && focusedSoFar(b.state, t0 + 27 * MIN) === 25 * MIN)
+  check('Timer: Lernzeit wird erst ab einer vollen Minute angeboten', sessionBlock(s, t0 + 30000) === null && sessionBlock(s, t0 + 7 * MIN + 59000)?.minutes === 7 && sessionBlock(s, t0 + 7 * MIN)?.start.getTime() === t0)
+  const plan = alertPlan(pomo, t0)
+  check('Timer: Mitteilungsplan für Pomodoro: Pause, Weiter, Pause …', plan.length === 6 && plan[0].at === t0 + 25 * MIN && plan[0].title === 'Pause' && plan[1].title === 'Weiter' && plan[1].at === t0 + 30 * MIN)
+  const planSingle = alertPlan(s, t0)
+  check('Timer: Einzel-Timer hat genau ein Signal, Pause keines', planSingle.length === 1 && planSingle[0].title === 'Zeit ist um' && alertPlan(p, t0).length === 0)
+  check('Timer: Uhr formatieren (aufrunden, Stunden)', formatClock(25 * MIN) === '25:00' && formatClock(200) === '0:01' && formatClock(0) === '0:00' && formatClock(65 * MIN + 5000) === '1:05:05' && formatClock(-5) === '0:00')
+  check('Timer: Minuten begrenzen', clampMinutes(0) === 1 && clampMinutes(999) === 240 && clampMinutes(12.4) === 12 && clampMinutes(NaN) === 25)
+  check('Timer: Einstellungen ändern sich nur im Leerlauf', configure(s, { focusMin: 50 }) === s && configure(createTimer(), { focusMin: 50 }).focusMin === 50 && configure(end.state, { focusMin: 10 }).status === 'idle')
+  check('Timer: Zurücksetzen behält Zeit und Modus', resetTimer(pomo).status === 'idle' && resetTimer(pomo).mode === 'pomodoro' && resetTimer(pomo).focusMin === 25)
+  const stopped = stopTimer(s, t0 + 12 * MIN + 30000)
+  check('Timer: vorzeitig beenden behält die Fokuszeit', stopped.status === 'done' && sessionBlock(stopped, t0 + 99 * MIN)?.minutes === 12)
+  check('Timer: unter einer Minute beenden ergibt Leerlauf', stopTimer(s, t0 + 20000).status === 'idle')
+  const inp = timerEntryInput({ start: new Date(2026, 9, 14, 9, 30), minutes: 50 }, '  Statistik  ', 'task-1')
+  check('Timer: Lernzeit wird zum gültigen Termin (Studium, Aufgabe verknüpft)', inp.title === 'Statistik' && inp.date === '2026-10-14' && inp.startTime === '09:30' && inp.endTime === '10:20' && inp.category === 'study' && inp.taskId === 'task-1' && validateEntry(inp) === null)
+  check('Timer: Lernzeit über Mitternacht endet um 23:59, ohne Titel «Fokuszeit»', timerEntryInput({ start: new Date(2026, 9, 14, 23, 40), minutes: 50 }, '', null).endTime === '23:59' && timerEntryInput({ start: new Date(2026, 9, 14, 9), minutes: 5 }, '', null).title === 'Fokuszeit')
+  const back = parseTimer(JSON.parse(JSON.stringify(pomo)))
+  check('Timer: Speichern und Laden gibt denselben Zustand', back?.endAt === pomo.endAt && back?.mode === 'pomodoro' && back?.status === 'running')
+  check('Timer: kaputte gespeicherte Daten ergeben nichts oder Leerlauf', parseTimer('x') === null && parseTimer({ status: 'bogus' }) === null && parseTimer({ status: 'running', durationMs: 'a' })?.status === 'idle' && parseTimer({ status: 'running', durationMs: 1000, endAt: null })?.status === 'idle')
 }
 
 // Anmeldung per E-Mail, Konto löschen, KI-Einwilligung

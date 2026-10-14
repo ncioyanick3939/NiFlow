@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { askAssistant } from '../../data/assistant'
 import type { AssistantTurn } from '../../data/assistant'
 import { buildAiContext, describeProposal, parseProposals } from '../../domain/aiPlan'
-import type { Proposal } from '../../domain/aiPlan'
+import type { AiWeather, Proposal } from '../../domain/aiPlan'
 import type { Exam } from '../../domain/exams'
 import type { Task } from '../../domain/tasks'
 import type { CalendarEvent } from '../../domain/types'
@@ -28,6 +28,7 @@ interface Data {
   tasks: Task[]
   exams: Exam[]
   now: Date
+  weather: AiWeather
 }
 
 const STATUS_WORD: Record<ProposalStatus, string> = { pending: 'offen', applied: 'übernommen', dismissed: 'abgelehnt' }
