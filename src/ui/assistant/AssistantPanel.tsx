@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatDayMonth, formatWeekdayShort } from '../../domain/dateUtils'
 import { parseDateInput } from '../../domain/entries'
+import { describeSummary, summarizePlan } from '../../domain/aiPlan'
 import type { Proposal } from '../../domain/aiPlan'
 import { categoryIcon } from '../icons'
 import Icon from '../icons'
@@ -32,6 +33,9 @@ const dayText = (iso: string): string => {
 }
 
 function describe(p: Proposal): { icon: Parameters<typeof Icon>[0]['name']; title: string; when: string; tag: string } {
+  if (p.kind === 'exam') {
+    return { icon: 'exam', title: p.input.title, when: `${dayText(p.input.date)} · ${p.input.startTime}${p.input.endTime ? '–' + p.input.endTime : ''}${p.input.subject ? ' · ' + p.input.subject : ''}`, tag: 'Prüfung' }
+  }
   if (p.kind === 'event') {
     return { icon: categoryIcon(p.input.category), title: p.input.title, when: `${dayText(p.input.date)} · ${p.input.startTime}–${p.input.endTime}`, tag: 'Termin' }
   }
@@ -53,6 +57,8 @@ function Bubble({ m, onToggle, onApply, onDismiss }: { m: ChatMsg; onToggle: (i:
   const items = m.items ?? []
   const pending = items.filter((i) => i.status === 'pending')
   const chosen = pending.filter((i) => i.selected)
+  const isPlan = pending.some((i) => i.proposal.kind === 'exam' || i.proposal.kind === 'event')
+  const summary = describeSummary(summarizePlan(chosen.map((i) => i.proposal)))
 
   if (m.role === 'user') {
     return (
@@ -67,11 +73,29 @@ function Bubble({ m, onToggle, onApply, onDismiss }: { m: ChatMsg; onToggle: (i:
       <div className={`max-w-[94%] rounded-3xl rounded-bl-lg px-4 py-3 text-[15px] leading-relaxed ${m.error ? 'bg-danger/10 text-danger' : 'bg-surface2'}`}>
         {m.error ? <p className="whitespace-pre-wrap">{m.text}</p> : <RichText text={m.text} />}
       </div>
+      {m.approach && m.approach.length > 0 && (
+        <section aria-label="Vorgehen" className="rounded-2xl border border-line bg-surface p-3.5">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-muted">Vorgehen</p>
+          <ol className="mt-2 space-y-2">
+            {m.approach.map((step, i) => (
+              <li key={i} className="flex items-start gap-2.5 text-sm leading-snug">
+                <span className="tnum mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/[0.14] text-[11px] font-extrabold text-accent" aria-hidden="true">
+                  {i + 1}
+                </span>
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+      {pending.length > 0 && isPlan && (
+        <p className="text-[11px] font-bold uppercase tracking-wide text-muted">Plan zur Bestätigung · tippe auf Einträge, die nicht rein sollen</p>
+      )}
       {items.length > 0 && (
         <ul className="space-y-2">
           {items.map((it, i) => {
             const d = describe(it.proposal)
-            const warning = it.proposal.kind === 'event' ? it.proposal.warning : undefined
+            const warning = it.proposal.kind === 'event' || it.proposal.kind === 'exam' ? it.proposal.warning : undefined
             const done = it.status !== 'pending'
             return (
               <li key={i}>
@@ -113,6 +137,7 @@ function Bubble({ m, onToggle, onApply, onDismiss }: { m: ChatMsg; onToggle: (i:
       {(m.dropped ?? 0) > 0 && <p className="text-xs text-muted">{m.dropped} ungültige(r) Vorschlag/Vorschläge wurde(n) ausgeblendet.</p>}
       {pending.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 pt-1">
+          {isPlan && summary && <p className="w-full text-sm font-semibold">{summary}</p>}
           <button
             type="button"
             disabled={chosen.length === 0 || working}
@@ -129,7 +154,15 @@ function Bubble({ m, onToggle, onApply, onDismiss }: { m: ChatMsg; onToggle: (i:
             }}
             className="btn-primary min-h-10"
           >
-            {working ? 'Wird gespeichert …' : chosen.length === pending.length ? `Alle übernehmen (${chosen.length})` : `Auswahl übernehmen (${chosen.length})`}
+            {working
+              ? 'Wird gespeichert …'
+              : isPlan
+                ? chosen.length === pending.length
+                  ? 'Plan bestätigen und eintragen'
+                  : `Auswahl bestätigen (${chosen.length})`
+                : chosen.length === pending.length
+                  ? `Alle übernehmen (${chosen.length})`
+                  : `Auswahl übernehmen (${chosen.length})`}
           </button>
           <button type="button" disabled={working} onClick={onDismiss} className="btn-ghost min-h-10 text-muted">
             Verwerfen
@@ -181,7 +214,7 @@ export default function AssistantPanel({ chat, suggestions, consent, onConsent, 
               </span>
               <div>
                 <p className="text-[17px] font-extrabold leading-tight">Dein Planungs-Assistent</p>
-                <p className="mt-1 text-sm text-muted">Frag nach einem Lernplan, einem Tagesplan oder danach, was du verschieben sollst. Du entscheidest, was davon in deinen Plan kommt.</p>
+                <p className="mt-1 text-sm text-muted">Sag mir, welche Prüfung ansteht: Ich erkläre das Vorgehen und mache einen Plan mit Lernblöcken, den du bestätigst. Danach landen die Termine in deinem Kalender. Auch Tagespläne und Verschieben gehen.</p>
                 <p className="mt-2 text-xs text-muted">Die KI sieht Titel, Zeiten und Prüfungsthemen der nächsten 14 Tage, keine Notizen. Nichts wird ohne dein OK geändert.</p>
               </div>
             </div>

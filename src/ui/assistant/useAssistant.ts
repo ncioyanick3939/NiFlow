@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { askAssistant } from '../../data/assistant'
 import type { AssistantTurn } from '../../data/assistant'
-import { buildAiContext, describeProposal, parseProposals } from '../../domain/aiPlan'
+import { buildAiContext, describeProposal, parseApproach, parseProposals } from '../../domain/aiPlan'
 import type { AiWeather, Proposal } from '../../domain/aiPlan'
 import type { Exam } from '../../domain/exams'
 import type { Task } from '../../domain/tasks'
@@ -19,6 +19,8 @@ export interface ChatMsg {
   text: string
   error?: boolean
   items?: ProposalItem[]
+  /** «Vorgehen» der KI in kurzen Schritten */
+  approach?: string[]
   /** Anzahl Vorschläge, die die KI gemacht hat, die aber ungültig waren. */
   dropped?: number
 }
@@ -50,8 +52,9 @@ export function useAssistant(data: Data) {
     const history: AssistantTurn[] = msgRef.current
       .filter((m) => !m.error)
       .map((m) => {
+        const steps = m.approach?.length ? `\n[Vorgehen: ${m.approach.join(' / ')}]` : ''
         const items = m.items?.length ? `\n[Vorschläge: ${m.items.map((i) => `${describeProposal(i.proposal)} (${STATUS_WORD[i.status]})`).join('; ')}]` : ''
-        return { role: m.role, content: m.text + items }
+        return { role: m.role, content: m.text + steps + items }
       })
     history.push({ role: 'user', content: clean })
     setMessages((m) => [...m, { id: nextId.current++, role: 'user', text: clean }])
@@ -61,15 +64,17 @@ export function useAssistant(data: Data) {
       const d = latest.current
       const ctx = buildAiContext({ ...d, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })
       const answer = await askAssistant(history.slice(-14), ctx.text, abort.current.signal)
-      const parsed = parseProposals(answer.proposals, ctx, d.tasks, d.events, d.now)
-      const items: ProposalItem[] = parsed.proposals.map((proposal) => ({ proposal, status: 'pending', selected: !(proposal.kind === 'event' && proposal.warning) }))
+      const parsed = parseProposals(answer.proposals, ctx, d.tasks, d.events, d.now, d.exams)
+      const items: ProposalItem[] = parsed.proposals.map((proposal) => ({ proposal, status: 'pending', selected: !((proposal.kind === 'event' || proposal.kind === 'exam') && proposal.warning) }))
+      const approach = parseApproach(answer.approach)
       setMessages((m) => [
         ...m,
         {
           id: nextId.current++,
           role: 'assistant',
-          text: answer.reply || (items.length ? 'Hier sind meine Vorschläge.' : 'Dazu habe ich nichts vorzuschlagen.'),
+          text: answer.reply || (items.length || approach.length ? 'Hier sind meine Vorschläge.' : 'Dazu habe ich nichts vorzuschlagen.'),
           items,
+          approach,
           dropped: parsed.dropped,
         },
       ])

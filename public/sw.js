@@ -3,7 +3,7 @@
 // - Dateien mit Hash im Namen (JS/CSS) und Icons: aus dem Speicher, sonst Netz
 // - Daten (Supabase, Google, Intervals) werden NIE zwischengespeichert
 // - Erinnerungen per Web Push: auch wenn NiFlow geschlossen ist
-const CACHE = 'niflow-v8'
+const CACHE = 'niflow-v9'
 
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (event) => {

@@ -4,7 +4,7 @@ import { createEntry, deleteEntry, skipOccurrence, updateEntry } from '../data/e
 import { callPush } from '../data/googlePush'
 import type { PushStatus } from '../data/googlePush'
 import { createExam, createTask, createTasks, deleteExam, deleteTask, updateExam, updateTask } from '../data/planner'
-import { quickPrompts } from '../domain/aiPlan'
+import { describeSummary, quickPrompts, summarizePlan } from '../domain/aiPlan'
 import type { Proposal } from '../domain/aiPlan'
 import { addDays, formatTime, startOfDay } from '../domain/dateUtils'
 import { emptyInput, eventToInput, toDateInput, toTimeInput } from '../domain/entries'
@@ -341,24 +341,43 @@ export default function App() {
 
   /** Vorschläge des KI-Planers anlegen. Jeder Vorschlag einzeln, damit ein Fehler die übrigen nicht verhindert. */
   const applyProposals = async (list: Proposal[]): Promise<{ ok: boolean[]; error?: string }> => {
-    const ok: boolean[] = []
+    const ok: boolean[] = list.map(() => false)
     const newEntryIds: string[] = []
+    const examIds = new Map<string, string>()
     let firstError = ''
-    for (const p of list) {
+    const fail = (err: unknown) => {
+      firstError ||= err instanceof Error ? err.message : 'Speichern fehlgeschlagen.'
+    }
+    // Neue Prüfungen zuerst: Lernblöcke und Aufgaben des Plans hängen sich an ihre echte ID.
+    for (const [i, p] of list.entries()) {
+      if (p.kind !== 'exam') continue
       try {
-        if (p.kind === 'event') newEntryIds.push(await createEntry(p.input))
-        else if (p.kind === 'task') await createTask(p.input)
-        else await updateTask(p.taskId, p.input, p.task.status)
-        ok.push(true)
+        examIds.set(p.key, await createExam(p.input))
+        ok[i] = true
       } catch (err) {
-        ok.push(false)
-        firstError ||= err instanceof Error ? err.message : 'Speichern fehlgeschlagen.'
+        fail(err)
+      }
+    }
+    for (const [i, p] of list.entries()) {
+      if (p.kind === 'exam') continue
+      try {
+        const examId = p.kind !== 'move' && p.examKey ? examIds.get(p.examKey) : undefined
+        if (p.kind === 'event') newEntryIds.push(await createEntry(examId ? { ...p.input, examId } : p.input))
+        else if (p.kind === 'task') await createTask(examId ? { ...p.input, examId } : p.input)
+        else await updateTask(p.taskId, p.input, p.task.status)
+        ok[i] = true
+      } catch (err) {
+        fail(err)
       }
     }
     for (const id of newEntryIds) await pushToGoogle({ action: 'upsert', entry_id: id })
     await Promise.all([reload(['own']), planner.reload()])
     const failed = ok.filter((x) => !x).length
-    if (failed === 0) showToast(ok.length === 1 ? '1 Vorschlag übernommen' : `${ok.length} Vorschläge übernommen`)
+    if (failed === 0) {
+      const sum = summarizePlan(list)
+      const text = describeSummary(sum)
+      showToast(sum.exams || sum.events > 1 ? `Plan übernommen: ${text}${push?.enabled && sum.events ? ' · Google wird nachgeführt' : ''}` : ok.length === 1 ? '1 Vorschlag übernommen' : `${ok.length} Vorschläge übernommen`)
+    }
     return { ok, error: failed ? `${failed} von ${ok.length} konnten nicht gespeichert werden: ${firstError}` : undefined }
   }
 
@@ -704,6 +723,21 @@ export default function App() {
                 </span>
               </button>
             ))}
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={() => setSheet({ kind: 'assistant', prompt: 'Ich möchte eine neue Prüfung einplanen. Frag mich nach Fach, Datum, Uhrzeit und Themen, erkläre mir dann das Vorgehen und mach mir einen Plan mit Lernblöcken.' })}
+                className="cat-study col-span-2 flex items-center gap-3 rounded-3xl bg-cat/[0.13] p-4 text-left transition duration-150 hover:bg-cat/[0.2] active:scale-[0.98]"
+              >
+                <span className="dot-cat h-11 w-11 shrink-0">
+                  <Icon name="sparkle" size={20} />
+                </span>
+                <span>
+                  <span className="block text-[15px] font-extrabold">Prüfung mit Assistent</span>
+                  <span className="block text-xs font-medium text-muted">Vorgehen erklären, Plan machen, in den Kalender eintragen</span>
+                </span>
+              </button>
+            )}
           </div>
         )}
         {sheet?.kind === 'assistant' && (

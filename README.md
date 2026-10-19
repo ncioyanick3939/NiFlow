@@ -44,6 +44,14 @@ werden beim nächsten Abgleich überschrieben; von Strava importierte Aktivität
   Je weniger Tage, desto weniger Schritte; höchstens zwei Lernaufgaben pro Tag; vorhandene Titel werden nicht doppelt vorgeschlagen.
   «Mit Assistent einplanen» stellt dem Assistenten die Frage, die Lernblöcke in freie Zeiten zu legen (mit Training und Wetter).
 
+### Prüfung mit dem Assistenten einplanen
+- Der Assistent kann eine neue Prüfung vorschlagen (`add_exam`: Fach, Datum, Uhrzeit, Ort, Themen). Ohne Datum oder Uhrzeit fragt er nach und rät nicht.
+- Er erklärt das Vorgehen in 3 bis 6 Schritten (Feld `approach`) und schlägt dazu Lernblöcke und Aufgaben vor. Sie hängen sich mit `exam: "n1"` an die neue Prüfung.
+- Alles ist ein Vorschlag. Erst «Plan bestätigen und eintragen» speichert: zuerst die Prüfung, dann Termine (mit Google-Abgleich, falls aktiv) und Aufgaben. Einzelne Einträge lassen sich vorher abwählen.
+- Geprüft wird in der App: nichts in der Vergangenheit, nichts nach dem Beginn der Prüfung, Kollisionen und doppelte Prüfungen werden markiert und sind vorab abgewählt.
+- Die KI sieht nur 14 Tage Kalender. Liegt die Prüfung weiter weg, plant sie die nächsten 14 Tage und beschreibt den Rest im Vorgehen.
+- Server: `plan-assistant` neu hochladen (`npx supabase functions deploy plan-assistant --no-verify-jwt --use-api`).
+
 ### Timer
 
 Fokus-Timer (Übersicht → Timer-Symbol, «Mehr» → Timer, Seitenleiste am Computer): einmaliger Countdown (1 bis 240 Minuten) oder Pomodoro (Fokus und Pause,

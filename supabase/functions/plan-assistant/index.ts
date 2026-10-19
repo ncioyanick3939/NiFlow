@@ -9,7 +9,7 @@
 // Optionale Secrets: AI_MODEL (Standard claude-sonnet-5-5), AI_DAILY_LIMIT (Standard 40 Anfragen pro 24 h).
 //
 // POST { messages: [{ role: 'user' | 'assistant', content }], context: string, tz }
-//   -> { reply: string, proposals: object[] }
+//   -> { reply: string, proposals: object[], approach: string[] }
 // Fehler: { error: 'unauthorized' | 'not_configured' | 'rate_limited' | 'bad_request' | 'ai_busy' | 'ai_key_invalid' | 'ai_credit' | 'ai_model' | 'ai_error' }
 
 const cors = {
@@ -33,7 +33,11 @@ Regeln:
 - Sport draussen (Velo, Laufen, Koppeltraining, lange Ausfahrt) legst du wenn möglich auf Tage mit "draussen: gut". Bei "schlecht" schlägst du einen trockeneren Tag oder eine Indoor-Variante vor (Rolle, Laufband, Schwimmhalle, Kraft). Lernblöcke passen gut auf Regentage. Nenne das Wetter im "reason", wenn es den Vorschlag bestimmt.
 - Lernplan: Wird ein Lernplan verlangt, arbeite ihn in Phasen aus: Stoff erarbeiten (die Themen der Prüfung auf die ersten Tage verteilen, ein Thema pro Block), Zusammenfassung, Übungsaufgaben, alte Prüfung unter Zeitdruck, letzte Wiederholung am Vortag. Je näher die Prüfung, desto mehr Üben und Wiederholen. Am Vortag und Prüfungstag kein intensives Training. Bereits vorhandene offene Lernaufgaben der Prüfung nicht doppelt anlegen: lege sie mit "move_task" auf einen Tag oder plane dafür einen Termin ein. Sag in der Antwort kurz, wie viele Stunden insgesamt eingeplant sind und was bewusst fehlt.
 - Lernblöcke und andere feste Zeiten sind "add_event" (mit Prüfungs-ID in "exam", wenn sie zu einer Prüfung gehören). Dinge ohne feste Uhrzeit sind "add_task". Eine bestehende Aufgabe auf einen anderen Tag zu legen ist "move_task".
-- Höchstens 10 Vorschläge pro Antwort. Jeder Vorschlag hat in "reason" einen Satz, warum.
+- Neue Prüfung: Nennt die Person eine Prüfung, die noch nicht unter PRÜFUNGEN steht (Fach, Datum, Uhrzeit), schlage sie mit "add_exam" vor (Titel, subject, date, start, optional end, location, format, topics, priority). Fehlen Datum oder Uhrzeit, frage in "reply" kurz danach und mach noch keinen Vorschlag. Rate nie ein Datum. Themen nur eintragen, wenn die Person sie nennt.
+- Plan zu einer neuen Prüfung: Schlage zuerst die Prüfung mit "add_exam" vor und verweise in den Lernblöcken und Aufgaben dieser Antwort mit "exam": "n1" darauf (die erste add_exam der Antwort ist n1, die zweite n2). Für bereits vorhandene Prüfungen gilt weiter die Kurz-ID (e1). Plane nie Termine oder Aufgaben nach der Prüfung.
+- Vorgehen: Fragt die Person nach dem Vorgehen oder will sie einen Plan für eine Prüfung, gib im Feld "approach" 3 bis 6 kurze Schritte (je ein Satz, in zeitlicher Reihenfolge, z. B. "Bis 25.10.: Stoff in Themen aufteilen und erste Themen lernen"). Das Vorgehen ist die Strategie, die Termine stehen separat in den Vorschlägen. Wiederhole die Termine nicht im Vorgehen.
+- Du siehst nur die nächsten 14 Tage im Kalender. Liegt die Prüfung weiter weg, plane nur diese 14 Tage konkret, beschreibe im Vorgehen auch die Zeit danach und sag in "reply", dass die Person später nach der nächsten Etappe fragen kann.
+- Höchstens 16 Vorschläge pro Antwort. Jeder Vorschlag hat in "reason" einen Satz, warum.
 - Wenn die Frage unklar ist oder nichts geändert werden muss, gib keine Vorschläge und antworte nur mit Text. Wenn die Zeit nicht reicht, sag das offen und nenne, was du streichen oder verschieben würdest.
 - Antworte immer über das Werkzeug "antworte".`
 
@@ -44,24 +48,34 @@ const TOOL = {
     type: 'object',
     properties: {
       reply: { type: 'string', description: 'Kurze Antwort an die Person (höchstens etwa 6 Sätze).' },
+      approach: {
+        type: 'array',
+        maxItems: 6,
+        description: 'Vorgehen in 3 bis 6 kurzen Schritten (nur bei Prüfungen und Lernplänen)',
+        items: { type: 'string' },
+      },
       proposals: {
         type: 'array',
-        maxItems: 10,
+        maxItems: 16,
         items: {
           type: 'object',
           properties: {
-            kind: { type: 'string', enum: ['add_event', 'add_task', 'move_task'] },
-            title: { type: 'string', description: 'Titel (add_event, add_task)' },
-            date: { type: 'string', description: 'yyyy-MM-dd (add_event)' },
-            start: { type: 'string', description: 'HH:MM (add_event)' },
-            end: { type: 'string', description: 'HH:MM (add_event)' },
+            kind: { type: 'string', enum: ['add_exam', 'add_event', 'add_task', 'move_task'] },
+            title: { type: 'string', description: 'Titel (add_exam, add_event, add_task)' },
+            date: { type: 'string', description: 'yyyy-MM-dd (add_exam, add_event)' },
+            start: { type: 'string', description: 'HH:MM (add_exam, add_event)' },
+            end: { type: 'string', description: 'HH:MM (add_event Pflicht, add_exam optional)' },
+            subject: { type: 'string', description: 'Fach (add_exam)' },
+            location: { type: 'string', description: 'Ort, nur wenn genannt (add_exam)' },
+            format: { type: 'string', description: 'Form, z. B. schriftlich, mündlich (add_exam)' },
+            topics: { type: 'string', description: 'Prüfungsthemen, nur wenn genannt, durch Kommas getrennt (add_exam)' },
             due_date: { type: 'string', description: 'yyyy-MM-dd (add_task optional, move_task Pflicht)' },
             due_time: { type: 'string', description: 'HH:MM, optional' },
             category: { type: 'string', enum: ['training', 'work', 'study', 'private'] },
             priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'] },
             estimate_minutes: { type: 'integer', description: 'Geschätzte Dauer (add_task)' },
             task: { type: 'string', description: 'Kurz-ID der Aufgabe, z. B. t3 (move_task)' },
-            exam: { type: 'string', description: 'Kurz-ID der Prüfung, z. B. e1 (optional)' },
+            exam: { type: 'string', description: 'Kurz-ID einer vorhandenen Prüfung (e1) oder n1/n2 für eine Prüfung, die in dieser Antwort mit add_exam neu vorgeschlagen wird (optional)' },
             reason: { type: 'string', description: 'Ein Satz: warum dieser Vorschlag' },
           },
           required: ['kind', 'reason'],
@@ -212,10 +226,14 @@ Deno.serve(async (req) => {
       // ignorieren
     }
   }
+  const approach = (Array.isArray(input.approach) ? input.approach : typeof input.approach === 'string' ? (() => { try { const p = JSON.parse(input.approach as string); return Array.isArray(p) ? p : [] } catch { return [] } })() : [])
+    .filter((x: unknown): x is string => typeof x === 'string' && x.trim() !== '')
+    .map((x: string) => x.trim().slice(0, 240))
+    .slice(0, 6)
   let reply = typeof input.reply === 'string' ? input.reply.trim() : ''
   if (!reply) reply = (blocks.find((b) => b.type === 'text')?.text ?? '').trim()
-  if (!reply && proposals.length) reply = 'Hier sind meine Vorschläge.'
-  if (!reply && !proposals.length) {
+  if (!reply && (proposals.length || approach.length)) reply = 'Hier sind meine Vorschläge.'
+  if (!reply && !proposals.length && !approach.length) {
     const types = blocks.map((b) => b.type).join(',') || 'keine'
     console.error('anthropic leer', data?.stop_reason, types)
     return json({ error: 'ai_error', detail: `leere Antwort (stop_reason ${data?.stop_reason ?? '?'}, Blöcke: ${types})` }, 502)
@@ -225,5 +243,5 @@ Deno.serve(async (req) => {
     // Erst nach erfolgreicher Antwort zählen. Ein Fehler hier ist nicht kritisch.
     await db('ai_usage', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ user_id: user.id }) }).catch(() => {})
   }
-  return json({ reply, proposals })
+  return json({ reply, proposals, approach })
 })

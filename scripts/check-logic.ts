@@ -31,7 +31,7 @@ import { normalize, recentNotes, search } from '../src/domain/search'
 import { suggestColor, validateLabel } from '../src/domain/labels'
 import { moveBy, rangeFrom, resizeBy, shiftDays } from '../src/domain/move'
 import { mapGoogleEvent } from '../src/sources/googleCalendar'
-import { buildAiContext, findConflict, parseProposals, quickPrompts } from '../src/domain/aiPlan'
+import { buildAiContext, describeSummary, findConflict, parseApproach, parseProposals, quickPrompts, summarizePlan } from '../src/domain/aiPlan'
 import type { Exam } from '../src/domain/exams'
 import { parseInline, parseMarkdown } from '../src/domain/miniMarkdown'
 import { authErrorText, deleteConfirmed, validateCredentials, validateNewPassword } from '../src/domain/authText'
@@ -434,7 +434,39 @@ check('Kategorie: Farbvorschlag ist noch frei', suggestColor(L) !== 'teal')
   check('KI-Vorschläge: Müll statt Liste ergibt nichts', parseProposals('x', ctx, tasksAi, evAi, now).proposals.length === 0)
   check('KI-Vorschläge: höchstens 20 werden angesehen', parseProposals(Array.from({ length: 30 }, (_, i) => ({ kind: 'add_task', title: `T${i}`, reason: '' })), ctx, tasksAi, evAi, now).proposals.length === 20)
   const qp = quickPrompts(examsAi, tasksAi, now)
-  check('KI-Startfragen: nennen Fach, überfällige Aufgaben und Wetter', qp.some((q) => q.includes('Statistik')) && qp.some((q) => q.includes('überfällig')) && qp.some((q) => q.includes('Wetter')) && qp.length <= 5, qp.join('|'))
+  check('KI-Startfragen: nennen Fach, überfällige Aufgaben und Wetter', qp.some((q) => q.includes('Statistik')) && qp.some((q) => q.includes('überfällig')) && qp.some((q) => q.includes('Wetter')) && qp.some((q) => q.includes('Neue Prüfung')) && qp.length <= 6, qp.join('|'))
+
+  // Prüfung einplanen: neue Prüfung, Lernblöcke daran gehängt, Vorgehen, Zusammenfassung
+  const rawPlan = [
+    { kind: 'add_event', title: 'Lernen Recht 1', date: '2026-10-20', start: '14:00', end: '16:00', category: 'study', exam: 'n1', reason: 'frei' },
+    { kind: 'add_exam', title: 'Recht Prüfung', subject: 'Recht', date: '2026-11-05', start: '08:30', end: '10:00', location: 'Raum 4', topics: 'Vertragsrecht, Haftung', reason: 'genannt' },
+    { kind: 'add_event', title: 'Lernen Recht 2', date: '2026-10-28', start: '14:00', end: '15:30', category: 'study', exam: 'n1', reason: 'frei' },
+    { kind: 'add_event', title: 'Nach der Prüfung', date: '2026-11-06', start: '14:00', end: '15:30', exam: 'n1', reason: 'x' },
+    { kind: 'add_event', title: 'Am Prüfungstag danach', date: '2026-11-05', start: '12:00', end: '13:00', exam: 'n1', reason: 'x' },
+    { kind: 'add_task', title: 'Aufgabe nach Prüfung', due_date: '2026-11-07', exam: 'n1', reason: 'x' },
+    { kind: 'add_task', title: 'Zusammenfassung Recht', due_date: '2026-11-02', exam: 'n1', estimate_minutes: 60, reason: 'x' },
+    { kind: 'add_exam', title: 'Ohne Uhrzeit', date: '2026-11-09', reason: 'x' },
+    { kind: 'add_exam', title: 'Vergangen', date: '2026-10-01', start: '08:00', reason: 'x' },
+    { kind: 'add_event', title: 'Zu unbekannter n9', date: '2026-10-21', start: '14:00', end: '15:00', exam: 'n9', reason: 'x' },
+    { kind: 'add_exam', title: 'Statistik Prüfung', subject: 'Statistik', date: '2026-11-02', start: '08:00', reason: 'doppelt?' },
+  ]
+  const pp = parseProposals(rawPlan, ctx, tasksAi, evAi, now, examsAi)
+  const pk = pp.proposals.map((p) => p.kind).join()
+  check('Prüfung einplanen: neue Prüfungen stehen vorn, ungültige fehlen', pk === 'exam,exam,event,event,task,event', pk)
+  const ex0 = pp.proposals[0]
+  check('Prüfung einplanen: Prüfung mit Fach, Zeit, Ort, Themen und Schlüssel n1', ex0.kind === 'exam' && ex0.key === 'n1' && ex0.input.subject === 'Recht' && ex0.input.startTime === '08:30' && ex0.input.endTime === '10:00' && ex0.input.location === 'Raum 4' && ex0.input.topics === 'Vertragsrecht, Haftung' && ex0.input.prepStatus === 'not_started' && !ex0.warning)
+  const exDup = pp.proposals[1]
+  check('Prüfung einplanen: gleiche Prüfung am gleichen Tag wird markiert', exDup.kind === 'exam' && exDup.key === 'n4' && !!exDup.warning, JSON.stringify(exDup))
+  const ln = pp.proposals.filter((p) => p.kind === 'event' || p.kind === 'task')
+  check('Prüfung einplanen: Lernblöcke und Aufgabe hängen an n1', ln.slice(0, 3).every((p) => (p.kind === 'event' || p.kind === 'task') && p.examKey === 'n1'), JSON.stringify(ln.map((p) => (p.kind === 'event' || p.kind === 'task' ? p.examKey : '-'))))
+  check('Prüfung einplanen: nach der Prüfung und unbekannte n9 zählen nicht als Verknüpfung', pp.proposals.filter((p) => p.kind === 'event').every((p) => p.kind === 'event' && !p.input.title.includes('Nach')) && (pp.proposals[5].kind === 'event' && pp.proposals[5].examKey === undefined))
+  check('Prüfung einplanen: verworfen = ohne Uhrzeit, vergangen, 2 Termine und 1 Aufgabe nach der Prüfung', pp.dropped === 5, String(pp.dropped))
+  const afterExisting = parseProposals([{ kind: 'add_event', title: 'Nach Statistik', date: '2026-11-03', start: '10:00', end: '11:00', exam: 'e1', reason: 'x' }, { kind: 'add_event', title: 'Vor Statistik', date: '2026-11-02', start: '06:00', end: '07:00', exam: 'e1', reason: 'x' }], ctx, tasksAi, evAi, now, examsAi)
+  check('Prüfung einplanen: auch bei vorhandener Prüfung nichts nach ihrem Beginn', afterExisting.proposals.length === 1 && afterExisting.dropped === 1)
+  const sum = summarizePlan(pp.proposals)
+  check('Plan-Zusammenfassung zählt Prüfungen, Termine, Stunden, Aufgaben', sum.exams === 2 && sum.events === 3 && sum.tasks === 1 && sum.minutes === 120 + 90 + 60 && describeSummary(sum) === '2 Prüfungen · 3 Termine (4,5 h) · 1 Aufgabe', describeSummary(sum))
+  const ap = parseApproach(['  Erst   Themen sortieren ', '', 5, 'B', 'C', 'D', 'E', 'F', 'G'])
+  check('Vorgehen: Text bereinigt, höchstens 6 Schritte, Nicht-Text entfernt', ap.length === 6 && ap[0] === 'Erst Themen sortieren' && parseApproach('x').length === 0)
 }
 
 // KI-Antworten: Markdown darstellen

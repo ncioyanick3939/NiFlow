@@ -29,6 +29,8 @@ export interface AssistantTurn {
 export interface AssistantAnswer {
   reply: string
   proposals: unknown[]
+  /** «Vorgehen»: ein paar kurze Schritte */
+  approach: unknown[]
 }
 
 export async function askAssistant(messages: AssistantTurn[], context: string, signal?: AbortSignal): Promise<AssistantAnswer> {
@@ -46,12 +48,12 @@ export async function askAssistant(messages: AssistantTurn[], context: string, s
     if ((err as Error)?.name === 'AbortError') throw err
     throw new AssistantError('network', 'Keine Verbindung zum Server.')
   }
-  const body = (await res.json().catch(() => ({}))) as { reply?: unknown; proposals?: unknown; error?: unknown; detail?: unknown }
+  const body = (await res.json().catch(() => ({}))) as { reply?: unknown; proposals?: unknown; approach?: unknown; error?: unknown; detail?: unknown }
   if (!res.ok || body.error) {
     const code = String(body.error ?? res.status)
     if (res.status === 404 && !body.error) throw new AssistantError('missing', 'Die Funktion plan-assistant ist noch nicht auf dem Server hochgeladen.')
     const detail = typeof body.detail === 'string' && body.detail ? ` Technische Meldung: ${body.detail}` : ''
     throw new AssistantError(code, `${MESSAGES[code] ?? `Die KI ist fehlgeschlagen (${code}).`}${detail}`)
   }
-  return { reply: typeof body.reply === 'string' ? body.reply : '', proposals: Array.isArray(body.proposals) ? body.proposals : [] }
+  return { reply: typeof body.reply === 'string' ? body.reply : '', proposals: Array.isArray(body.proposals) ? body.proposals : [], approach: Array.isArray(body.approach) ? body.approach : [] }
 }

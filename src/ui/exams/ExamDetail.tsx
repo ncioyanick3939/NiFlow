@@ -184,7 +184,7 @@ export default function ExamDetail(p: Props) {
                 className="btn-outline min-h-9 text-xs text-accent"
                 onClick={() =>
                   p.onAskAssistant!(
-                    `Arbeite einen Lernplan für «${(x.subject || x.title).slice(0, 60)}» aus (Prüfung am ${toDateInput(x.start)}). Lege die Lernblöcke in meine freien Zeiten, verteile den Stoff${topics.length ? ' (' + topics.slice(0, 8).join(', ') + ')' : ''} über die Tage und beachte Training und Wetter.`,
+                    `Erkläre mir das Vorgehen für «${(x.subject || x.title).slice(0, 60)}» (Prüfung am ${toDateInput(x.start)}) und arbeite einen Lernplan aus. Lege die Lernblöcke in meine freien Zeiten, verteile den Stoff${topics.length ? ' (' + topics.slice(0, 8).join(', ') + ')' : ''} über die Tage und beachte Training und Wetter.`,
                   )
                 }
               >

@@ -9,8 +9,8 @@
 import { addDays, formatTime, startOfDay } from './dateUtils'
 import { emptyInput, parseDateInput, toDateInput, validateEntry } from './entries'
 import type { EntryInput } from './entries'
-import { daysUntil, PREP_LABEL } from './exams'
-import type { Exam } from './exams'
+import { daysUntil, emptyExam, PREP_LABEL, validateExam } from './exams'
+import type { Exam, ExamInput } from './exams'
 import { blocksTime, effectiveEnd, eventsForDay, findFreeSlots } from './schedule'
 import { emptyTask, taskToInput, validateTask } from './tasks'
 import type { Task, TaskInput } from './tasks'
@@ -24,6 +24,7 @@ export const AI_HORIZON_DAYS = 14
 const MAX_TASKS = 60
 const MAX_EVENTS_PER_DAY = 14
 const MAX_PROPOSALS = 20
+const MAX_APPROACH = 6
 const CATEGORIES: Category[] = ['training', 'work', 'study', 'private']
 const PRIORITIES: Priority[] = ['low', 'medium', 'high', 'urgent']
 const WEEKDAY = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
@@ -139,12 +140,21 @@ export interface RawProposal {
   estimate_minutes?: unknown
   task?: unknown
   exam?: unknown
+  subject?: unknown
+  location?: unknown
+  format?: unknown
+  topics?: unknown
   reason?: unknown
 }
 
+/**
+ * - exam: neue Prüfung. `key` (n1, n2, ...) ist ihr Name innerhalb dieser Antwort.
+ * - event/task mit `examKey`: gehört zu einer Prüfung, die im selben Plan neu angelegt wird. Die echte ID gibt es erst nach dem Speichern.
+ */
 export type Proposal =
-  | { kind: 'event'; input: EntryInput; reason: string; warning?: string }
-  | { kind: 'task'; input: TaskInput; reason: string }
+  | { kind: 'exam'; key: string; input: ExamInput; reason: string; warning?: string }
+  | { kind: 'event'; input: EntryInput; reason: string; warning?: string; examKey?: string }
+  | { kind: 'task'; input: TaskInput; reason: string; examKey?: string }
   | { kind: 'move'; taskId: string; task: Task; input: TaskInput; reason: string }
 
 export interface ParsedProposals {
@@ -173,13 +183,34 @@ export function findConflict(events: CalendarEvent[], day: string, start: string
   return null
 }
 
-export function parseProposals(raw: unknown, ctx: AiContext, tasks: Task[], events: CalendarEvent[], now: Date): ParsedProposals {
+export function parseProposals(raw: unknown, ctx: AiContext, tasks: Task[], events: CalendarEvent[], now: Date, exams: Exam[] = []): ParsedProposals {
   const list = Array.isArray(raw) ? (raw.slice(0, MAX_PROPOSALS) as RawProposal[]) : []
   const today = toDateInput(now)
   const byId = new Map(tasks.map((t) => [t.id, t]))
   const proposals: Proposal[] = []
   let dropped = 0
   const seen = new Set<string>()
+  const examById = new Map(exams.map((x) => [x.id, x]))
+
+  // Neue Prüfungen zuerst lesen: Termine und Aufgaben dieser Antwort dürfen sich mit "n1", "n2" darauf beziehen.
+  // Die Nummer zählt alle add_exam der Antwort in Reihenfolge, auch ungültige.
+  const newExams = new Map<string, Extract<Proposal, { kind: 'exam' }>>()
+  let examCount = 0
+  for (const p of list) {
+    if (!p || typeof p !== 'object' || p.kind !== 'add_exam') continue
+    const key = `n${++examCount}`
+    const parsedExam = parseExam(p, key, today, now, exams)
+    if (parsedExam) newExams.set(key, parsedExam)
+  }
+  let examSeen = 0
+
+  /** Liegt der Termin/die Aufgabe nach der Prüfung, ist der Vorschlag sinnlos. */
+  const afterExam = (examKey: string | undefined, existing: Exam | undefined, day: string, startTime?: string): boolean => {
+    const x = examKey ? newExams.get(examKey)?.input : existing ? { date: toDateInput(existing.start), startTime: `${String(existing.start.getHours()).padStart(2, '0')}:${String(existing.start.getMinutes()).padStart(2, '0')}` } : null
+    if (!x) return false
+    if (day > x.date) return true
+    return day === x.date && !!startTime && startTime >= x.startTime
+  }
 
   for (const p of list) {
     if (!p || typeof p !== 'object') {
@@ -187,12 +218,20 @@ export function parseProposals(raw: unknown, ctx: AiContext, tasks: Task[], even
       continue
     }
     const reason = str(p.reason, 240)
-    const examId = typeof p.exam === 'string' ? ctx.examIds.get(p.exam) ?? null : null
+    const examRef = typeof p.exam === 'string' ? p.exam.trim().toLowerCase() : ''
+    const examId = ctx.examIds.get(examRef) ?? null
+    const examKey = newExams.has(examRef) ? examRef : undefined
+    const linked = examId ? examById.get(examId) : undefined
+    const thisExamKey = p.kind === 'add_exam' ? `n${++examSeen}` : ''
     const key = JSON.stringify([p.kind, p.title, p.date, p.start, p.task, p.due_date])
     if (seen.has(key)) continue
     seen.add(key)
 
-    if (p.kind === 'add_event') {
+    if (p.kind === 'add_exam') {
+      const x = newExams.get(thisExamKey)
+      if (x) proposals.push(x)
+      else dropped++
+    } else if (p.kind === 'add_event') {
       const input: EntryInput = {
         ...emptyInput('event', parseDateInput(date(p.date)) ?? now),
         title: str(p.title),
@@ -205,12 +244,12 @@ export function parseProposals(raw: unknown, ctx: AiContext, tasks: Task[], even
         priority: null,
         reminderMinutes: null,
       }
-      if (!input.endTime || input.date < today || validateEntry(input)) {
+      if (!input.endTime || input.date < today || validateEntry(input) || afterExam(examKey, linked, input.date, input.startTime)) {
         dropped++
         continue
       }
       const clash = findConflict(events, input.date, input.startTime, input.endTime)
-      proposals.push({ kind: 'event', input, reason, warning: clash ? `Überschneidet sich mit «${clip(clash.title, 40)}»` : undefined })
+      proposals.push({ kind: 'event', input, reason, examKey, warning: clash ? `Überschneidet sich mit «${clip(clash.title, 40)}»` : undefined })
     } else if (p.kind === 'add_task') {
       const dueDate = date(p.due_date)
       const input: TaskInput = emptyTask({
@@ -222,11 +261,11 @@ export function parseProposals(raw: unknown, ctx: AiContext, tasks: Task[], even
         examId,
         estimateMinutes: typeof p.estimate_minutes === 'number' && p.estimate_minutes > 0 && p.estimate_minutes <= 1440 ? Math.round(p.estimate_minutes) : null,
       })
-      if ((dueDate && dueDate < today) || validateTask(input)) {
+      if ((dueDate && dueDate < today) || validateTask(input) || (dueDate && afterExam(examKey, linked, dueDate))) {
         dropped++
         continue
       }
-      proposals.push({ kind: 'task', input, reason })
+      proposals.push({ kind: 'task', input, reason, examKey })
     } else if (p.kind === 'move_task') {
       const realId = typeof p.task === 'string' ? ctx.taskIds.get(p.task) : undefined
       const task = realId ? byId.get(realId) : undefined
@@ -247,11 +286,80 @@ export function parseProposals(raw: unknown, ctx: AiContext, tasks: Task[], even
       dropped++
     }
   }
+  // Neue Prüfungen zuerst, damit die Reihenfolge im Plan der Reihenfolge beim Speichern entspricht.
+  proposals.sort((a, b) => Number(b.kind === 'exam') - Number(a.kind === 'exam'))
   return { proposals, dropped }
+}
+
+/** Eine neue Prüfung aus dem Vorschlag der KI. Ohne Datum und Startzeit gilt sie als ungültig, es wird nichts geraten. */
+function parseExam(p: RawProposal, key: string, today: string, now: Date, exams: Exam[]): Extract<Proposal, { kind: 'exam' }> | null {
+  const day = date(p.date)
+  const input: ExamInput = {
+    ...emptyExam(parseDateInput(day) ?? now),
+    title: str(p.title),
+    subject: str(p.subject, 120),
+    date: day,
+    startTime: time(p.start),
+    endTime: time(p.end),
+    location: str(p.location, 200),
+    format: str(p.format, 120),
+    topics: str(p.topics, 1500),
+    priority: PRIORITIES.includes(p.priority as Priority) ? (p.priority as Priority) : 'high',
+    prepStatus: 'not_started',
+  }
+  if (!day || day < today || validateExam(input)) return null
+  const lower = input.title.toLowerCase()
+  const twin = exams.find((x) => toDateInput(x.start) === day && (x.title.toLowerCase().includes(lower) || lower.includes(x.title.toLowerCase())))
+  return { kind: 'exam', key, input, reason: str(p.reason, 240), warning: twin ? `Gibt es schon: «${clip(twin.title, 40)}» am gleichen Tag` : undefined }
+}
+
+/** «Vorgehen» der KI: höchstens ein paar kurze Schritte als Text. */
+export function parseApproach(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((x): x is string => typeof x === 'string')
+    .map((x) => x.replace(/\s+/g, ' ').trim().slice(0, 220))
+    .filter(Boolean)
+    .slice(0, MAX_APPROACH)
+}
+
+export interface PlanSummary {
+  exams: number
+  events: number
+  tasks: number
+  moves: number
+  /** Gesamtdauer der Termine in Minuten */
+  minutes: number
+}
+
+/** Zusammenfassung der Vorschläge für die Bestätigung: «1 Prüfung · 8 Lernblöcke (11 h) · 2 Aufgaben». */
+export function summarizePlan(list: Proposal[]): PlanSummary {
+  const out: PlanSummary = { exams: 0, events: 0, tasks: 0, moves: 0, minutes: 0 }
+  const mins = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
+  for (const p of list) {
+    if (p.kind === 'exam') out.exams++
+    else if (p.kind === 'event') {
+      out.events++
+      out.minutes += Math.max(0, mins(p.input.endTime) - mins(p.input.startTime))
+    } else if (p.kind === 'task') out.tasks++
+    else out.moves++
+  }
+  return out
+}
+
+export function describeSummary(s: PlanSummary): string {
+  const hours = s.minutes % 60 === 0 ? `${s.minutes / 60} h` : `${(s.minutes / 60).toFixed(1).replace('.', ',')} h`
+  const parts: string[] = []
+  if (s.exams) parts.push(s.exams === 1 ? '1 Prüfung' : `${s.exams} Prüfungen`)
+  if (s.events) parts.push(`${s.events} ${s.events === 1 ? 'Termin' : 'Termine'} (${hours})`)
+  if (s.tasks) parts.push(`${s.tasks} ${s.tasks === 1 ? 'Aufgabe' : 'Aufgaben'}`)
+  if (s.moves) parts.push(`${s.moves} ${s.moves === 1 ? 'Verschiebung' : 'Verschiebungen'}`)
+  return parts.join(' · ')
 }
 
 /** Kurzer Text für den Gesprächsverlauf, damit die KI später weiss, was vorgeschlagen wurde. */
 export function describeProposal(p: Proposal): string {
+  if (p.kind === 'exam') return `Prüfung «${p.input.title}» am ${p.input.date} ${p.input.startTime}${p.input.endTime ? '–' + p.input.endTime : ''}`
   if (p.kind === 'event') return `Termin «${p.input.title}» am ${p.input.date} ${p.input.startTime}–${p.input.endTime}`
   if (p.kind === 'task') return `Aufgabe «${p.input.title}»${p.input.dueDate ? ` bis ${p.input.dueDate}` : ' (Inbox)'}`
   return `Aufgabe «${p.task.title}» verschieben auf ${p.input.dueDate}${p.input.dueTime ? ' ' + p.input.dueTime : ''}`
@@ -262,8 +370,9 @@ export function quickPrompts(exams: Exam[], tasks: Task[], now: Date): string[] 
   const out: string[] = ['Was soll ich heute zuerst machen?']
   const next = exams.filter((x) => daysUntil(x, now) >= 1).sort((a, b) => a.start.getTime() - b.start.getTime())[0]
   if (next && daysUntil(next, now) <= 45) out.push(`Plane meine Lernzeit für «${clip(next.subject || next.title, 36)}»`)
+  out.push('Neue Prüfung einplanen mit Vorgehen und Plan')
   const overdue = tasks.filter((t) => t.status !== 'done' && t.dueDate && t.dueDate < toDateInput(now))
   if (overdue.length > 0) out.push('Verteile meine überfälligen Aufgaben neu')
   out.push('Wie wird das Wetter diese Woche?', 'Plane meine Woche inklusive Wetter')
-  return out.slice(0, 5)
+  return out.slice(0, 6)
 }
