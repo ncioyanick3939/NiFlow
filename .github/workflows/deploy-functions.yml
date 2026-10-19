@@ -1,0 +1,25 @@
+# Lädt eine Supabase-Server-Funktion hoch. Nur von Hand startbar (Actions → «Server-Funktion hochladen» → Run workflow).
+# Braucht das Repository-Secret SUPABASE_ACCESS_TOKEN (Settings → Secrets and variables → Actions).
+name: Server-Funktion hochladen
+
+on:
+  workflow_dispatch:
+    inputs:
+      function:
+        description: 'Name der Funktion (Ordner unter supabase/functions)'
+        required: true
+        default: plan-assistant
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Funktion hochladen
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          FUNCTION_NAME: ${{ inputs.function }}
+        run: supabase functions deploy "$FUNCTION_NAME" --no-verify-jwt --use-api --project-ref rfhgqswrwceutvmeolfk
